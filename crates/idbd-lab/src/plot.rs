@@ -242,7 +242,13 @@ pub fn nice_axis(max: f64) -> (f64, f64) {
 pub fn tick_label(tick: f64, step: f64) -> String {
     let mut decimals = 0_usize;
     let mut scaled = step.abs();
-    while decimals < 9 && (scaled - scaled.round()).abs() > 1e-9 {
+    // A step below one rounds to zero until enough decimals are shown, so an absolute
+    // tolerance would stop early and print a tiny step as "0".
+    while decimals < 9 {
+        let rounded = scaled.round();
+        if rounded != 0.0 && (scaled - rounded).abs() <= 1e-9 * scaled {
+            break;
+        }
         scaled *= 10.0;
         decimals += 1;
     }
@@ -353,6 +359,64 @@ mod tests {
         assert!(document.contains(r#"viewBox="0 0 100 50""#), "{document}");
         assert!(document.contains("x &lt; y"), "{document}");
         assert!(document.contains(r#"points="0,0 10,20""#), "{document}");
+        assert!(document.contains(r#"text-anchor="middle""#), "{document}");
+    }
+
+    #[test]
+    fn shapes_render_their_geometry() {
+        let mut svg = Svg::new(100.0, 100.0);
+        svg.rect(1.0, 2.0, 30.0, 40.0, "#aaaaaa");
+        svg.line((0.0, 0.0), (10.0, 5.0), "#bbbbbb", 1.5, "4 2");
+        svg.circle((20.0, 30.0), 3.0, "#cccccc");
+        svg.vertical_text((8.0, 50.0), Anchor::End, 11.0, "#dddddd", "MSE");
+        let document = svg.into_string();
+        for expected in [
+            r##"<rect x="1" y="2" width="30" height="40" fill="#aaaaaa"/>"##,
+            r##"x1="0" y1="0" x2="10" y2="5" stroke="#bbbbbb""##,
+            r#"stroke-dasharray="4 2""#,
+            r##"<circle cx="20" cy="30" r="3" fill="#cccccc"/>"##,
+            r#"transform="rotate(-90 8 50)">MSE</text>"#,
+        ] {
+            assert!(
+                document.contains(expected),
+                "missing {expected} in {document}"
+            );
+        }
+    }
+
+    #[test]
+    fn every_anchor_renders_its_svg_keyword() {
+        for (anchor, keyword) in [
+            (Anchor::Start, "start"),
+            (Anchor::Middle, "middle"),
+            (Anchor::End, "end"),
+        ] {
+            let mut svg = Svg::new(10.0, 10.0);
+            svg.text((1.0, 1.0), anchor, 10.0, "#000000", "label");
+            let document = svg.into_string();
+            assert!(
+                document.contains(&format!(r#"text-anchor="{keyword}""#)),
+                "{document}"
+            );
+        }
+    }
+
+    #[test]
+    fn nice_axes_prefer_the_smallest_step_within_a_decade() {
+        // 3.5 fits both a step of 0.5 (7 steps) and a step of 1 (4 steps). Steps are tried
+        // from small to large, so the finer axis wins.
+        assert_eq!(nice_axis(3.5), (3.5, 0.5));
+    }
+
+    #[test]
+    fn tick_labels_stop_at_nine_decimals() {
+        assert_eq!(tick_label(0.0, 1e-10), "0.000000000");
+        assert_eq!(tick_label(3e-9, 1e-9), "0.000000003");
+        assert_eq!(tick_label(0.15, 0.05), "0.15");
+        // Within a relative 1e-9 of an integer, a step counts as integral.
+        assert_eq!(tick_label(1000.0, 1e3 + 5e-7), "1000");
+        assert_eq!(tick_label(2.5, 0.5), "2.5");
+        assert_eq!(tick_label(4.0, 2.0), "4");
     }
 
     #[test]

@@ -91,6 +91,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn write_creates_the_directory_and_the_file() {
+        let dir = std::env::temp_dir().join(format!("idbd-lab-report-{}", std::process::id()));
+        let nested = dir.join("nested");
+        write(&nested, "out.txt", "contents").expect("writable temp directory");
+        let read = fs::read_to_string(nested.join("out.txt")).expect("file exists");
+        fs::remove_dir_all(&dir).expect("clean up");
+        assert_eq!(read, "contents");
+    }
+
+    #[test]
     fn plus_minus_pairs_the_mean_with_its_uncertainty() {
         let summary = Summary::new(&[1.0, 2.0, 3.0]);
         assert_eq!(plus_minus(summary), "2.000 +/- 0.5774");

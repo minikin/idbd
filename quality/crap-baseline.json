@@ -1059,7 +1059,7 @@
     {
       "file": "crates/idbd-lab/src/plot.rs",
       "function": "escape",
-      "line": 253,
+      "line": 259,
       "cyclomatic": 8.0,
       "coverage": 100.0,
       "crap": 8.0,
@@ -1083,7 +1083,7 @@
     {
       "file": "crates/idbd-lab/src/plot.rs",
       "function": "round",
-      "line": 269,
+      "line": 275,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1093,9 +1093,9 @@
       "file": "crates/idbd-lab/src/plot.rs",
       "function": "tick_label",
       "line": 242,
-      "cyclomatic": 3.0,
+      "cyclomatic": 4.0,
       "coverage": 100.0,
-      "crap": 3.0,
+      "crap": 4.0,
       "crate": "idbd-lab"
     },
     {
@@ -2057,15 +2057,9 @@
       "function": "Config::initial_step_size",
       "line": 263,
       "cyclomatic": 1.0,
-      "coverage": 0.0,
-      "crap": 2.0,
-      "crate": "idbd",
-      "uncovered": [
-        {
-          "start": 263,
-          "end": 265
-        }
-      ]
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
     },
     {
       "file": "crates/idbd/src/config.rs",

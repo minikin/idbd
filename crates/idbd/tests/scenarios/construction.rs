@@ -20,6 +20,8 @@ fn c01_initialize_a_learner() {
     }
     assert_eq!(learner.num_features(), 3);
     assert_eq!(learner.config(), &config);
+    assert_eq!(learner.config().initial_step_size(), 0.05);
+    assert_eq!(learner.config().meta_step_size(), 0.01);
     assert!(learner.config().bounds().is_none());
 }
 
