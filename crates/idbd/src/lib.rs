@@ -66,9 +66,11 @@
 //!
 //! # Limitations
 //!
-//! - **Feature scaling.** The trace decay `1 - alpha_i * x_i^2` assumes inputs of
-//!   moderate magnitude. Inputs much larger than one with a large step size make the
-//!   decay clamp to zero and can make learning unstable. Standardize inputs first.
+//! - **Input and target scaling.** The trace decay `1 - alpha_i * x_i^2` assumes inputs
+//!   of moderate magnitude, and the meta step `theta * error * x_i * h_i` grows with the
+//!   square of the error scale. Standardize inputs and express the target in units where
+//!   typical errors are near 1. Unscaled data can overflow a step size, which
+//!   [`Idbd::update`] reports as [`Stage::StepSize`].
 //! - **Correlated inputs.** IDBD adapts each step size from that coordinate's own
 //!   history. Its derivation assumes that changing one step size mainly affects its own
 //!   weight, which is less accurate when inputs are strongly correlated.

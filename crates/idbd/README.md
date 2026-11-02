@@ -93,9 +93,11 @@ learning. This crate covers one linear output with dense `f64` inputs.
 
 ## Limitations
 
-- **Feature scale matters.** The trace decay `1 - alpha_i * x_i^2` assumes inputs of moderate
-  size. Standardize inputs. Large inputs with large step sizes clamp the decay to zero and can
-  diverge.
+- **Scale matters, for inputs and the target.** The trace decay `1 - alpha_i * x_i^2` assumes
+  inputs of moderate size, and the meta step `theta * error * x_i * h_i` grows with the square
+  of the error scale. Standardize inputs and express the target in units where typical errors
+  are near 1. In the latency example, raw millisecond targets overflow a step size within a few
+  samples, and the update returns `Stage::StepSize` instead of learning.
 - **Correlated inputs.** The derivation assumes that changing one step size mainly affects its
   own weight. With strongly correlated inputs that approximation is weaker.
 - **Theta is still a parameter.** IDBD replaces one learning rate per input with one meta step

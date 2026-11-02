@@ -45,6 +45,8 @@ jobs:
       - run: cargo test --workspace --all-features
       - name: Allocation test in release mode
         run: cargo test -p idbd --release --test allocation
+      - name: Streaming example (E03) resumes from its checkpoint
+        run: cargo run -p idbd --example latency
 
   msrv:
     name: Minimum Rust version (1.85)

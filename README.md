@@ -30,6 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+`crates/idbd/examples/latency.rs` is a complete streaming application: input and target
+scaling, predicting before learning, skipping an invalid sample, and checkpointing the learner
+with its stream position. Run it with `cargo run -p idbd --example latency`.
+
 The [crate README](crates/idbd/README.md) covers the update equations, configuration, bounds,
 checkpoints, when to use IDBD and its limitations.
 
