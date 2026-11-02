@@ -588,7 +588,7 @@ impl Explorer {
     /// Returns the LMS pre-update error of the last completed sample.
     #[must_use]
     #[wasm_bindgen(js_name = lmsError)]
-    pub fn lms_error(&self) -> f64 {
+    pub fn lms_error(&self) -> Option<f64> {
         self.session.last_lms_error()
     }
 
@@ -596,14 +596,14 @@ impl Explorer {
     /// `min(100, completed)` pre-update errors.
     #[must_use]
     #[wasm_bindgen(js_name = idbdRollingMse)]
-    pub fn idbd_rolling_mse(&self) -> f64 {
+    pub fn idbd_rolling_mse(&self) -> Option<f64> {
         self.session.idbd_rolling_mse()
     }
 
     /// Returns the LMS rolling mean squared error over the same window.
     #[must_use]
     #[wasm_bindgen(js_name = lmsRollingMse)]
-    pub fn lms_rolling_mse(&self) -> f64 {
+    pub fn lms_rolling_mse(&self) -> Option<f64> {
         self.session.lms_rolling_mse()
     }
 
@@ -916,7 +916,10 @@ mod tests {
     fn oversized_learners_are_rejected_before_allocating() {
         let message = Learner::create(usize::MAX, 0.1, 0.01).expect_err("too many features");
         assert!(message.contains("at most 10000 features"), "{message}");
-        assert!(Learner::create(MAX_LEARNER_FEATURES, 0.1, 0.01).is_ok(), "limit is inclusive");
+        assert!(
+            Learner::create(MAX_LEARNER_FEATURES, 0.1, 0.01).is_ok(),
+            "limit is inclusive"
+        );
         assert!(Learner::create(0, 0.1, 0.01).is_err(), "zero features");
     }
 

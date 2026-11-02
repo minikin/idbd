@@ -4,8 +4,15 @@
 
 const MINUS = "-";
 
+// Shown instead of a number before the first completed sample. A missing measurement is
+// never displayed as zero.
+export const NO_SAMPLE = "no sample yet";
+
 /** Formats a number with a fixed number of decimals. */
 export function fmt(value, digits = 4) {
+  if (value === null || value === undefined) {
+    return NO_SAMPLE;
+  }
   if (!Number.isFinite(value)) {
     return "not finite";
   }
@@ -14,6 +21,9 @@ export function fmt(value, digits = 4) {
 
 /** Formats a number with an explicit sign, so a direction is never ambiguous. */
 export function fmtSigned(value, digits = 4) {
+  if (value === null || value === undefined) {
+    return NO_SAMPLE;
+  }
   if (!Number.isFinite(value)) {
     return "not finite";
   }
@@ -23,6 +33,9 @@ export function fmtSigned(value, digits = 4) {
 
 /** Formats a step size, which spans several orders of magnitude. */
 export function fmtAlpha(value) {
+  if (value === null || value === undefined) {
+    return NO_SAMPLE;
+  }
   if (!Number.isFinite(value)) {
     return "not finite";
   }
@@ -34,6 +47,9 @@ export function fmtAlpha(value) {
 
 /** Formats a mean squared error. */
 export function fmtMse(value) {
+  if (value === null || value === undefined) {
+    return NO_SAMPLE;
+  }
   if (!Number.isFinite(value)) {
     return "not finite";
   }
