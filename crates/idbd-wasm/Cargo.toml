@@ -1,0 +1,24 @@
+[package]
+name = "idbd-wasm"
+description = "WebAssembly adapter that exposes the idbd core and the idbd-lab session to the IDBD Explorer demo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+idbd = { path = "../idbd" }
+idbd-lab = { path = "../idbd-lab" }
+# Pinned exactly: the glue this crate emits and the glue the `wasm-bindgen` CLI
+# generates share a schema hash, so the crate version and the installed CLI
+# version must match. The CLI in this environment is 0.2.113.
+wasm-bindgen = "=0.2.113"
+
+[lints]
+workspace = true

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IDBD Explorer</title>
+    <meta
+      name="description"
+      content="An interactive run of the IDBD learning rule from Sutton (1992), computed in the browser by the Rust idbd crate compiled to WebAssembly."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;1,6..72,300&display=swap"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-app-ready="false">
+    <a class="skip-link" href="#experiment">Skip to the experiment</a>
+
+    <header class="masthead">
+      <p class="eyebrow">Sutton 1992 &middot; incremental delta-bar-delta</p>
+      <h1>IDBD Explorer</h1>
+      <p class="lede">
+        IDBD is the LMS rule with a separate learning rate for every input, and it adapts
+        each rate while it learns. Inputs whose recent corrections keep pointing the same
+        way get larger steps, and inputs whose corrections cancel out get smaller ones.
+      </p>
+      <nav class="masthead-links" aria-label="References">
+        <a href="https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf">The paper (AAAI-92, PDF)</a>
+        <a href="https://github.com/minikin/idbd">Source code</a>
+        <a
+          href="https://github.com/minikin/idbd/blob/main/docs/results/sutton1992-experiment1/README.md"
+          >Experiment 1 results</a
+        >
+      </nav>
+      <dl class="build-info" id="build-info" aria-label="Build information"></dl>
+      <p class="notice" id="load-error" role="alert" hidden></p>
+    </header>
+
+    <main>
+      <section class="section" id="guided" aria-labelledby="guided-title">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">One update, term by term</p>
+            <h2 id="guided-title">What a single IDBD update does</h2>
+          </div>
+          <p class="sample-badge" data-sample-badge id="guided-sample">sample 0</p>
+        </div>
+
+        <p class="section-lede">
+          A three-input learner on the task <span class="mono">y = 2 x0 - x1 + 0 x2</span>.
+          Advance one sample and read the update in the order the algorithm performs it.
+          Every number below is read from the Rust core before and after its own update.
+        </p>
+
+        <div class="guided-grid">
+          <div class="panel">
+            <h3 class="panel-title">The sample</h3>
+            <table class="data-table" id="guided-sample-table">
+              <caption class="visually-hidden">
+                Inputs, true coefficients and target of the guided sample
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Input</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">True coefficient</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <dl class="pairs" id="guided-sample-pairs"></dl>
+
+            <h3 class="panel-title">Follow one input</h3>
+            <div
+              class="chip-row"
+              id="guided-feature-choice"
+              role="radiogroup"
+              aria-label="Input to follow through the update"
+            ></div>
+
+            <div class="button-row">
+              <button type="button" id="guided-advance" class="button primary">
+                Advance one update
+              </button>
+              <button type="button" id="guided-restart" class="button">Restart</button>
+            </div>
+            <p class="note" id="guided-note"></p>
+
+            <h3 class="panel-title" id="guided-state-title">State after this sample</h3>
+            <table class="data-table" id="guided-state-table">
+              <caption class="visually-hidden">
+                Weight, step size and trace of each input after the guided sample
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Input</th>
+                  <th scope="col">Weight</th>
+                  <th scope="col">Alpha</th>
+                  <th scope="col">Trace</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel ladder-panel">
+            <h3 class="panel-title">
+              The update for <span id="ladder-feature" class="mono">x0</span>, in order
+            </h3>
+            <ol class="ladder" id="guided-ladder"></ol>
+            <div class="button-row">
+              <button type="button" id="guided-continue" class="button primary">
+                Continue to the full experiment
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="experiment" aria-labelledby="experiment-title">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Twenty inputs, one shared stream</p>
+            <h2 id="experiment-title">The experiment</h2>
+          </div>
+          <p class="sample-badge" data-sample-badge id="experiment-sample">sample 0</p>
+        </div>
+
+        <div class="controls" role="group" aria-label="Playback">
+          <div class="button-row">
+            <button type="button" id="run" class="button primary">Run</button>
+            <button type="button" id="pause" class="button">Pause</button>
+            <button type="button" id="step" class="button">Step</button>
+            <button type="button" id="change-world" class="button">Change the world</button>
+            <button type="button" id="reset" class="button">Reset</button>
+            <button type="button" id="export" class="button">Export run</button>
+          </div>
+          <div class="field">
+            <label for="speed">Playback speed</label>
+            <select id="speed"></select>
+          </div>
+          <p class="playback-state" id="playback-state" role="status">Paused</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="field wide">
+            <label for="preset">Task</label>
+            <select id="preset"></select>
+            <p class="note" id="preset-description"></p>
+          </div>
+          <div class="field">
+            <label for="seed">Seed</label>
+            <input id="seed" type="number" min="0" step="1" value="1" />
+          </div>
+          <div class="field">
+            <label for="alpha0">Initial step size <span class="mono">alpha0</span></label>
+            <input id="alpha0" type="number" min="0.0001" step="0.01" value="0.05" />
+          </div>
+          <div class="field">
+            <label for="theta">Meta step size <span class="mono">theta</span></label>
+            <input id="theta" type="number" min="0" step="0.001" value="0.01" />
+          </div>
+          <div class="field">
+            <label for="lms-step">LMS step size</label>
+            <input id="lms-step" type="number" min="0.0001" step="0.01" value="0.03" />
+          </div>
+          <div class="field apply">
+            <button type="button" id="apply-settings" class="button primary">
+              Apply and start a new run
+            </button>
+            <p class="note">Changing any setting above starts a new run from sample 0.</p>
+          </div>
+        </div>
+
+        <dl class="run-header" id="run-header" aria-label="Run definition"></dl>
+
+        <div class="notice failure" id="failure" role="alert" hidden></div>
+
+        <div class="panel-grid">
+          <div class="panel" id="weights-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">Learned weight per input</h3>
+                <p class="note">
+                  Select an input to inspect it. Arrow keys move between inputs.
+                </p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <div class="legend" id="weights-legend"></div>
+            <div
+              class="weight-list"
+              id="weight-list"
+              role="listbox"
+              aria-label="Inputs, by learned weight"
+            ></div>
+          </div>
+
+          <div class="panel" id="error-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">Prediction error over samples</h3>
+                <p class="note" id="error-subtitle"></p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <div class="legend" id="error-legend"></div>
+            <div class="chart" id="error-chart"></div>
+            <p class="note">
+              The chart keeps the most recent 2,000 samples. A run starts both learners
+              at zero weights, so its first samples include an initial transient. This
+              single run on synthetic data does not show that either rule is better in
+              general.
+            </p>
+          </div>
+
+          <div class="panel" id="alpha-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">IDBD step sizes, all 20 inputs</h3>
+                <p class="note">
+                  Alpha is the size of the learning adjustment an input receives, not its
+                  importance or a confidence.
+                </p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <div class="legend" id="alpha-legend"></div>
+            <div class="chart" id="alpha-chart"></div>
+          </div>
+
+          <div class="panel" id="events-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">World events</h3>
+                <p class="note">
+                  Changes to the target-generating relationship, applied before a sample.
+                </p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <div class="legend" id="events-legend"></div>
+            <div class="chart timeline" id="event-timeline"></div>
+            <p class="note" id="event-summary"></p>
+            <ul class="event-list" id="event-list"></ul>
+          </div>
+
+          <div class="panel" id="inspector-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">
+                  Input <span class="mono" id="inspector-name">x0</span>
+                </h3>
+                <p class="note">
+                  The true coefficient is known simulator information, not something
+                  either learner is told.
+                </p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <dl class="pairs" id="inspector-pairs"></dl>
+            <p class="note" id="inspector-meaning"></p>
+            <div class="chart sparkline" id="inspector-alpha"></div>
+          </div>
+
+          <div class="panel" id="table-panel">
+            <div class="panel-head">
+              <div>
+                <h3 class="panel-title">Exact values</h3>
+                <p class="note">
+                  The same state the charts draw, as numbers. Copy from here rather than
+                  reading values off a mark.
+                </p>
+              </div>
+              <p class="sample-badge" data-sample-badge>sample 0</p>
+            </div>
+            <dl class="pairs" id="metrics-pairs"></dl>
+            <div class="table-scroll">
+              <table class="data-table" id="state-table">
+                <caption class="visually-hidden">
+                  Per-input state after the last completed sample
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Input</th>
+                    <th scope="col">Value</th>
+                    <th scope="col">True coefficient</th>
+                    <th scope="col">IDBD weight</th>
+                    <th scope="col">LMS weight</th>
+                    <th scope="col">Alpha</th>
+                    <th scope="col">Trace</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <p>
+        Synthetic data, generated in the browser. Learning runs in the Rust
+        <span class="mono">idbd</span> crate compiled to WebAssembly; the page only draws
+        what the core reports.
+      </p>
+    </footer>
+
+    <div class="tooltip" id="tooltip" role="status" aria-live="off" hidden></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
