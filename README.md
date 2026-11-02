@@ -119,6 +119,8 @@ scenario tests carry their IDs from `features/idbd.feature`, for example
 `c07_use_old_traces_and_one_shared_pre_update_error`. Numerical fixtures come from an
 independent 50-digit decimal implementation in
 [`reference.py`](crates/idbd/tests/scenarios/fixtures/reference.py).
+[docs/acceptance.md](docs/acceptance.md) maps every scenario to its test or recorded result and
+lists what remains open.
 
 ## Reference
 

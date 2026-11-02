@@ -1,0 +1,84 @@
+# Acceptance record
+
+Maps each scenario in [`features/idbd.feature`](../features/idbd.feature) to the evidence
+that it holds. R01 and R02 define the initial release. Their gates are the core scenarios
+C01 to C24, E01, E04 and the demo scenarios D01, D02, D03, D07, D12 and D14.
+
+Status values:
+
+- **Test**: an automated test runs in CI.
+- **Recorded**: a binary produced a committed result, with the command to reproduce it.
+- **Partial**: some clauses are covered. The gap is stated.
+- **Follow-on**: not part of the initial release and not done.
+
+Rust test names start with the scenario ID. Core tests live in `crates/idbd/tests`, lab tests in
+`crates/idbd-lab/src`, browser tests in `web/tests`.
+
+## Core (crate `idbd`)
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| C01 | Test | `c01_initialize_a_learner` |
+| C02 | Test | `c02_reject_invalid_configuration` (one row per fault), `c02_reject_nan_configuration`, `c02_accept_boundary_configuration` |
+| C03 | Test | `c03_predict_a_known_linear_result` |
+| C04 | Test | `c04_inspect_the_state_without_copying_it` |
+| C05 | Test | `c05_reject_an_invalid_feature_vector` (every fault for `predict` and `update`) |
+| C06 | Test | `c06_learn_the_first_example_from_zero_traces`, `c06_c07_match_the_independent_reference` |
+| C07 | Test | `c07_use_old_traces_and_one_shared_pre_update_error`, `c06_c07_match_the_independent_reference` |
+| C08 | Test | `c08_disable_meta_learning_explicitly` |
+| C09 | Test | `c09_preserve_an_inactive_coordinate`, `c09_inactive_coordinate_survives_an_overflowing_step` |
+| C10 | Test | `c10_decay_the_trace_even_when_the_prediction_is_correct` |
+| C11 | Test | `c11_clamp_negative_trace_decay_to_zero` |
+| C12 | Test | `c12_apply_the_optional_safety_bounds_in_the_specified_order` (all six rows) |
+| C13 | Test | `c13_apply_an_optional_beta_ceiling` |
+| C14 | Test | `c14_preserve_the_original_equations_when_bounds_are_disabled` |
+| C15 | Test | `c15_reject_a_non_finite_target` |
+| C16 | Test | `c16_reject_an_overflowing_prediction` |
+| C17 | Test | `c17_reject_finite_inputs_whose_residual_overflows` |
+| C18 | Test | `c18_reject_a_late_weight_failure_...`, `c18_reject_a_late_trace_failure_...` |
+| C19 | Test | `c19_reject_a_step_size_that_underflows_to_zero`, `c19_reject_a_step_size_that_overflows_to_infinity`, `c19_bounds_cannot_clamp_beta_onto_an_unrepresentable_step_size` |
+| C20 | Test | `c20_do_not_use_clipping_to_conceal_invalid_arithmetic` |
+| C21 | Test | `c21_resume_without_resetting_adaptation`, `c21_weights_only_restoration_is_not_equivalent` |
+| C22 | Test | `c22_reject_an_invalid_snapshot`. The "invalid configuration" row cannot be built: `State::config` is a `Config`, which validates on construction. `c22_invalid_configuration_cannot_enter_a_snapshot` records this. |
+| C23 | Test | `c23_avoid_per_example_heap_allocation_in_the_core` in `tests/allocation.rs`, with a counting global allocator, in debug and release builds |
+| C24 | Recorded | [`docs/benchmarks.md`](benchmarks.md), produced by `cargo run --release -p idbd-lab --bin bench` |
+
+Beyond the scenarios, `properties.rs` runs proptest properties: agreement with a separate
+transcription of the paper's equations, unchanged state after every injected fault, unchanged
+zero-input coordinates, bitwise snapshot round trips and betas within their bounds.
+`messages.rs` pins every error message.
+
+## Evaluation
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| E04 | Recorded | [Experiment 1 results](results/sutton1992-experiment1/README.md), `--bin sutton1992-exp1` |
+| E01 | Recorded | [Evaluation results](results/evaluation/README.md), `--bin evaluate` |
+| E02 | Recorded | [Experiment 2 results](results/sutton1992-experiment2/README.md), `--bin sutton1992-exp2`, including the Figure 5 sweep and the theta 0.01 run labeled as adapted |
+| E03 | Follow-on | The practical streaming example (latency prediction with checkpoint and invalid-sample handling) is not written. |
+
+## Demo (IDBD Explorer)
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| D01 | Test | `web/tests/d01-core-through-wasm.spec.js` and `d01_c06_and_c07_fixtures_go_through_the_core` in `crates/idbd-wasm` |
+| D02 | Test | `web/tests/d02-same-sample.spec.js`, `d02_d07_both_learners_see_the_same_sample` |
+| D03 | Test | `web/tests/d03-run-pause-step.spec.js`, `d03_step_processes_exactly_one_shared_sample` |
+| D04 | Test | `web/tests/d04-change-the-world.spec.js`, `d04_change_the_world_keeps_learner_state_until_the_next_sample` |
+| D05 | Partial | The feature inspector shows input, true coefficient labeled as simulator information, weights, alpha, trace, the last adjustment and a log-scale alpha history. No dedicated browser test. Keyboard selection is covered by `d10-keyboard.spec.js`. |
+| D06 | Partial | `d06_replay_is_independent_of_batching` checks that batching does not change learner state. The browser has no recorded event schedule to reload and no two-speed replay test. |
+| D07 | Test | `web/tests/d07-lms-comparison.spec.js`, `d07_rolling_mse_uses_the_last_min_100_errors`. The LMS step size 0.03 is labeled with how it was chosen, and the word "tuned" does not appear. |
+| D08 | Test | `web/tests/d08-visible-failure.spec.js`, `d08_a_failure_freezes_the_last_mutually_completed_sample` |
+| D09 | Test | `web/tests/d09-responsive.spec.js` at 390 and 1440 pixels |
+| D10 | Test | `web/tests/d10-keyboard.spec.js` |
+| D11 | Partial | `d11_history_is_bounded_and_totals_cover_every_sample` covers the bounded history. Playback runs in time-budgeted batches, but no test runs 100,000 samples in the browser. |
+| D12 | Test | `web/tests/d12-presets.spec.js` |
+| D13 | Test | `web/tests/d13-export.spec.js` |
+| D14 | Test | `web/tests/d14-guided-step.spec.js` compares the displayed values with the walkthrough's Rust values bit for bit |
+
+## Release
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| R01 | Partial | All core scenarios pass. Experiment 1 and the benchmarks are attached. MSRV 1.85 is tested in CI. `cargo tree -p idbd` shows no dependencies. The package contains the licenses, the README with the citation and equations, and a README doctest. `cargo publish -p idbd --dry-run` passes. The name `idbd` was unclaimed on crates.io on 2026-11-02. Publication itself has not happened and needs the owner's approval. |
+| R02 | Partial | The demo gates pass. The page shows the core version, generator and settings. The demo's WASM dependencies stay out of the core's dependency graph (checked in CI). The app is static. It has not been deployed, so deployment verification is open. Browser tests run in Chromium only. |
