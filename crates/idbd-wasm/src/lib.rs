@@ -757,10 +757,19 @@ pub struct Learner {
     last: Option<Update>,
 }
 
+/// Largest feature count a browser caller may request. JavaScript converts `-1` to
+/// `usize::MAX`, and a failed allocation aborts the whole module instead of throwing.
+const MAX_LEARNER_FEATURES: usize = 10_000;
+
 /// The adapter's own fallible operations. The exported methods below wrap these and
 /// turn the message into a JavaScript `Error`.
 impl Learner {
     fn create(num_features: usize, initial_step_size: f64, theta: f64) -> Result<Self, String> {
+        if num_features > MAX_LEARNER_FEATURES {
+            return Err(format!(
+                "a browser learner supports at most {MAX_LEARNER_FEATURES} features, got {num_features}"
+            ));
+        }
         let config = Config::new(initial_step_size, theta).map_err(|e| e.to_string())?;
         Idbd::new(num_features, config)
             .map(|learner| Self {
@@ -901,6 +910,14 @@ mod tests {
         assert_eq!(json_number(0.5), "0.5");
         assert_eq!(json_number(f64::NAN), "null");
         assert_eq!(json_number(f64::INFINITY), "null");
+    }
+
+    #[test]
+    fn oversized_learners_are_rejected_before_allocating() {
+        let message = Learner::create(usize::MAX, 0.1, 0.01).expect_err("too many features");
+        assert!(message.contains("at most 10000 features"), "{message}");
+        assert!(Learner::create(MAX_LEARNER_FEATURES, 0.1, 0.01).is_ok(), "limit is inclusive");
+        assert!(Learner::create(0, 0.1, 0.01).is_err(), "zero features");
     }
 
     #[test]
