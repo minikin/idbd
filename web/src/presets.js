@@ -40,6 +40,7 @@ export const SPEEDS = [
   { label: "100 samples / second", value: 100 },
   { label: "1,000 samples / second", value: 1000 },
   { label: "5,000 samples / second", value: 5000 },
+  { label: "20,000 samples / second", value: 20000 },
 ];
 
 export const DEFAULT_SPEED = 100;

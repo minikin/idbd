@@ -65,13 +65,13 @@ zero-input coordinates, bitwise snapshot round trips and betas within their boun
 | D02 | Test | `web/tests/d02-same-sample.spec.js`, `d02_d07_both_learners_see_the_same_sample` |
 | D03 | Test | `web/tests/d03-run-pause-step.spec.js`, `d03_step_processes_exactly_one_shared_sample` |
 | D04 | Test | `web/tests/d04-change-the-world.spec.js`, `d04_change_the_world_keeps_learner_state_until_the_next_sample` |
-| D05 | Partial | The feature inspector shows input, true coefficient labeled as simulator information, weights, alpha, trace, the last adjustment and a log-scale alpha history. No dedicated browser test. Keyboard selection is covered by `d10-keyboard.spec.js`. |
-| D06 | Partial | `d06_replay_is_independent_of_batching` checks that batching does not change learner state. The browser has no recorded event schedule to reload and no two-speed replay test. |
+| D05 | Test | `web/tests/d05-inspector.spec.js`: the inspector values match the Rust state, the true coefficient is labeled as simulator information, alpha is described as the size of a learning adjustment and never as importance or confidence, the alpha history is labeled as a base-10 log scale, and keyboard selection works. |
+| D06 | Partial | `d06_replay_is_independent_of_batching` checks that batching does not change learner state. `web/tests/d06-reset.spec.js` checks that Reset clears the history, the pending event and the metric windows. The browser has no recorded event schedule to reload and no two-speed replay test. |
 | D07 | Test | `web/tests/d07-lms-comparison.spec.js`, `d07_rolling_mse_uses_the_last_min_100_errors`. The LMS step size 0.03 is labeled with how it was chosen, and the word "tuned" does not appear. |
 | D08 | Test | `web/tests/d08-visible-failure.spec.js`, `d08_a_failure_freezes_the_last_mutually_completed_sample` |
 | D09 | Test | `web/tests/d09-responsive.spec.js` at 390 and 1440 pixels |
 | D10 | Test | `web/tests/d10-keyboard.spec.js` |
-| D11 | Partial | `d11_history_is_bounded_and_totals_cover_every_sample` covers the bounded history. Playback runs in time-budgeted batches, but no test runs 100,000 samples in the browser. |
+| D11 | Test | `web/tests/d11-bounded-playback.spec.js` plays 100,000 samples at 20,000 samples per second, then checks that Pause takes effect within a second and holds, that 2,000 samples are retained for charts and that the all-sample metrics are finite. `d11_history_is_bounded_and_totals_cover_every_sample` covers the lab side. |
 | D12 | Test | `web/tests/d12-presets.spec.js` |
 | D13 | Test | `web/tests/d13-export.spec.js` |
 | D14 | Test | `web/tests/d14-guided-step.spec.js` compares the displayed values with the walkthrough's Rust values bit for bit |
