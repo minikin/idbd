@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="584" viewBox="0 0 900 584" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="900" height="584" fill="#ffffff"/>
+  <text x="92" y="36" text-anchor="start" font-size="19" fill="#14181f">Sutton (1992) Experiment 1, approximate replication</text>
+  <text x="92" y="56" text-anchor="start" font-size="12.5" fill="#5c6673">20 inputs, 5 relevant, one sign flip every 20 samples. 20000 warm-up + 10000 measured samples, 20 seeds, no beta bounds.</text>
+  <line x1="92" y1="436" x2="860" y2="436" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="440" text-anchor="end" font-size="12" fill="#5c6673">0</text>
+  <line x1="92" y1="376" x2="860" y2="376" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="380" text-anchor="end" font-size="12" fill="#5c6673">2</text>
+  <line x1="92" y1="316" x2="860" y2="316" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="320" text-anchor="end" font-size="12" fill="#5c6673">4</text>
+  <line x1="92" y1="256" x2="860" y2="256" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="260" text-anchor="end" font-size="12" fill="#5c6673">6</text>
+  <line x1="92" y1="196" x2="860" y2="196" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="200" text-anchor="end" font-size="12" fill="#5c6673">8</text>
+  <line x1="92" y1="136" x2="860" y2="136" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="140" text-anchor="end" font-size="12" fill="#5c6673">10</text>
+  <text x="34" y="278" text-anchor="middle" font-size="13" fill="#14181f" transform="rotate(-90 34 278)">Mean squared error over the measured samples</text>
+  <line x1="92" y1="331" x2="860" y2="331" stroke="#8a94a3" stroke-width="1" stroke-dasharray="6 5"/>
+  <text x="856" y="325" text-anchor="end" font-size="11.5" fill="#8a94a3">Sutton reports best LMS near 3.5</text>
+  <line x1="92" y1="391" x2="860" y2="391" stroke="#8a94a3" stroke-width="1" stroke-dasharray="6 5"/>
+  <text x="856" y="385" text-anchor="end" font-size="11.5" fill="#8a94a3">Sutton reports IDBD near 1.5</text>
+  <polyline points="130.4,302.33 168.8,314.26 245.6,328.26 322.4,333.94 399.2,333.3 476,325.85 552.8,307.95 629.6,267.01 706.4,141.47 783.2,136 860,136" fill="none" stroke="#2b6cb0" stroke-width="2.4" stroke-linejoin="round"/>
+  <line x1="130.4" y1="302.8" x2="130.4" y2="301.85" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="127.4" y1="302.8" x2="133.4" y2="302.8" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="127.4" y1="301.85" x2="133.4" y2="301.85" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="130.4" cy="302.33" r="4" fill="#2b6cb0"/>
+  <line x1="168.8" y1="314.66" x2="168.8" y2="313.86" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="165.8" y1="314.66" x2="171.8" y2="314.66" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="165.8" y1="313.86" x2="171.8" y2="313.86" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="168.8" cy="314.26" r="4" fill="#2b6cb0"/>
+  <line x1="245.6" y1="328.73" x2="245.6" y2="327.78" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="242.6" y1="328.73" x2="248.6" y2="328.73" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="242.6" y1="327.78" x2="248.6" y2="327.78" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="245.6" cy="328.26" r="4" fill="#2b6cb0"/>
+  <line x1="322.4" y1="334.46" x2="322.4" y2="333.43" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="319.4" y1="334.46" x2="325.4" y2="334.46" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="319.4" y1="333.43" x2="325.4" y2="333.43" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="322.4" cy="333.94" r="4" fill="#2b6cb0"/>
+  <line x1="399.2" y1="333.84" x2="399.2" y2="332.77" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="396.2" y1="333.84" x2="402.2" y2="333.84" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="396.2" y1="332.77" x2="402.2" y2="332.77" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="399.2" cy="333.3" r="4" fill="#2b6cb0"/>
+  <line x1="476" y1="326.46" x2="476" y2="325.25" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="473" y1="326.46" x2="479" y2="326.46" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="473" y1="325.25" x2="479" y2="325.25" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="476" cy="325.85" r="4" fill="#2b6cb0"/>
+  <line x1="552.8" y1="308.73" x2="552.8" y2="307.18" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="549.8" y1="308.73" x2="555.8" y2="308.73" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="549.8" y1="307.18" x2="555.8" y2="307.18" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="552.8" cy="307.95" r="4" fill="#2b6cb0"/>
+  <line x1="629.6" y1="268.24" x2="629.6" y2="265.77" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="626.6" y1="268.24" x2="632.6" y2="268.24" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="626.6" y1="265.77" x2="632.6" y2="265.77" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="629.6" cy="267.01" r="4" fill="#2b6cb0"/>
+  <line x1="706.4" y1="145.55" x2="706.4" y2="137.38" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="703.4" y1="145.55" x2="709.4" y2="145.55" stroke="#2b6cb0" stroke-width="1.4"/>
+  <line x1="703.4" y1="137.38" x2="709.4" y2="137.38" stroke="#2b6cb0" stroke-width="1.4"/>
+  <circle cx="706.4" cy="141.47" r="4" fill="#2b6cb0"/>
+  <line x1="778.2" y1="145" x2="783.2" y2="137" stroke="#2b6cb0" stroke-width="2"/>
+  <line x1="788.2" y1="145" x2="783.2" y2="137" stroke="#2b6cb0" stroke-width="2"/>
+  <line x1="855" y1="145" x2="860" y2="137" stroke="#2b6cb0" stroke-width="2"/>
+  <line x1="865" y1="145" x2="860" y2="137" stroke="#2b6cb0" stroke-width="2"/>
+  <circle cx="110" cy="138" r="4.5" fill="#2b6cb0"/>
+  <text x="122" y="142" text-anchor="start" font-size="12.5" fill="#14181f">LMS, fixed step size alpha (bottom axis)</text>
+  <polyline points="92,325.85 111.2,365.13 130.4,374.4 168.8,381.05 245.6,385.84 322.4,387.84 399.2,388.93 476,389.59 552.8,389.99 668,390.25 860,390.77" fill="none" stroke="#ff6f61" stroke-width="2.4" stroke-linejoin="round"/>
+  <line x1="92" y1="326.46" x2="92" y2="325.25" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="89" y1="326.46" x2="95" y2="326.46" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="89" y1="325.25" x2="95" y2="325.25" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="92" cy="325.85" r="4" fill="#ff6f61"/>
+  <line x1="111.2" y1="365.43" x2="111.2" y2="364.82" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="108.2" y1="365.43" x2="114.2" y2="365.43" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="108.2" y1="364.82" x2="114.2" y2="364.82" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="111.2" cy="365.13" r="4" fill="#ff6f61"/>
+  <line x1="130.4" y1="374.65" x2="130.4" y2="374.15" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="127.4" y1="374.65" x2="133.4" y2="374.65" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="127.4" y1="374.15" x2="133.4" y2="374.15" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="130.4" cy="374.4" r="4" fill="#ff6f61"/>
+  <line x1="168.8" y1="381.27" x2="168.8" y2="380.84" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="165.8" y1="381.27" x2="171.8" y2="381.27" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="165.8" y1="380.84" x2="171.8" y2="380.84" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="168.8" cy="381.05" r="4" fill="#ff6f61"/>
+  <line x1="245.6" y1="386.03" x2="245.6" y2="385.65" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="242.6" y1="386.03" x2="248.6" y2="386.03" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="242.6" y1="385.65" x2="248.6" y2="385.65" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="245.6" cy="385.84" r="4" fill="#ff6f61"/>
+  <line x1="322.4" y1="388.03" x2="322.4" y2="387.66" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="319.4" y1="388.03" x2="325.4" y2="388.03" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="319.4" y1="387.66" x2="325.4" y2="387.66" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="322.4" cy="387.84" r="4" fill="#ff6f61"/>
+  <line x1="399.2" y1="389.12" x2="399.2" y2="388.74" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="396.2" y1="389.12" x2="402.2" y2="389.12" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="396.2" y1="388.74" x2="402.2" y2="388.74" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="399.2" cy="388.93" r="4" fill="#ff6f61"/>
+  <line x1="476" y1="389.78" x2="476" y2="389.4" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="473" y1="389.78" x2="479" y2="389.78" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="473" y1="389.4" x2="479" y2="389.4" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="476" cy="389.59" r="4" fill="#ff6f61"/>
+  <line x1="552.8" y1="390.19" x2="552.8" y2="389.8" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="549.8" y1="390.19" x2="555.8" y2="390.19" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="549.8" y1="389.8" x2="555.8" y2="389.8" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="552.8" cy="389.99" r="4" fill="#ff6f61"/>
+  <line x1="668" y1="390.48" x2="668" y2="390.03" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="665" y1="390.48" x2="671" y2="390.48" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="665" y1="390.03" x2="671" y2="390.03" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="668" cy="390.25" r="4" fill="#ff6f61"/>
+  <line x1="860" y1="391.04" x2="860" y2="390.5" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="857" y1="391.04" x2="863" y2="391.04" stroke="#ff6f61" stroke-width="1.4"/>
+  <line x1="857" y1="390.5" x2="863" y2="390.5" stroke="#ff6f61" stroke-width="1.4"/>
+  <circle cx="860" cy="390.77" r="4" fill="#ff6f61"/>
+  <circle cx="860" cy="390.77" r="2" fill="#ffffff"/>
+  <circle cx="110" cy="158" r="4.5" fill="#ff6f61"/>
+  <text x="122" y="162" text-anchor="start" font-size="12.5" fill="#14181f">IDBD, meta step size theta (top axis), initial alpha 0.05</text>
+  <line x1="92" y1="436" x2="860" y2="436" stroke="#2b6cb0" stroke-width="1.8"/>
+  <line x1="92" y1="436" x2="92" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="92" y="458" text-anchor="middle" font-size="12" fill="#14181f">0</text>
+  <line x1="245.6" y1="436" x2="245.6" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="245.6" y="458" text-anchor="middle" font-size="12" fill="#14181f">0.02</text>
+  <line x1="399.2" y1="436" x2="399.2" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="399.2" y="458" text-anchor="middle" font-size="12" fill="#14181f">0.04</text>
+  <line x1="552.8" y1="436" x2="552.8" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="552.8" y="458" text-anchor="middle" font-size="12" fill="#14181f">0.06</text>
+  <line x1="706.4" y1="436" x2="706.4" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="706.4" y="458" text-anchor="middle" font-size="12" fill="#14181f">0.08</text>
+  <line x1="860" y1="436" x2="860" y2="442" stroke="#2b6cb0" stroke-width="1.4"/>
+  <text x="860" y="458" text-anchor="middle" font-size="12" fill="#14181f">0.1</text>
+  <text x="476" y="482" text-anchor="middle" font-size="13.5" fill="#2b6cb0">LMS step size alpha</text>
+  <line x1="92" y1="120" x2="860" y2="120" stroke="#ff6f61" stroke-width="1.8"/>
+  <line x1="92" y1="120" x2="92" y2="114" stroke="#ff6f61" stroke-width="1.4"/>
+  <text x="92" y="108" text-anchor="middle" font-size="12" fill="#14181f">0</text>
+  <line x1="284" y1="120" x2="284" y2="114" stroke="#ff6f61" stroke-width="1.4"/>
+  <text x="284" y="108" text-anchor="middle" font-size="12" fill="#14181f">0.005</text>
+  <line x1="476" y1="120" x2="476" y2="114" stroke="#ff6f61" stroke-width="1.4"/>
+  <text x="476" y="108" text-anchor="middle" font-size="12" fill="#14181f">0.01</text>
+  <line x1="668" y1="120" x2="668" y2="114" stroke="#ff6f61" stroke-width="1.4"/>
+  <text x="668" y="108" text-anchor="middle" font-size="12" fill="#14181f">0.015</text>
+  <line x1="860" y1="120" x2="860" y2="114" stroke="#ff6f61" stroke-width="1.4"/>
+  <text x="860" y="108" text-anchor="middle" font-size="12" fill="#14181f">0.02</text>
+  <text x="476" y="88" text-anchor="middle" font-size="13.5" fill="#ff6f61">IDBD meta step size theta</text>
+  <text x="92" y="522" text-anchor="start" font-size="11.5" fill="#5c6673">Points are means over the seeds. Bars are one standard error of the mean.</text>
+  <text x="92" y="540" text-anchor="start" font-size="11.5" fill="#5c6673">A caret at the top edge marks a mean above the axis. A hollow marker means some seeds failed.</text>
+  <text x="92" y="558" text-anchor="start" font-size="11.5" fill="#5c6673">idbd-lab 0.1.0, generator xoshiro256** seeded by SplitMix64, Box-Muller normals (v1)</text>
+</svg>

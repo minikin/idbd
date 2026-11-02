@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="900" height="540" fill="#ffffff"/>
+  <text x="92" y="36" text-anchor="start" font-size="19" fill="#14181f">Fixed step size on the relevant inputs alone</text>
+  <text x="92" y="56" text-anchor="start" font-size="12.5" fill="#5c6673">Sutton 1992 Figure 5 setup: LMS over the 5 relevant inputs, the other 15 held out. 20000 warm-up + 10000 measured samples, 20 seeds.</text>
+  <line x1="92" y1="436" x2="860" y2="436" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="440" text-anchor="end" font-size="12" fill="#5c6673">0.00</text>
+  <line x1="92" y1="395.5" x2="860" y2="395.5" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="399.5" text-anchor="end" font-size="12" fill="#5c6673">0.50</text>
+  <line x1="92" y1="355" x2="860" y2="355" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="359" text-anchor="end" font-size="12" fill="#5c6673">1.00</text>
+  <line x1="92" y1="314.5" x2="860" y2="314.5" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="318.5" text-anchor="end" font-size="12" fill="#5c6673">1.50</text>
+  <line x1="92" y1="274" x2="860" y2="274" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="278" text-anchor="end" font-size="12" fill="#5c6673">2.00</text>
+  <line x1="92" y1="233.5" x2="860" y2="233.5" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="237.5" text-anchor="end" font-size="12" fill="#5c6673">2.50</text>
+  <line x1="92" y1="193" x2="860" y2="193" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="197" text-anchor="end" font-size="12" fill="#5c6673">3.00</text>
+  <line x1="92" y1="152.5" x2="860" y2="152.5" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="156.5" text-anchor="end" font-size="12" fill="#5c6673">3.50</text>
+  <line x1="92" y1="112" x2="860" y2="112" stroke="#d8dee6" stroke-width="1"/>
+  <text x="82" y="116" text-anchor="end" font-size="12" fill="#5c6673">4.00</text>
+  <text x="34" y="274" text-anchor="middle" font-size="13" fill="#14181f" transform="rotate(-90 34 274)">Mean squared error over the measured samples</text>
+  <line x1="491.36" y1="112" x2="491.36" y2="436" stroke="#8a94a3" stroke-width="1" stroke-dasharray="6 5"/>
+  <text x="497.36" y="126" text-anchor="start" font-size="11.5" fill="#8a94a3">Sutton Figure 5: minimum near 0.13</text>
+  <polyline points="245.6,274.17 337.76,306.45 399.2,317.15 429.92,320.47 460.64,322.67 491.36,323.84 522.08,324.03 552.8,323.22 614.24,318.29 706.4,299.17 860,161.1" fill="none" stroke="#ff6f61" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="245.6" cy="274.17" r="4" fill="#ff6f61"/>
+  <circle cx="337.76" cy="306.45" r="4" fill="#ff6f61"/>
+  <circle cx="399.2" cy="317.15" r="4" fill="#ff6f61"/>
+  <circle cx="429.92" cy="320.47" r="4" fill="#ff6f61"/>
+  <circle cx="460.64" cy="322.67" r="4" fill="#ff6f61"/>
+  <circle cx="491.36" cy="323.84" r="4" fill="#ff6f61"/>
+  <circle cx="522.08" cy="324.03" r="4" fill="#ff6f61"/>
+  <circle cx="552.8" cy="323.22" r="4" fill="#ff6f61"/>
+  <circle cx="614.24" cy="318.29" r="4" fill="#ff6f61"/>
+  <circle cx="706.4" cy="299.17" r="4" fill="#ff6f61"/>
+  <circle cx="860" cy="161.1" r="4" fill="#ff6f61"/>
+  <line x1="92" y1="436" x2="860" y2="436" stroke="#14181f" stroke-width="1.4"/>
+  <line x1="245.6" y1="436" x2="245.6" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="245.6" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.05</text>
+  <line x1="337.76" y1="436" x2="337.76" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="337.76" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.08</text>
+  <line x1="399.2" y1="436" x2="399.2" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="399.2" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.1</text>
+  <line x1="429.92" y1="436" x2="429.92" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="429.92" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.11</text>
+  <line x1="460.64" y1="436" x2="460.64" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="460.64" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.12</text>
+  <line x1="491.36" y1="436" x2="491.36" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="491.36" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.13</text>
+  <line x1="522.08" y1="436" x2="522.08" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="522.08" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.14</text>
+  <line x1="552.8" y1="436" x2="552.8" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="552.8" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.15</text>
+  <line x1="614.24" y1="436" x2="614.24" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="614.24" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.17</text>
+  <line x1="706.4" y1="436" x2="706.4" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="706.4" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.2</text>
+  <line x1="860" y1="436" x2="860" y2="442" stroke="#14181f" stroke-width="1.2"/>
+  <text x="860" y="458" text-anchor="middle" font-size="11" fill="#14181f">0.25</text>
+  <text x="476" y="482" text-anchor="middle" font-size="13.5" fill="#14181f">Fixed step size alpha on the relevant inputs</text>
+  <text x="92" y="514" text-anchor="start" font-size="11.5" fill="#5c6673">idbd-lab 0.1.0, generator xoshiro256** seeded by SplitMix64, Box-Muller normals (v1)</text>
+</svg>

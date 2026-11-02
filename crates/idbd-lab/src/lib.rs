@@ -4,10 +4,17 @@
 //!
 //! This crate is not published. All learning goes through the `idbd` core.
 
+pub mod alphas;
+pub mod cli;
+pub mod csv;
 pub mod experiment;
 pub mod lms;
+pub mod plot;
+pub mod report;
 pub mod rng;
 pub mod session;
+pub mod stats;
+pub mod sweep;
 pub mod trace;
 pub mod walkthrough;
 pub mod world;
