@@ -1,0 +1,144 @@
+//! Rule: Failed operations preserve all committed learning state.
+
+use idbd::{Error, Idbd, Stage};
+
+use crate::support::{assert_same_state, config, restore, safety_config, standard_learner};
+
+fn numerical(stage: Stage, coordinate: Option<usize>) -> Error {
+    Error::Numerical { stage, coordinate }
+}
+
+/// Runs `operation`, asserts it returns `expected`, and asserts the committed state did
+/// not change.
+#[track_caller]
+fn assert_rejected<T: std::fmt::Debug + PartialEq>(
+    learner: &mut Idbd,
+    operation: impl FnOnce(&mut Idbd) -> Result<T, Error>,
+    expected: Error,
+) {
+    let before = learner.snapshot();
+    let result = operation(learner);
+    assert_eq!(result, Err(expected), "operation result");
+    assert_same_state(&learner.snapshot(), &before);
+}
+
+#[test]
+fn c15_reject_a_non_finite_target() {
+    for target in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let mut learner = standard_learner();
+        learner.update(&[1.0, 2.0], 1.0).expect("prior update");
+        assert_rejected(
+            &mut learner,
+            |l| l.update(&[0.5, 0.5], target),
+            Error::NonFiniteTarget,
+        );
+    }
+}
+
+#[test]
+fn c16_reject_an_overflowing_prediction() {
+    let beta = 0.1_f64.ln();
+    let mut learner = restore(config(0.1, 0.01), &[1e308, 1e308], &[beta; 2], &[0.0; 2]);
+    let overflow = numerical(Stage::Prediction, None);
+    assert_rejected(&mut learner, |l| l.predict(&[1.0, 1.0]), overflow);
+    assert_rejected(&mut learner, |l| l.update(&[1.0, 1.0], 0.0), overflow);
+}
+
+#[test]
+fn c17_reject_finite_inputs_whose_residual_overflows() {
+    let beta = 0.1_f64.ln();
+    let mut learner = restore(config(0.1, 0.01), &[1e308], &[beta], &[0.0]);
+    assert_eq!(learner.predict(&[1.0]), Ok(1e308), "finite prediction");
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0], -1e308),
+        numerical(Stage::Residual, None),
+    );
+}
+
+#[test]
+fn c18_reject_a_late_weight_failure_without_committing_earlier_coordinates() {
+    let beta = 0.1_f64.ln();
+    let mut learner = restore(
+        config(0.1, 0.0),
+        &[0.3, -0.2, 0.0],
+        &[beta, beta, 1e300_f64.ln()],
+        &[0.1, 0.2, 0.0],
+    );
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0, 1.0, 1.0], 1e10),
+        numerical(Stage::Weight, Some(2)),
+    );
+}
+
+#[test]
+fn c18_reject_a_late_trace_failure_without_committing_earlier_coordinates() {
+    let beta = 0.1_f64.ln();
+    let mut learner = restore(
+        config(0.1, 0.0),
+        &[0.0, 0.0],
+        &[beta, 1e10_f64.ln()],
+        &[0.5, f64::MAX],
+    );
+    // The step is about 1e293 and the decay rounds to 1, so only the trace overflows.
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0, 1e-15], 1e298),
+        numerical(Stage::Trace, Some(1)),
+    );
+}
+
+#[test]
+fn c19_reject_a_step_size_that_underflows_to_zero() {
+    let mut learner = restore(config(0.05, 1.0), &[0.0], &[-700.0], &[-100.0]);
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0], 1.0),
+        numerical(Stage::StepSize, Some(0)),
+    );
+}
+
+#[test]
+fn c19_reject_a_step_size_that_overflows_to_infinity() {
+    let mut learner = restore(config(0.05, 1.0), &[0.0], &[700.0], &[20.0]);
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0], 1.0),
+        numerical(Stage::StepSize, Some(0)),
+    );
+}
+
+#[test]
+fn c19_safety_floor_does_not_hide_exponent_checks() {
+    // The floor of -10 keeps alpha positive, so the update succeeds here.
+    let mut learner = restore(safety_config(0.05, 1.0), &[0.0], &[-9.0], &[-100.0]);
+    let report = learner.update(&[1.0], 1.0).expect("bounded update");
+    assert_eq!(learner.log_step_sizes(), &[-10.0]);
+    assert_eq!(report.bounded_features, 1);
+}
+
+#[test]
+fn c20_do_not_use_clipping_to_conceal_invalid_arithmetic() {
+    let mut learner = restore(safety_config(0.05, 1.0), &[0.0], &[-3.0], &[1e300]);
+    assert_rejected(
+        &mut learner,
+        |l| l.update(&[1.0], 1e10),
+        numerical(Stage::MetaStep, Some(0)),
+    );
+}
+
+#[test]
+fn failed_update_then_success_matches_a_learner_that_never_failed() {
+    let mut failed = standard_learner();
+    let mut clean = standard_learner();
+    failed.update(&[1.0, 2.0], 1.0).expect("update");
+    clean.update(&[1.0, 2.0], 1.0).expect("update");
+    assert!(failed.update(&[1.0, 2.0], f64::NAN).is_err(), "rejected");
+    let a = failed
+        .update(&[2.0, -1.0], 0.5)
+        .expect("update after failure");
+    let b = clean.update(&[2.0, -1.0], 0.5).expect("update");
+    assert_eq!(a, b);
+    assert_same_state(&failed.snapshot(), &clean.snapshot());
+}
