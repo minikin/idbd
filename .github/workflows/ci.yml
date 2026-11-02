@@ -95,12 +95,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov,cargo-crap@0.9.0
-      - run: cargo llvm-cov --workspace --exclude idbd-wasm --lcov --output-path lcov.info
-      - run: cargo llvm-cov report --workspace --exclude idbd-wasm --summary-only
-      - name: No production function above CRAP 30
-        run: cargo crap --workspace --lcov lcov.info --threshold 30 --fail-above --format github
-      - name: No CRAP regression against the committed baseline
-        run: cargo crap --workspace --lcov lcov.info --baseline quality/crap-baseline.json --fail-regression
+      - name: Coverage from tests and experiment runs, CRAP gate and regression check
+        run: scripts/coverage.sh
       - uses: actions/upload-artifact@v4
         with:
           name: lcov
