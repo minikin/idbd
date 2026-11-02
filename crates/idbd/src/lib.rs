@@ -51,7 +51,7 @@
 //! The beta update uses the old trace. The weight and trace updates use the new step
 //! size. This follows equations 3 to 6 of the paper. Figure 2's pseudocode prints the
 //! trace decay as a sum, `h_i + [1 - alpha_i x_i^2]^+`; equation 6 and the derivation
-//! show it is a product, which this crate implements.
+//! show it is a product, which this crate implements (Sutton 1992, pp. 172-173).
 //!
 //! # Guarantees
 //!
@@ -62,7 +62,7 @@
 //! - [`Idbd::predict`], [`Idbd::update`] and the inspection methods do not allocate.
 //! - [`Idbd::snapshot`] and [`Idbd::from_state`] save and restore the complete state:
 //!   configuration, weights, betas and traces.
-//! - The crate has no dependencies and no `unsafe` code.
+//! - The crate has no dependencies and no `unsafe` code. It requires `std`.
 //!
 //! # Limitations
 //!

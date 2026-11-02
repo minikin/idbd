@@ -28,6 +28,7 @@ use crate::config::{Config, is_valid_step_size};
 /// # }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct State {
     /// The learner configuration.
     pub config: Config,
@@ -40,6 +41,19 @@ pub struct State {
 }
 
 impl State {
+    /// Assembles a state from its parts without validating them.
+    ///
+    /// [`Idbd::from_state`](crate::Idbd::from_state) validates the state when it
+    /// restores a learner.
+    pub fn new(config: Config, weights: Vec<f64>, betas: Vec<f64>, traces: Vec<f64>) -> Self {
+        Self {
+            config,
+            weights,
+            betas,
+            traces,
+        }
+    }
+
     pub(crate) fn validate(&self) -> Result<(), StateError> {
         let (weights, betas, traces) = (self.weights.len(), self.betas.len(), self.traces.len());
         if weights != betas || weights != traces {

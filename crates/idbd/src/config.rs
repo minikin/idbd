@@ -66,10 +66,11 @@ impl Bounds {
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError::InvalidBound`] if `min_beta` is not finite, and
+    /// Returns [`ConfigError::InvalidBound`] if `min_beta` is not finite or if
+    /// `exp(min_beta)` underflows to zero, and
     /// [`ConfigError::InvertedBetaBounds`] if it exceeds a configured ceiling.
     pub fn with_min_beta(self, min_beta: f64) -> Result<Self, ConfigError> {
-        let min_beta = finite_bound(BoundKind::MinBeta, min_beta)?;
+        let min_beta = beta_bound(BoundKind::MinBeta, min_beta)?;
         check_order(Some(min_beta), self.max_beta)?;
         Ok(Self {
             min_beta: Some(min_beta),
@@ -81,10 +82,11 @@ impl Bounds {
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError::InvalidBound`] if `max_beta` is not finite, and
+    /// Returns [`ConfigError::InvalidBound`] if `max_beta` is not finite or if
+    /// `exp(max_beta)` overflows, and
     /// [`ConfigError::InvertedBetaBounds`] if it is below a configured floor.
     pub fn with_max_beta(self, max_beta: f64) -> Result<Self, ConfigError> {
-        let max_beta = finite_bound(BoundKind::MaxBeta, max_beta)?;
+        let max_beta = beta_bound(BoundKind::MaxBeta, max_beta)?;
         check_order(self.min_beta, Some(max_beta))?;
         Ok(Self {
             max_beta: Some(max_beta),
@@ -156,6 +158,16 @@ impl Bounds {
 
 fn finite_bound(bound: BoundKind, value: f64) -> Result<f64, ConfigError> {
     if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(ConfigError::InvalidBound { bound, value })
+    }
+}
+
+/// Accepts a floor or ceiling only if its step size `exp(beta)` is representable, so a
+/// bound can never clamp beta onto an unusable step size.
+fn beta_bound(bound: BoundKind, value: f64) -> Result<f64, ConfigError> {
+    if is_valid_step_size(value.exp()) {
         Ok(value)
     } else {
         Err(ConfigError::InvalidBound { bound, value })
@@ -312,7 +324,8 @@ pub enum ConfigError {
         /// The rejected value.
         value: f64,
     },
-    /// A bound is not finite, or the increment limit is not strictly positive.
+    /// A bound is not finite, a beta bound's exponential is zero or infinite, or the
+    /// increment limit is not strictly positive.
     InvalidBound {
         /// The rejected bound.
         bound: BoundKind,

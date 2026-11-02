@@ -105,6 +105,22 @@ fn c02_reject_invalid_configuration() {
             },
         ),
         (
+            "minimum beta whose step size underflows",
+            with_bounds(none.with_min_beta(-746.0)),
+            ConfigError::InvalidBound {
+                bound: BoundKind::MinBeta,
+                value: -746.0,
+            },
+        ),
+        (
+            "maximum beta whose step size overflows",
+            with_bounds(none.with_max_beta(710.0)),
+            ConfigError::InvalidBound {
+                bound: BoundKind::MaxBeta,
+                value: 710.0,
+            },
+        ),
+        (
             "maximum beta increment is zero",
             with_bounds(none.with_max_beta_increment(0.0)),
             ConfigError::InvalidBound {

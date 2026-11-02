@@ -52,12 +52,12 @@ pub(crate) fn safety_config(initial_step_size: f64, meta_step_size: f64) -> Conf
 }
 
 pub(crate) fn restore(config: Config, weights: &[f64], betas: &[f64], traces: &[f64]) -> Idbd {
-    Idbd::from_state(State {
+    Idbd::from_state(State::new(
         config,
-        weights: weights.to_vec(),
-        betas: betas.to_vec(),
-        traces: traces.to_vec(),
-    })
+        weights.to_vec(),
+        betas.to_vec(),
+        traces.to_vec(),
+    ))
     .expect("valid restored state")
 }
 

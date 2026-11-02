@@ -51,26 +51,25 @@ use crate::state::{State, StateError};
 #[derive(Clone)]
 pub struct Idbd {
     config: Config,
-    weights: Vec<f64>,
-    betas: Vec<f64>,
-    traces: Vec<f64>,
-    candidate: Candidate,
+    committed: Vectors,
+    /// Preallocated storage for the next state. Updates write only here and swap it
+    /// with `committed` after every coordinate validates.
+    candidate: Vectors,
 }
 
-/// Preallocated storage for the next state, so failed updates never touch committed
-/// state and successful ones do not allocate.
+/// Per-feature weights, log step sizes and traces.
 #[derive(Clone)]
-struct Candidate {
+struct Vectors {
     weights: Vec<f64>,
     betas: Vec<f64>,
     traces: Vec<f64>,
 }
 
-impl Candidate {
-    fn new(num_features: usize) -> Self {
+impl Vectors {
+    fn new(num_features: usize, beta: f64) -> Self {
         Self {
             weights: vec![0.0; num_features],
-            betas: vec![0.0; num_features],
+            betas: vec![beta; num_features],
             traces: vec![0.0; num_features],
         }
     }
@@ -90,10 +89,8 @@ impl Idbd {
             return Err(ConfigError::ZeroFeatures);
         }
         Ok(Self {
-            weights: vec![0.0; num_features],
-            betas: vec![config.initial_beta(); num_features],
-            traces: vec![0.0; num_features],
-            candidate: Candidate::new(num_features),
+            committed: Vectors::new(num_features, config.initial_beta()),
+            candidate: Vectors::new(num_features, 0.0),
             config,
         })
     }
@@ -117,12 +114,14 @@ impl Idbd {
             betas,
             traces,
         } = state;
-        let candidate = Candidate::new(weights.len());
+        let candidate = Vectors::new(weights.len(), 0.0);
         Ok(Self {
             config,
-            weights,
-            betas,
-            traces,
+            committed: Vectors {
+                weights,
+                betas,
+                traces,
+            },
             candidate,
         })
     }
@@ -131,12 +130,12 @@ impl Idbd {
     ///
     /// This allocates three vectors. Pass the result to [`Idbd::from_state`] to resume.
     pub fn snapshot(&self) -> State {
-        State {
-            config: self.config,
-            weights: self.weights.clone(),
-            betas: self.betas.clone(),
-            traces: self.traces.clone(),
-        }
+        State::new(
+            self.config,
+            self.committed.weights.clone(),
+            self.committed.betas.clone(),
+            self.committed.traces.clone(),
+        )
     }
 
     /// Returns the prediction `w · x` for `features` without learning.
@@ -155,9 +154,20 @@ impl Idbd {
     ///
     /// # Errors
     ///
-    /// Returns an input error for invalid features or a non-finite target, and
-    /// [`Error::Numerical`] if any intermediate or resulting value is not representable.
-    /// On error the committed state is unchanged.
+    /// On error the committed state is unchanged. Checks run in this order and the
+    /// first failure is returned:
+    ///
+    /// 1. [`Error::DimensionMismatch`] if `features` has the wrong length.
+    /// 2. [`Error::NonFiniteFeature`] for the first non-finite feature.
+    /// 3. [`Error::NonFiniteTarget`] if `target` is not finite.
+    /// 4. [`Error::Numerical`] at [`Stage::Prediction`], then [`Stage::Residual`].
+    /// 5. [`Error::Numerical`] for the lowest failing coordinate, at the first failing
+    ///    stage among [`Stage::MetaStep`], [`Stage::StepSize`], [`Stage::Weight`] and
+    ///    [`Stage::Trace`].
+    ///
+    /// Products are evaluated left to right as written in the equations, for example
+    /// `theta * error * x_i * h_i`. An intermediate product that overflows is a
+    /// numerical failure even if reordering the factors would avoid it.
     pub fn update(&mut self, features: &[f64], target: f64) -> Result<Update, Error> {
         self.check_features(features)?;
         if !target.is_finite() {
@@ -171,10 +181,14 @@ impl Idbd {
                 coordinate: None,
             });
         }
-        let bounded_features = self.propose(features, error)?;
-        mem::swap(&mut self.weights, &mut self.candidate.weights);
-        mem::swap(&mut self.betas, &mut self.candidate.betas);
-        mem::swap(&mut self.traces, &mut self.candidate.traces);
+        let bounded_features = propose(
+            &self.config,
+            &self.committed,
+            &mut self.candidate,
+            features,
+            error,
+        )?;
+        mem::swap(&mut self.committed, &mut self.candidate);
         Ok(Update {
             prediction,
             error,
@@ -182,63 +196,10 @@ impl Idbd {
         })
     }
 
-    /// Writes the next state into the candidate buffers and returns how many
-    /// coordinates the bounds changed.
-    fn propose(&mut self, features: &[f64], error: f64) -> Result<usize, Error> {
-        let theta = self.config.meta_step_size();
-        let bounds = *self.config.bounds();
-        let mut bounded_features = 0;
-        for (i, &x) in features.iter().enumerate() {
-            let (weight, beta, trace) = (self.weights[i], self.betas[i], self.traces[i]);
-            // A zero input changes nothing mathematically. Skipping it also keeps an
-            // overflowing `alpha * error` from turning `* 0.0` into NaN.
-            if x == 0.0 {
-                self.candidate.weights[i] = weight;
-                self.candidate.betas[i] = beta;
-                self.candidate.traces[i] = trace;
-                continue;
-            }
-            let raw_increment = theta * error * x * trace;
-            let proposal = beta + raw_increment;
-            // Committed betas never exceed ln(f64::MAX), so the proposal is finite
-            // exactly when the raw increment is.
-            if !proposal.is_finite() {
-                return Err(Error::numerical(Stage::MetaStep, i));
-            }
-            let new_beta = bounds.apply(beta, raw_increment);
-            #[expect(
-                clippy::float_cmp,
-                reason = "the contract counts any floating-point difference from the proposal"
-            )]
-            let bounded = new_beta != proposal;
-            if bounded {
-                bounded_features += 1;
-            }
-            let alpha = new_beta.exp();
-            if !is_valid_step_size(alpha) {
-                return Err(Error::numerical(Stage::StepSize, i));
-            }
-            let step = alpha * error * x;
-            let new_weight = weight + step;
-            if !new_weight.is_finite() {
-                return Err(Error::numerical(Stage::Weight, i));
-            }
-            let decay = (1.0 - alpha * x * x).max(0.0);
-            let new_trace = trace * decay + step;
-            if !new_trace.is_finite() {
-                return Err(Error::numerical(Stage::Trace, i));
-            }
-            self.candidate.weights[i] = new_weight;
-            self.candidate.betas[i] = new_beta;
-            self.candidate.traces[i] = new_trace;
-        }
-        Ok(bounded_features)
-    }
-
     fn check_features(&self, features: &[f64]) -> Result<(), Error> {
-        if features.len() != self.weights.len() {
+        if features.len() != self.committed.weights.len() {
             return Err(Error::DimensionMismatch {
-                expected: self.weights.len(),
+                expected: self.committed.weights.len(),
                 found: features.len(),
             });
         }
@@ -250,6 +211,7 @@ impl Idbd {
 
     fn dot(&self, features: &[f64]) -> Result<f64, Error> {
         let prediction = self
+            .committed
             .weights
             .iter()
             .zip(features)
@@ -266,7 +228,7 @@ impl Idbd {
 
     /// Returns the number of input features.
     pub fn num_features(&self) -> usize {
-        self.weights.len()
+        self.committed.weights.len()
     }
 
     /// Returns the configuration.
@@ -276,17 +238,17 @@ impl Idbd {
 
     /// Returns the committed weights.
     pub fn weights(&self) -> &[f64] {
-        &self.weights
+        &self.committed.weights
     }
 
     /// Returns the committed log step sizes, beta.
     pub fn log_step_sizes(&self) -> &[f64] {
-        &self.betas
+        &self.committed.betas
     }
 
     /// Returns the committed adaptation traces, h.
     pub fn traces(&self) -> &[f64] {
-        &self.traces
+        &self.committed.traces
     }
 
     /// Returns an iterator over the step sizes `alpha_i = exp(beta_i)`.
@@ -294,18 +256,114 @@ impl Idbd {
     /// The iterator computes each value on demand and does not allocate.
     pub fn step_sizes(&self) -> StepSizes<'_> {
         StepSizes {
-            betas: self.betas.iter(),
+            betas: self.committed.betas.iter(),
         }
     }
+}
+
+/// One coordinate's weight, log step size and trace.
+#[derive(Clone, Copy)]
+struct Coordinate {
+    weight: f64,
+    beta: f64,
+    trace: f64,
+}
+
+/// Writes the next state into `candidate` and returns how many coordinates the bounds
+/// changed. Committed state is only borrowed, so a failure cannot modify it.
+fn propose(
+    config: &Config,
+    committed: &Vectors,
+    candidate: &mut Vectors,
+    features: &[f64],
+    error: f64,
+) -> Result<usize, Error> {
+    let old = committed
+        .weights
+        .iter()
+        .zip(&committed.betas)
+        .zip(&committed.traces);
+    let new = candidate
+        .weights
+        .iter_mut()
+        .zip(&mut candidate.betas)
+        .zip(&mut candidate.traces);
+    let mut bounded_features = 0;
+    for (i, ((&x, ((&weight, &beta), &trace)), ((new_weight, new_beta), new_trace))) in
+        features.iter().zip(old).zip(new).enumerate()
+    {
+        let old = Coordinate {
+            weight,
+            beta,
+            trace,
+        };
+        let (next, bounded) =
+            next_coordinate(config, error, x, old).map_err(|stage| Error::numerical(stage, i))?;
+        bounded_features += usize::from(bounded);
+        *new_weight = next.weight;
+        *new_beta = next.beta;
+        *new_trace = next.trace;
+    }
+    Ok(bounded_features)
+}
+
+/// Applies equations 3 to 6 to one coordinate. Returns the next values and whether the
+/// bounds changed beta, or the stage that failed.
+fn next_coordinate(
+    config: &Config,
+    error: f64,
+    x: f64,
+    old: Coordinate,
+) -> Result<(Coordinate, bool), Stage> {
+    // A zero input changes nothing mathematically. Skipping it also keeps an overflowing
+    // `alpha * error` from turning `* 0.0` into NaN.
+    if x == 0.0 {
+        return Ok((old, false));
+    }
+    let raw_increment = config.meta_step_size() * error * x * old.trace;
+    let proposal = old.beta + raw_increment;
+    // Committed betas never exceed ln(f64::MAX), so the proposal is finite exactly when
+    // the raw increment is.
+    if !proposal.is_finite() {
+        return Err(Stage::MetaStep);
+    }
+    let beta = config.bounds().apply(old.beta, raw_increment);
+    #[expect(
+        clippy::float_cmp,
+        reason = "the contract counts any floating-point difference from the proposal"
+    )]
+    let bounded = beta != proposal;
+    let alpha = beta.exp();
+    if !is_valid_step_size(alpha) {
+        return Err(Stage::StepSize);
+    }
+    let step = alpha * error * x;
+    let weight = old.weight + step;
+    if !weight.is_finite() {
+        return Err(Stage::Weight);
+    }
+    let decay = (1.0 - alpha * x * x).max(0.0);
+    let trace = old.trace * decay + step;
+    if !trace.is_finite() {
+        return Err(Stage::Trace);
+    }
+    Ok((
+        Coordinate {
+            weight,
+            beta,
+            trace,
+        },
+        bounded,
+    ))
 }
 
 impl fmt::Debug for Idbd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Idbd")
             .field("config", &self.config)
-            .field("weights", &self.weights)
-            .field("betas", &self.betas)
-            .field("traces", &self.traces)
+            .field("weights", &self.committed.weights)
+            .field("betas", &self.committed.betas)
+            .field("traces", &self.committed.traces)
             .finish_non_exhaustive()
     }
 }

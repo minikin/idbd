@@ -53,11 +53,9 @@ fn c21_weights_only_restoration_is_not_equivalent() {
         let (x, target) = example(&mut rng);
         original.update(&x, target).expect("update");
     }
-    let mut weights_only = Idbd::from_state(State {
-        weights: original.weights().to_vec(),
-        ..Idbd::new(5, *original.config()).expect("fresh").snapshot()
-    })
-    .expect("valid state");
+    let mut fresh = Idbd::new(5, *original.config()).expect("fresh").snapshot();
+    fresh.weights = original.weights().to_vec();
+    let mut weights_only = Idbd::from_state(fresh).expect("valid state");
     let (x, target) = example(&mut rng);
     original.update(&x, target).expect("update");
     weights_only.update(&x, target).expect("update");
@@ -65,12 +63,12 @@ fn c21_weights_only_restoration_is_not_equivalent() {
 }
 
 fn valid_state(config: Config) -> State {
-    State {
-        config,
-        weights: vec![0.5, -0.25],
-        betas: vec![-3.0, -2.0],
-        traces: vec![0.1, 0.0],
-    }
+    State::new(config, vec![0.5, -0.25], vec![-3.0, -2.0], vec![0.1, 0.0])
+}
+
+fn with(mut state: State, change: impl FnOnce(&mut State)) -> State {
+    change(&mut state);
+    state
 }
 
 #[test]
@@ -79,20 +77,18 @@ fn c22_reject_an_invalid_snapshot() {
     let cases = [
         (
             "empty state vectors",
-            State {
-                weights: vec![],
-                betas: vec![],
-                traces: vec![],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.weights = vec![];
+                s.betas = vec![];
+                s.traces = vec![];
+            }),
             StateError::Empty,
         ),
         (
             "state vectors of different lengths",
-            State {
-                traces: vec![0.0],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.traces = vec![0.0];
+            }),
             StateError::LengthMismatch {
                 weights: 2,
                 betas: 2,
@@ -101,34 +97,30 @@ fn c22_reject_an_invalid_snapshot() {
         ),
         (
             "a non-finite weight",
-            State {
-                weights: vec![0.5, f64::NAN],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.weights = vec![0.5, f64::NAN];
+            }),
             StateError::NonFiniteWeight { index: 1 },
         ),
         (
             "a non-finite beta",
-            State {
-                betas: vec![f64::NEG_INFINITY, -2.0],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.betas = vec![f64::NEG_INFINITY, -2.0];
+            }),
             StateError::NonFiniteBeta { index: 0 },
         ),
         (
             "a non-finite trace",
-            State {
-                traces: vec![0.1, f64::INFINITY],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.traces = vec![0.1, f64::INFINITY];
+            }),
             StateError::NonFiniteTrace { index: 1 },
         ),
         (
             "beta outside its configured bounds",
-            State {
-                betas: vec![-3.0, -11.0],
-                ..valid_state(safety_config(0.05, 0.01))
-            },
+            with(valid_state(safety_config(0.05, 0.01)), |s| {
+                s.betas = vec![-3.0, -11.0];
+            }),
             StateError::BetaOutOfBounds {
                 index: 1,
                 beta: -11.0,
@@ -136,10 +128,9 @@ fn c22_reject_an_invalid_snapshot() {
         ),
         (
             "beta whose exponential is zero",
-            State {
-                betas: vec![-800.0, -2.0],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.betas = vec![-800.0, -2.0];
+            }),
             StateError::UnrepresentableStepSize {
                 index: 0,
                 beta: -800.0,
@@ -147,10 +138,9 @@ fn c22_reject_an_invalid_snapshot() {
         ),
         (
             "beta whose exponential is infinite",
-            State {
-                betas: vec![-3.0, 800.0],
-                ..base.clone()
-            },
+            with(base.clone(), |s| {
+                s.betas = vec![-3.0, 800.0];
+            }),
             StateError::UnrepresentableStepSize {
                 index: 1,
                 beta: 800.0,

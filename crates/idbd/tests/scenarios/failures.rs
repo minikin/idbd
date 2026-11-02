@@ -1,6 +1,6 @@
 //! Rule: Failed operations preserve all committed learning state.
 
-use idbd::{Error, Idbd, Stage};
+use idbd::{Bounds, Error, Idbd, Stage};
 
 use crate::support::{assert_same_state, config, restore, safety_config, standard_learner};
 
@@ -110,11 +110,30 @@ fn c19_reject_a_step_size_that_overflows_to_infinity() {
 }
 
 #[test]
-fn c19_safety_floor_does_not_hide_exponent_checks() {
-    // The floor of -10 keeps alpha positive, so the update succeeds here.
-    let mut learner = restore(safety_config(0.05, 1.0), &[0.0], &[-9.0], &[-100.0]);
-    let report = learner.update(&[1.0], 1.0).expect("bounded update");
-    assert_eq!(learner.log_step_sizes(), &[-10.0]);
+fn c19_bounds_cannot_clamp_beta_onto_an_unrepresentable_step_size() {
+    // A floor below ln(f64::MIN_POSITIVE * 2^-52) or a ceiling above ln(f64::MAX) would
+    // clamp beta onto a zero or infinite step size, so configuration rejects them.
+    assert!(
+        Bounds::none().with_min_beta(-1000.0).is_err(),
+        "underflowing floor"
+    );
+    assert!(
+        Bounds::none().with_max_beta(710.0).is_err(),
+        "overflowing ceiling"
+    );
+
+    // The lowest accepted floor still yields a positive step size when beta reaches it.
+    let floor = Bounds::none()
+        .with_min_beta(-745.0)
+        .expect("representable floor");
+    let config = config(0.05, 1.0).with_bounds(floor).expect("valid config");
+    let mut learner = restore(config, &[0.0], &[-700.0], &[-100.0]);
+    let report = learner.update(&[1.0], 1.0).expect("floored update");
+    assert_eq!(learner.log_step_sizes(), &[-745.0]);
+    assert!(
+        learner.step_sizes().all(|alpha| alpha > 0.0),
+        "positive step size"
+    );
     assert_eq!(report.bounded_features, 1);
 }
 
