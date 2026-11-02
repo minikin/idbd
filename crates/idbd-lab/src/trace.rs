@@ -47,7 +47,9 @@ impl CoordinateChange {
 /// Updates `learner` and records each coordinate's change into `changes`.
 ///
 /// `changes` must hold one entry per feature. On error the learner is unchanged and
-/// `changes` describes the attempted inputs with equal old and new values.
+/// `changes` describes the attempted inputs with equal old and new values, so a caller
+/// that publishes a per-coordinate view must pass a scratch buffer and copy it over only
+/// on success.
 ///
 /// # Errors
 ///
@@ -119,6 +121,10 @@ mod tests {
         assert!(report.error > 0.0, "{report:?}");
         let c = changes[0];
         assert_eq!(c.input, 2.0);
+        assert!(
+            (c.old_alpha() - 0.1).abs() < 1e-15,
+            "the configured initial step size: {c:?}"
+        );
         assert!(
             (c.old_trace - 0.1).abs() < 1e-15,
             "old trace from C06: {c:?}"

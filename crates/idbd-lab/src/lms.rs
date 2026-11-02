@@ -129,12 +129,14 @@ impl Lms {
 }
 
 #[cfg(test)]
+#[expect(clippy::float_cmp, reason = "tests assert exact, deterministic values")]
 mod tests {
     use super::*;
 
     #[test]
     fn learns_with_a_fixed_step() {
         let mut lms = Lms::new(2, 0.1).expect("valid");
+        assert_eq!(lms.step_size(), 0.1);
         let first = lms.update(&[1.0, 2.0], 1.0).expect("update");
         assert_eq!(
             first,
@@ -179,6 +181,43 @@ mod tests {
         }
         assert_eq!(Lms::new(1, 0.0).err(), Some(LmsError::InvalidStepSize));
         assert_eq!(Lms::new(1, f64::NAN).err(), Some(LmsError::InvalidStepSize));
+    }
+
+    #[test]
+    fn a_finite_prediction_with_an_overflowing_residual_is_rejected() {
+        let mut lms = Lms::new(2, 1.0).expect("valid");
+        lms.update(&[1e308, -1e308], 1.0).expect("update");
+        assert_eq!(lms.weights(), [1e308, -1e308].as_slice());
+        // The prediction cancels to zero, so only the residual overflows.
+        assert_eq!(
+            lms.check(&[-1.0, 0.0], 1e308),
+            Err(LmsError::NonFiniteError)
+        );
+    }
+
+    #[test]
+    fn the_weight_check_tests_the_sum_of_the_weight_and_its_step() {
+        let mut lms = Lms::new(2, 1.0).expect("valid");
+        lms.update(&[1e308, -1e308], 1.0).expect("update");
+        // w0 + step * error * x0 overflows; the difference and the product do not, so
+        // only the coordinate the sum rejects identifies the right check.
+        assert_eq!(
+            lms.check(&[1.0, 1.0], 1e308),
+            Err(LmsError::NonFiniteWeight { coordinate: 0 })
+        );
+    }
+
+    #[test]
+    fn a_tiny_step_keeps_a_huge_weight_finite() {
+        let mut lms = Lms::new(2, 1e-10).expect("valid");
+        lms.update(&[1e308, -1e308], 1e10).expect("update");
+        // step * error is one, so each step is 1e298 next to a weight of 1e308: the sum
+        // stays finite although the product and (step + error) * x would overflow.
+        let outcome = lms
+            .check(&[1.0, 1.0], 1e308)
+            .expect("every weight stays finite");
+        assert_eq!(outcome.prediction, 0.0);
+        assert_eq!(outcome.error, 1e308);
     }
 
     #[test]

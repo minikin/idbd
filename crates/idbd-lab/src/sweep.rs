@@ -256,6 +256,12 @@ mod tests {
         assert_eq!(difference.count(), 2);
         assert!((difference.mean() - 1.5).abs() < 1e-12, "{difference:?}");
         assert_eq!(paired_difference(&a, &point(0.03, &[None])), None);
+
+        // A difference, not a ratio: 8/2 and 9/3 would average 2.5 instead of 6.
+        let c = point(0.01, &[Some(8.0), Some(9.0)]);
+        let d = point(0.02, &[Some(2.0), Some(3.0)]);
+        let scaled = paired_difference(&c, &d).expect("two shared seeds");
+        assert!((scaled.mean() - 6.0).abs() < 1e-12, "{scaled:?}");
     }
 
     #[test]
@@ -283,6 +289,24 @@ mod tests {
         ));
         assert!(Family::Lms.learner(0.0).is_err(), "alpha must be positive");
         assert!(idbd.learner(-1.0).is_err(), "theta must be nonnegative");
+    }
+
+    #[test]
+    fn an_unmeasurable_run_counts_as_a_failure() {
+        // Step size 5.0 overflows the squared-error sum before the weights overflow, so
+        // every sample completes and the point still has no usable mean.
+        let protocol = Protocol {
+            preset: Preset::Sutton1992,
+            warmup: 100,
+            measured: 100,
+        };
+        let diverging = measure(Family::Lms, &protocol, 5.0, &[1]).expect("valid");
+        assert_eq!(diverging.failures(), 1, "{diverging:?}");
+        assert!(diverging.completed().is_empty(), "{diverging:?}");
+        let fine = measure(Family::Lms, &protocol, 0.04, &[1]).expect("valid");
+        let points = [diverging, fine];
+        let chosen = best(&points).expect("the small step size completed");
+        assert!((chosen.value - 0.04).abs() < 1e-12, "{chosen:?}");
     }
 
     #[test]

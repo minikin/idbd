@@ -11,9 +11,10 @@ use idbd_lab::alphas::{Checkpoint, Trajectory, record};
 use idbd_lab::cli::{Invocation, arguments, parse};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::lms::Lms;
-use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis};
+use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis, tick_label};
 use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
 use idbd_lab::stats::{Summary, exact_f64};
+use idbd_lab::sweep::{Failure, Point, SeedRun, best};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, SIGN_FLIP_PERIOD, World};
 
 /// Samples in one Experiment 2 run.
@@ -87,24 +88,6 @@ struct LongRun {
     trajectories: Vec<Trajectory>,
 }
 
-/// One grid value of the fixed-rate sweep over the relevant inputs only.
-#[derive(Debug)]
-struct SweepPoint {
-    step_size: f64,
-    mse: Vec<Option<f64>>,
-}
-
-impl SweepPoint {
-    fn summary(&self) -> Option<Summary> {
-        let completed: Vec<f64> = self.mse.iter().filter_map(|m| *m).collect();
-        Summary::new(&completed)
-    }
-
-    fn failures(&self) -> usize {
-        self.mse.iter().filter(|m| m.is_none()).count()
-    }
-}
-
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
@@ -167,11 +150,15 @@ fn run() -> Result<(), String> {
     eprintln!("fixed-rate sweep over the relevant inputs only");
     let mut sweep = Vec::with_capacity(FIXED_RATE_GRID.len());
     for &step_size in &FIXED_RATE_GRID {
-        let mut mse = Vec::with_capacity(SWEEP_SEEDS.len());
+        let mut runs = Vec::with_capacity(SWEEP_SEEDS.len());
         for &seed in &SWEEP_SEEDS {
-            mse.push(relevant_only_lms(step_size, seed)?);
+            let (mse, failure) = relevant_only_lms(step_size, seed)?;
+            runs.push(SeedRun { seed, mse, failure });
         }
-        let point = SweepPoint { step_size, mse };
+        let point = Point {
+            value: step_size,
+            runs,
+        };
         eprintln!(
             "  alpha {} -> MSE {}, {} failed",
             parameter(step_size),
@@ -195,13 +182,14 @@ fn run() -> Result<(), String> {
 
 /// Runs fixed-step LMS on the five relevant inputs alone, which is the Figure 5 setup:
 /// the irrelevant step sizes are held at zero, so those inputs cannot move a weight.
-fn relevant_only_lms(step_size: f64, seed: u64) -> Result<Option<f64>, String> {
+fn relevant_only_lms(step_size: f64, seed: u64) -> Result<(Option<f64>, Option<Failure>), String> {
     let mut lms = Lms::new(GROUP_SIZE, step_size).map_err(|e| e.to_string())?;
     let mut world = World::new(Preset::Sutton1992, seed);
     let mut features = [0.0; NUM_FEATURES];
     let mut events = Vec::new();
     let mut sum = 0.0;
-    for t in 1..=SWEEP_WARMUP + SWEEP_MEASURED {
+    let samples = SWEEP_WARMUP + SWEEP_MEASURED;
+    for t in 1..=samples {
         let target = world.next_sample(&mut features, &mut events);
         match lms.update(&features[..GROUP_SIZE], target) {
             Ok(outcome) => {
@@ -209,11 +197,33 @@ fn relevant_only_lms(step_size: f64, seed: u64) -> Result<Option<f64>, String> {
                     sum += outcome.error * outcome.error;
                 }
             }
-            Err(_) => return Ok(None),
+            Err(error) => {
+                return Ok((
+                    None,
+                    Some(Failure {
+                        sample: t,
+                        reason: error.to_string(),
+                    }),
+                ));
+            }
         }
     }
     let mse = sum / exact_f64(SWEEP_MEASURED);
-    Ok(mse.is_finite().then_some(mse))
+    if mse.is_finite() {
+        return Ok((Some(mse), None));
+    }
+    // As in `experiment::run`: a sum that overflowed while the weights stayed finite is a
+    // failure of the measurement, not a missing value.
+    Ok((
+        None,
+        Some(Failure {
+            sample: samples,
+            reason: format!(
+                "no finite mean over {SWEEP_MEASURED} measured samples: squared errors sum to \
+                 {sum}"
+            ),
+        }),
+    ))
 }
 
 fn trajectories_csv(runs: &[LongRun]) -> String {
@@ -290,21 +300,31 @@ fn final_step_sizes_csv(runs: &[LongRun]) -> String {
     csv.into_string()
 }
 
-fn sweep_csv(sweep: &[SweepPoint]) -> String {
+fn sweep_csv(sweep: &[Point]) -> String {
     let mut csv = Csv::new();
-    csv.row(["step_size", "seed", "warmup", "measured", "mse"]);
+    csv.row([
+        "step_size",
+        "seed",
+        "warmup",
+        "measured",
+        "mse",
+        "failure_sample",
+        "failure_reason",
+    ]);
     for point in sweep {
-        for (index, mse) in point.mse.iter().enumerate() {
+        for run in &point.runs {
             csv.row([
-                number(Some(point.step_size)),
-                SWEEP_SEEDS
-                    .get(index)
-                    .copied()
-                    .unwrap_or_default()
-                    .to_string(),
+                number(Some(point.value)),
+                run.seed.to_string(),
                 SWEEP_WARMUP.to_string(),
                 SWEEP_MEASURED.to_string(),
-                number(*mse),
+                number(run.mse),
+                run.failure
+                    .as_ref()
+                    .map_or_else(String::new, |f| f.sample.to_string()),
+                run.failure
+                    .as_ref()
+                    .map_or_else(String::new, |f| f.reason.clone()),
             ]);
         }
     }
@@ -315,6 +335,10 @@ fn sweep_csv(sweep: &[SweepPoint]) -> String {
 #[derive(Debug)]
 struct Aggregate {
     sample: u64,
+    /// How many seeds reached this checkpoint. A seed that failed earlier is absent from
+    /// every later point, so the plotted curve is not an average over the same seeds
+    /// throughout.
+    seeds: usize,
     relevant_mean: f64,
     irrelevant_mean: f64,
     irrelevant_max: f64,
@@ -336,12 +360,25 @@ fn aggregate(trajectories: &[Trajectory]) -> Vec<Aggregate> {
             let mean = |values: Vec<f64>| Summary::new(&values).map(Summary::mean);
             Some(Aggregate {
                 sample: reference.sample,
+                seeds: matching.len(),
                 relevant_mean: mean(matching.iter().map(|c| c.relevant_mean).collect())?,
                 irrelevant_mean: mean(matching.iter().map(|c| c.irrelevant_mean).collect())?,
                 irrelevant_max: mean(matching.iter().map(|c| c.irrelevant_max).collect())?,
             })
         })
         .collect()
+}
+
+/// States how many seeds the plotted curves average, naming both counts when a seed
+/// failed partway and later checkpoints cover fewer of them.
+fn seed_count_phrase(series: &[Aggregate]) -> String {
+    let fewest = series.iter().map(|a| a.seeds).min().unwrap_or(0);
+    let most = series.iter().map(|a| a.seeds).max().unwrap_or(0);
+    if fewest == most {
+        format!("mean over {most} seeds")
+    } else {
+        format!("mean over {most} seeds falling to {fewest} where seeds failed")
+    }
 }
 
 fn trajectory_figure(long_run: &LongRun) -> String {
@@ -382,10 +419,9 @@ fn trajectory_figure(long_run: &LongRun) -> String {
         12.5,
         MUTED,
         &format!(
-            "Sutton 1992 Experiment 1 task, initial step size {}, no beta bounds, \
-             mean over {} seeds.",
+            "Sutton 1992 Experiment 1 task, initial step size {}, no beta bounds, {}.",
             parameter(INITIAL_STEP_SIZE),
-            long_run.trajectories.len()
+            seed_count_phrase(&series)
         ),
     );
 
@@ -488,7 +524,7 @@ fn draw_value_axis(svg: &mut Svg, y: &Scale, upper: f64, step: f64, title: &str)
             Anchor::End,
             12.0,
             MUTED,
-            &format!("{tick:.2}"),
+            &tick_label(tick, step),
         );
         tick += step;
     }
@@ -526,7 +562,7 @@ fn series_definitions() -> [(&'static str, &'static str, &'static str, SeriesPic
     ]
 }
 
-fn sweep_figure(sweep: &[SweepPoint]) -> String {
+fn sweep_figure(sweep: &[Point]) -> String {
     let highest = sweep
         .iter()
         .filter_map(|p| p.summary().map(|s| s.mean() + s.standard_error()))
@@ -580,14 +616,14 @@ fn sweep_figure(sweep: &[SweepPoint]) -> String {
 
     let line: Vec<(f64, f64)> = sweep
         .iter()
-        .filter_map(|p| p.summary().map(|s| (x.at(p.step_size), y.at(s.mean()))))
+        .filter_map(|p| p.summary().map(|s| (x.at(p.value), y.at(s.mean()))))
         .collect();
     svg.polyline(&line, RELEVANT_COLOR, 2.4, "");
     for point in sweep {
         let Some(summary) = point.summary() else {
             continue;
         };
-        let px = x.at(point.step_size);
+        let px = x.at(point.value);
         svg.circle((px, y.at(summary.mean())), 4.0, RELEVANT_COLOR);
     }
 
@@ -620,7 +656,7 @@ fn sweep_figure(sweep: &[SweepPoint]) -> String {
     svg.into_string()
 }
 
-fn readme(runs: &[LongRun], sweep: &[SweepPoint]) -> String {
+fn readme(runs: &[LongRun], sweep: &[Point]) -> String {
     let mut sections = vec![header(), protocol_section()];
     for long_run in runs {
         sections.push(long_run_section(long_run));
@@ -751,13 +787,8 @@ fn figure4_comparison(long_run: &LongRun) -> String {
     )
 }
 
-fn sweep_section(sweep: &[SweepPoint]) -> String {
-    let lowest = sweep
-        .iter()
-        .filter(|p| p.failures() == 0)
-        .filter_map(|p| p.summary().map(|s| (p, s.mean())))
-        .reduce(|low, next| if next.1 < low.1 { next } else { low });
-
+fn sweep_section(sweep: &[Point]) -> String {
+    let lowest = best(sweep);
     let mut rows = vec![format!(
         "## Figure 5 comparison: a fixed step size on the relevant inputs\n\n\
          ![Fixed step size against error](figure5.svg)\n\n\
@@ -774,16 +805,16 @@ fn sweep_section(sweep: &[SweepPoint]) -> String {
         let summary = point.summary();
         rows.push(format!(
             "| {} | {} | {} | {} |\n",
-            parameter(point.step_size),
+            parameter(point.value),
             summary.map_or_else(|| "-".to_owned(), |s| magnitude(s.mean())),
             summary.map_or_else(|| "-".to_owned(), |s| magnitude(s.standard_error())),
             point.failures()
         ));
     }
     match lowest {
-        Some((point, _)) => rows.push(format!(
+        Some(point) => rows.push(format!(
             "\nLowest measured value on this grid: alpha {}, MSE {}.\n\n",
-            parameter(point.step_size),
+            parameter(point.value),
             plus_minus(point.summary())
         )),
         None => rows.push("\nNo grid value completed every seed.\n\n".to_owned()),

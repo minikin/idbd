@@ -235,6 +235,20 @@ pub fn nice_axis(max: f64) -> (f64, f64) {
     panic!("axis maximum {max} is outside the supported range");
 }
 
+/// Formats an axis tick with the decimals the tick step needs.
+///
+/// [`nice_axis`] can return a step of 0.5 or 0.05, which a fixed `{:.0}` would print as
+/// 0, 0, 1, 2, 2 because halves round to even.
+pub fn tick_label(tick: f64, step: f64) -> String {
+    let mut decimals = 0_usize;
+    let mut scaled = step.abs();
+    while decimals < 9 && (scaled - scaled.round()).abs() > 1e-9 {
+        scaled *= 10.0;
+        decimals += 1;
+    }
+    format!("{tick:.decimals$}")
+}
+
 /// Escapes the five XML entities so labels cannot break the document.
 pub fn escape(text: &str) -> String {
     let mut escaped = String::with_capacity(text.len());
@@ -260,6 +274,25 @@ fn round(value: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tick_labels_keep_the_decimals_their_step_needs() {
+        assert_eq!(tick_label(2.0, 2.0), "2");
+        assert_eq!(tick_label(0.5, 0.5), "0.5");
+        assert_eq!(tick_label(1.5, 0.5), "1.5");
+        assert_eq!(tick_label(0.15, 0.05), "0.15");
+        assert_eq!(tick_label(0.002, 0.002), "0.002");
+        // Every step nice_axis can return keeps its ticks distinct.
+        for max in [0.004_f64, 0.03, 0.4, 4.0, 40.0, 4e5] {
+            let (upper, step) = nice_axis(max);
+            let labels: Vec<String> = (0..=8)
+                .map(|i| tick_label(f64::from(i) * step, step))
+                .collect();
+            let unique: std::collections::BTreeSet<&String> = labels.iter().collect();
+            assert_eq!(labels.len(), unique.len(), "max {max}: {labels:?}");
+            assert!(upper >= max, "upper {upper} covers {max}");
+        }
+    }
 
     #[test]
     fn scales_map_the_endpoints() {

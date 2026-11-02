@@ -9,7 +9,7 @@ use std::process::ExitCode;
 use idbd::Bounds;
 use idbd_lab::cli::{Invocation, arguments, parse};
 use idbd_lab::csv::{Csv, number};
-use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis};
+use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis, tick_label};
 use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, Protocol, best, measure, paired_difference};
@@ -313,7 +313,7 @@ fn draw_frame(svg: &mut Svg, y: &Scale, y_upper: f64, y_step: f64) {
             Anchor::End,
             12.0,
             MUTED,
-            &format!("{tick:.0}"),
+            &tick_label(tick, y_step),
         );
         tick += y_step;
     }

@@ -137,6 +137,43 @@ mod tests {
     }
 
     #[test]
+    fn below_and_index_reach_every_value_about_equally() {
+        let mut rng = Rng::new(13);
+        let mut below = [0_u32; 5];
+        let mut index = [0_u32; 5];
+        for _ in 0..5_000 {
+            below[usize::try_from(rng.below(5)).expect("below five")] += 1;
+            index[rng.index(5)] += 1;
+        }
+        for counts in [below, index] {
+            assert!(
+                counts.iter().all(|&c| (850..1_150).contains(&c)),
+                "counts {counts:?}"
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "bound must be positive")]
+    fn a_zero_bound_is_rejected() {
+        let mut rng = Rng::new(1);
+        let _ = rng.below(0);
+    }
+
+    #[test]
+    fn signs_follow_the_top_bit_of_the_stream() {
+        let mut rng = Rng::new(0);
+        let positive: Vec<bool> = (0..3).map(|_| rng.sign() > 0.0).collect();
+        let from_pinned: Vec<bool> = PINNED_SEED_ZERO
+            .iter()
+            .map(|bits| bits >> 63 == 0)
+            .collect();
+        // The pinned seed-0 outputs start with top bits 1, 1, 0.
+        assert_eq!(positive, vec![false, false, true], "pinned signs");
+        assert_eq!(positive, from_pinned, "the top bit, not another bit");
+    }
+
+    #[test]
     fn normals_have_unit_moments() {
         let mut rng = Rng::new(11);
         let n = 200_000_u32;

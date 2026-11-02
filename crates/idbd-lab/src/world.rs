@@ -282,8 +282,127 @@ mod tests {
     }
 
     #[test]
+    fn a_sign_flip_negates_exactly_one_relevant_coefficient() {
+        let mut world = World::new(Preset::Sutton1992, 7);
+        let mut features = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        for _ in 0..SIGN_FLIP_PERIOD {
+            world.next_sample(&mut features, &mut events);
+        }
+        let before = world.coefficients().to_vec();
+        world.next_sample(&mut features, &mut events);
+        let after = world.coefficients();
+        let moved: Vec<usize> = (0..NUM_FEATURES)
+            .filter(|&i| after[i] != before[i])
+            .collect();
+        assert_eq!(moved.len(), 1, "{before:?} -> {after:?}");
+        let feature = moved[0];
+        assert_eq!(after[feature], -before[feature], "coefficient {feature}");
+        assert_eq!(events, vec![Event::SignFlip { feature }]);
+    }
+
+    #[test]
+    fn changing_relevance_flips_signs_inside_the_new_group() {
+        let mut world = World::new(Preset::ChangingRelevance, 3);
+        let log = run(&mut world, RELEVANCE_SHIFT_PERIOD + 100);
+        let flipped: Vec<usize> = log
+            .iter()
+            .filter(|(t, _)| *t > RELEVANCE_SHIFT_PERIOD)
+            .filter_map(|(_, event)| match event {
+                Event::SignFlip { feature } => Some(*feature),
+                Event::RelevanceShift { .. } => None,
+            })
+            .collect();
+        assert!(!flipped.is_empty(), "flips continue after the shift");
+        assert!(
+            flipped
+                .iter()
+                .all(|f| (GROUP_SIZE..2 * GROUP_SIZE).contains(f)),
+            "flips land in the group that is relevant now: {flipped:?}"
+        );
+    }
+
+    #[test]
+    fn each_shift_clears_the_group_it_leaves() {
+        let mut world = World::new(Preset::Sutton1992, 17);
+        let mut features = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        for group in 1..NUM_GROUPS {
+            world.request_relevance_shift();
+            world.next_sample(&mut features, &mut events);
+            assert_eq!(world.relevant_group(), group);
+            let signed: Vec<usize> = (0..NUM_FEATURES)
+                .filter(|&i| world.coefficients()[i] != 0.0)
+                .collect();
+            let relevant: Vec<usize> =
+                (group * GROUP_SIZE..group * GROUP_SIZE + GROUP_SIZE).collect();
+            assert_eq!(signed, relevant, "only group {group} carries signs");
+        }
+    }
+
+    #[test]
+    fn drifting_coefficients_follow_the_ar1_recursion() {
+        let seed = 21;
+        let mut stream = Rng::new(seed ^ WORLD_STREAM);
+        let initial: Vec<f64> = (0..GROUP_SIZE).map(|_| stream.standard_normal()).collect();
+        let mut world = World::new(Preset::Drifting, seed);
+        assert_eq!(world.coefficients()[..GROUP_SIZE], initial[..]);
+
+        let mut features = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        world.next_sample(&mut features, &mut events);
+        assert_eq!(
+            world.coefficients()[..GROUP_SIZE],
+            initial[..],
+            "the first sample still uses the initial coefficients"
+        );
+
+        let innovation = (1.0 - DRIFT_RHO * DRIFT_RHO).sqrt();
+        let expected: Vec<f64> = initial
+            .iter()
+            .map(|c| DRIFT_RHO * c + innovation * stream.standard_normal())
+            .collect();
+        world.next_sample(&mut features, &mut events);
+        assert_eq!(
+            world.coefficients()[..GROUP_SIZE],
+            expected[..],
+            "one AR(1) step with rho {DRIFT_RHO} and innovation scale {innovation}"
+        );
+    }
+
+    #[test]
+    fn a_drifting_shift_carries_the_coefficients_into_the_new_group() {
+        let seed = 13;
+        let mut stream = Rng::new(seed ^ WORLD_STREAM);
+        let initial: Vec<f64> = (0..GROUP_SIZE).map(|_| stream.standard_normal()).collect();
+        let mut world = World::new(Preset::Drifting, seed);
+        let mut features = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        world.next_sample(&mut features, &mut events);
+        world.request_relevance_shift();
+        world.next_sample(&mut features, &mut events);
+
+        let innovation = (1.0 - DRIFT_RHO * DRIFT_RHO).sqrt();
+        let expected: Vec<f64> = initial
+            .iter()
+            .map(|c| DRIFT_RHO * c + innovation * stream.standard_normal())
+            .collect();
+        let after = world.coefficients();
+        assert!(
+            after[..GROUP_SIZE].iter().all(|&c| c == 0.0),
+            "the group left behind is zero: {after:?}"
+        );
+        assert_eq!(
+            after[GROUP_SIZE..2 * GROUP_SIZE],
+            expected[..],
+            "the new group continues the old coefficients' AR(1) walk"
+        );
+    }
+
+    #[test]
     fn target_is_the_noise_free_dot_product() {
         let mut world = World::new(Preset::Stationary, 9);
+        assert_eq!(world.seed(), 9);
         let mut features = [0.0; NUM_FEATURES];
         let mut events = Vec::new();
         for _ in 0..50 {

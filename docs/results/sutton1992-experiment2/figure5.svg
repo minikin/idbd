@@ -3,23 +3,23 @@
   <text x="92" y="36" text-anchor="start" font-size="19" fill="#14181f">Fixed step size on the relevant inputs alone</text>
   <text x="92" y="56" text-anchor="start" font-size="12.5" fill="#5c6673">Sutton 1992 Figure 5 setup: LMS over the 5 relevant inputs, the other 15 held out. 20000 warm-up + 10000 measured samples, 20 seeds.</text>
   <line x1="92" y1="436" x2="860" y2="436" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="440" text-anchor="end" font-size="12" fill="#5c6673">0.00</text>
+  <text x="82" y="440" text-anchor="end" font-size="12" fill="#5c6673">0.0</text>
   <line x1="92" y1="395.5" x2="860" y2="395.5" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="399.5" text-anchor="end" font-size="12" fill="#5c6673">0.50</text>
+  <text x="82" y="399.5" text-anchor="end" font-size="12" fill="#5c6673">0.5</text>
   <line x1="92" y1="355" x2="860" y2="355" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="359" text-anchor="end" font-size="12" fill="#5c6673">1.00</text>
+  <text x="82" y="359" text-anchor="end" font-size="12" fill="#5c6673">1.0</text>
   <line x1="92" y1="314.5" x2="860" y2="314.5" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="318.5" text-anchor="end" font-size="12" fill="#5c6673">1.50</text>
+  <text x="82" y="318.5" text-anchor="end" font-size="12" fill="#5c6673">1.5</text>
   <line x1="92" y1="274" x2="860" y2="274" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="278" text-anchor="end" font-size="12" fill="#5c6673">2.00</text>
+  <text x="82" y="278" text-anchor="end" font-size="12" fill="#5c6673">2.0</text>
   <line x1="92" y1="233.5" x2="860" y2="233.5" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="237.5" text-anchor="end" font-size="12" fill="#5c6673">2.50</text>
+  <text x="82" y="237.5" text-anchor="end" font-size="12" fill="#5c6673">2.5</text>
   <line x1="92" y1="193" x2="860" y2="193" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="197" text-anchor="end" font-size="12" fill="#5c6673">3.00</text>
+  <text x="82" y="197" text-anchor="end" font-size="12" fill="#5c6673">3.0</text>
   <line x1="92" y1="152.5" x2="860" y2="152.5" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="156.5" text-anchor="end" font-size="12" fill="#5c6673">3.50</text>
+  <text x="82" y="156.5" text-anchor="end" font-size="12" fill="#5c6673">3.5</text>
   <line x1="92" y1="112" x2="860" y2="112" stroke="#d8dee6" stroke-width="1"/>
-  <text x="82" y="116" text-anchor="end" font-size="12" fill="#5c6673">4.00</text>
+  <text x="82" y="116" text-anchor="end" font-size="12" fill="#5c6673">4.0</text>
   <text x="34" y="274" text-anchor="middle" font-size="13" fill="#14181f" transform="rotate(-90 34 274)">Mean squared error over the measured samples</text>
   <line x1="491.36" y1="112" x2="491.36" y2="436" stroke="#8a94a3" stroke-width="1" stroke-dasharray="6 5"/>
   <text x="497.36" y="126" text-anchor="start" font-size="11.5" fill="#8a94a3">Sutton Figure 5: minimum near 0.13</text>

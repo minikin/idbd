@@ -109,13 +109,13 @@ impl Rolling {
         self.values.push_back(squared_error);
     }
 
-    /// Mean of the last `min(ROLLING_WINDOW, samples)` values.
-    fn mean(&self) -> f64 {
+    /// Mean of the last `min(ROLLING_WINDOW, samples)` values, or `None` before any.
+    fn mean(&self) -> Option<f64> {
         if self.values.is_empty() {
-            return 0.0;
+            return None;
         }
         let sum: f64 = self.values.iter().sum();
-        sum / count_as_f64(self.values.len())
+        Some(sum / count_as_f64(self.values.len()))
     }
 }
 
@@ -166,8 +166,9 @@ pub struct Session {
     coefficients: [f64; NUM_FEATURES],
     target: f64,
     changes: [CoordinateChange; NUM_FEATURES],
+    attempt_changes: [CoordinateChange; NUM_FEATURES],
     last_idbd: Option<Update>,
-    last_lms_error: f64,
+    last_lms_error: Option<f64>,
     idbd_rolling: Rolling,
     lms_rolling: Rolling,
     history: VecDeque<Record>,
@@ -219,8 +220,9 @@ impl Session {
             coefficients,
             target: 0.0,
             changes: [CoordinateChange::default(); NUM_FEATURES],
+            attempt_changes: [CoordinateChange::default(); NUM_FEATURES],
             last_idbd: None,
-            last_lms_error: 0.0,
+            last_lms_error: None,
             idbd_rolling: Rolling::new(),
             lms_rolling: Rolling::new(),
             history: VecDeque::with_capacity(HISTORY_CAPACITY),
@@ -251,7 +253,14 @@ impl Session {
             Ok(outcome) => outcome,
             Err(e) => return Err(self.fail(sample, FailureCause::Lms(e))),
         };
-        let report = match traced_update(&mut self.idbd, &self.attempt, target, &mut self.changes) {
+        // Traced into a scratch buffer so a rejected sample cannot leave its inputs in the
+        // published per-coordinate view beside the last completed sample's weights.
+        let report = match traced_update(
+            &mut self.idbd,
+            &self.attempt,
+            target,
+            &mut self.attempt_changes,
+        ) {
             Ok(report) => report,
             Err(e) => return Err(self.fail(sample, FailureCause::Idbd(e))),
         };
@@ -264,11 +273,14 @@ impl Session {
 
     /// Processes up to `samples` shared samples and stops early on failure.
     ///
-    /// Returns the number of completed samples.
+    /// Returns the number of completed samples, which is less than `samples` when a
+    /// failure stopped the run after some progress. [`Session::failure`] then holds the
+    /// cause.
     ///
     /// # Errors
     ///
-    /// Returns the [`Failure`] that stopped the run.
+    /// Returns the [`Failure`] only when the first attempted sample fails, so that a
+    /// caller who got no progress at all does not have to ask why.
     pub fn run(&mut self, samples: u64) -> Result<u64, Failure> {
         for done in 0..samples {
             if let Err(failure) = self.step() {
@@ -286,10 +298,11 @@ impl Session {
 
     fn commit(&mut self, sample: u64, target: f64, report: Update, lms_error: f64) {
         self.features = self.attempt;
+        self.changes = self.attempt_changes;
         self.coefficients.copy_from_slice(self.world.coefficients());
         self.target = target;
         self.last_idbd = Some(report);
-        self.last_lms_error = lms_error;
+        self.last_lms_error = Some(lms_error);
         let (idbd_sq, lms_sq) = (report.error * report.error, lms_error * lms_error);
         self.idbd_rolling.push(idbd_sq);
         self.lms_rolling.push(lms_sq);
@@ -300,12 +313,13 @@ impl Session {
             self.history.pop_front();
             self.alpha_history.pop_front();
         }
+        let pushed = "a squared error was just pushed";
         self.history.push_back(Record {
             sample,
             idbd_error: report.error,
             lms_error,
-            idbd_rolling_mse: self.idbd_rolling.mean(),
-            lms_rolling_mse: self.lms_rolling.mean(),
+            idbd_rolling_mse: self.idbd_rolling.mean().expect(pushed),
+            lms_rolling_mse: self.lms_rolling.mean().expect(pushed),
         });
         let mut alphas = [0.0; NUM_FEATURES];
         for (a, alpha) in alphas.iter_mut().zip(self.idbd.step_sizes()) {
@@ -377,8 +391,9 @@ impl Session {
         self.last_idbd.as_ref()
     }
 
-    /// Returns the LMS pre-update error of the last completed sample.
-    pub fn last_lms_error(&self) -> f64 {
+    /// Returns the LMS pre-update error of the last completed sample, or `None` before
+    /// the first one.
+    pub fn last_lms_error(&self) -> Option<f64> {
         self.last_lms_error
     }
 
@@ -387,13 +402,15 @@ impl Session {
         &self.changes
     }
 
-    /// Returns the IDBD rolling MSE over the last `min(100, completed)` samples.
-    pub fn idbd_rolling_mse(&self) -> f64 {
+    /// Returns the IDBD rolling MSE over the last `min(100, completed)` samples, or
+    /// `None` before the first one.
+    pub fn idbd_rolling_mse(&self) -> Option<f64> {
         self.idbd_rolling.mean()
     }
 
-    /// Returns the LMS rolling MSE over the last `min(100, completed)` samples.
-    pub fn lms_rolling_mse(&self) -> f64 {
+    /// Returns the LMS rolling MSE over the last `min(100, completed)` samples, or
+    /// `None` before the first one.
+    pub fn lms_rolling_mse(&self) -> Option<f64> {
         self.lms_rolling.mean()
     }
 
@@ -457,6 +474,67 @@ mod tests {
     }
 
     #[test]
+    fn a_fresh_session_reports_no_measurement_yet() {
+        let session = Session::new(settings(Preset::Stationary, 1)).expect("valid");
+        assert_eq!(session.completed(), 0);
+        assert_eq!(session.last_idbd_update(), None);
+        assert_eq!(session.last_lms_error(), None);
+        assert_eq!(session.idbd_rolling_mse(), None, "no window to average");
+        assert_eq!(session.lms_rolling_mse(), None, "no window to average");
+    }
+
+    #[test]
+    fn d08_a_failed_idbd_update_leaves_the_coordinate_view_at_the_last_sample() {
+        let mut settings = settings(Preset::Sutton1992, 81);
+        settings.idbd = Config::new(0.05, 1e6).expect("valid");
+        settings.lms_step_size = 0.001;
+        let mut session = Session::new(settings).expect("valid");
+        let mut stopped = None;
+        for _ in 0..10_000_u32 {
+            let changes = session.changes().to_vec();
+            let features = session.features().to_vec();
+            if let Err(failure) = session.step() {
+                assert_eq!(failure.learner(), Learner::Idbd, "{failure}");
+                assert_eq!(
+                    session.changes(),
+                    changes.as_slice(),
+                    "a rejected sample publishes no coordinate change"
+                );
+                assert_eq!(session.features(), features.as_slice());
+                stopped = Some(failure);
+                break;
+            }
+            let inputs: Vec<f64> = session.changes().iter().map(|c| c.input).collect();
+            assert_eq!(
+                inputs.as_slice(),
+                session.features(),
+                "the coordinate view describes the completed sample"
+            );
+        }
+        stopped.expect("a meta step size of 1e6 diverges within 10,000 samples");
+    }
+
+    #[test]
+    fn run_reports_the_samples_it_completed_before_a_failure() {
+        let mut settings = settings(Preset::Sutton1992, 8);
+        settings.lms_step_size = 5.0;
+        let mut session = Session::new(settings).expect("valid");
+        let completed = session.run(10_000).expect("the first sample completes");
+        assert!(
+            completed > 0 && completed < 10_000,
+            "stopped at {completed}"
+        );
+        assert_eq!(completed, session.completed());
+        let failure = session.failure().copied().expect("the cause is recorded");
+        assert_eq!(failure.sample, completed + 1);
+        assert_eq!(
+            session.run(5),
+            Err(failure),
+            "a stopped session refuses more"
+        );
+    }
+
+    #[test]
     fn d02_d07_both_learners_see_the_same_sample() {
         let mut session = Session::new(settings(Preset::Sutton1992, 2)).expect("valid");
         let mut world = World::new(Preset::Sutton1992, 2);
@@ -474,10 +552,59 @@ mod tests {
             assert_eq!(session.target(), target);
             assert_eq!(last.idbd_error.to_bits(), a.error.to_bits());
             assert_eq!(last.lms_error.to_bits(), b.error.to_bits());
+            assert_eq!(
+                session.last_lms_error().map(f64::to_bits),
+                Some(b.error.to_bits())
+            );
+            assert_eq!(session.last_idbd_update().copied(), Some(a));
         }
         assert_eq!(session.idbd().weights(), idbd.weights());
         assert_eq!(session.lms().weights(), lms.weights());
         assert_eq!(session.coefficients(), world.coefficients());
+        assert!(session.failure().is_none(), "{:?}", session.failure());
+        let changes = session.changes();
+        assert_eq!(changes.len(), NUM_FEATURES);
+        for (change, (&w, &feature)) in changes.iter().zip(idbd.weights().iter().zip(&x)) {
+            assert_eq!(change.new_weight, w, "{change:?}");
+            assert_eq!(change.input, feature, "{change:?}");
+        }
+    }
+
+    #[test]
+    fn d07_both_learners_report_their_own_squared_errors() {
+        let mut session = Session::new(settings(Preset::Stationary, 23)).expect("valid");
+        let mut idbd_squared = Vec::new();
+        let mut lms_squared = Vec::new();
+        for _ in 0..3 {
+            session.step().expect("step");
+            let last = session.history().last().copied().expect("record");
+            idbd_squared.push(last.idbd_error * last.idbd_error);
+            lms_squared.push(last.lms_error * last.lms_error);
+        }
+        // Three samples, so the rolling window holds all of them and the divisor is 3.
+        let idbd_mean = idbd_squared.iter().sum::<f64>() / 3.0;
+        let lms_mean = lms_squared.iter().sum::<f64>() / 3.0;
+        assert!(
+            lms_mean > 0.0 && (lms_mean - idbd_mean).abs() > 1e-12,
+            "the learners differ: idbd {idbd_mean} vs lms {lms_mean}"
+        );
+        assert_eq!(
+            session.idbd_rolling_mse().map(f64::to_bits),
+            Some(idbd_mean.to_bits())
+        );
+        assert_eq!(
+            session.lms_rolling_mse().map(f64::to_bits),
+            Some(lms_mean.to_bits())
+        );
+        let totals = session.totals();
+        assert_eq!(
+            totals.idbd_squared_error.to_bits(),
+            idbd_squared.iter().sum::<f64>().to_bits()
+        );
+        assert_eq!(
+            totals.lms_squared_error.to_bits(),
+            lms_squared.iter().sum::<f64>().to_bits()
+        );
     }
 
     #[test]
@@ -489,9 +616,11 @@ mod tests {
             let last = session.history().last().copied().expect("record");
             squared.push(last.idbd_error * last.idbd_error);
             let window = &squared[squared.len().saturating_sub(100)..];
-            let expected = window.iter().sum::<f64>() / count_as_f64(window.len());
-            assert!((session.idbd_rolling_mse() - expected).abs() < 1e-9 * expected.max(1.0));
-            assert_eq!(last.idbd_rolling_mse, session.idbd_rolling_mse());
+            let length = u32::try_from(window.len()).expect("at most 100");
+            let expected = window.iter().sum::<f64>() / f64::from(length);
+            let rolling = session.idbd_rolling_mse().expect("a sample completed");
+            assert!((rolling - expected).abs() < 1e-9 * expected.max(1.0));
+            assert_eq!(last.idbd_rolling_mse, rolling);
         }
         let total: f64 = squared.iter().sum();
         assert!((session.totals().idbd_squared_error - total).abs() < 1e-9 * total);
@@ -558,21 +687,29 @@ mod tests {
         let mut settings = settings(Preset::Sutton1992, 8);
         settings.lms_step_size = 5.0;
         let mut session = Session::new(settings).expect("valid");
-        let failure = loop {
+        // Bounded so that a session which never fails, or never advances, fails the test
+        // instead of looping.
+        let mut stopped = None;
+        for _ in 0..10_000_u32 {
             let before = state_bits(&session);
             let completed = session.completed();
             let features = session.features().to_vec();
-            match session.step() {
-                Ok(()) => assert!(session.completed() < 10_000, "LMS should diverge"),
-                Err(failure) => {
-                    assert_eq!(state_bits(&session), before, "no partial learning");
-                    assert_eq!(session.completed(), completed);
-                    assert_eq!(session.features(), features.as_slice());
-                    assert_eq!(failure.sample, completed + 1);
-                    break failure;
-                }
+            if let Err(failure) = session.step() {
+                assert_eq!(state_bits(&session), before, "no partial learning");
+                assert_eq!(session.completed(), completed);
+                assert_eq!(session.features(), features.as_slice());
+                assert_eq!(failure.sample, completed + 1);
+                stopped = Some(failure);
+                break;
             }
-        };
+            assert_eq!(
+                session.completed(),
+                completed + 1,
+                "a step advances one sample"
+            );
+        }
+        let failure = stopped.expect("an LMS step size of 5.0 diverges within 10,000 samples");
+        assert_eq!(session.failure(), Some(&failure));
         assert_eq!(failure.learner(), Learner::Lms);
         assert_eq!(session.step(), Err(failure), "playback requires a new run");
         assert_eq!(session.run(5), Err(failure));
@@ -594,6 +731,10 @@ mod tests {
         assert_eq!(
             Session::new(settings).err(),
             Some(SettingsError::LmsStepSize)
+        );
+        assert_eq!(
+            SettingsError::LmsStepSize.to_string(),
+            "LMS step size must be finite and positive"
         );
     }
 }

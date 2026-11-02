@@ -28,6 +28,7 @@ pub struct Walkthrough {
     target: f64,
     report: Option<Update>,
     changes: [CoordinateChange; WALKTHROUGH_FEATURES],
+    attempt_changes: [CoordinateChange; WALKTHROUGH_FEATURES],
 }
 
 impl Walkthrough {
@@ -43,10 +44,13 @@ impl Walkthrough {
             target: 0.0,
             report: None,
             changes: [CoordinateChange::default(); WALKTHROUGH_FEATURES],
+            attempt_changes: [CoordinateChange::default(); WALKTHROUGH_FEATURES],
         }
     }
 
     /// Draws the next sample and lets the core learner learn from it.
+    ///
+    /// Every published view stays at the last completed sample if the update fails.
     ///
     /// # Errors
     ///
@@ -62,7 +66,15 @@ impl Walkthrough {
             .zip(&features)
             .map(|(c, x)| c * x)
             .sum();
-        let report = traced_update(&mut self.learner, &features, target, &mut self.changes)?;
+        // Traced into a scratch buffer so a rejected sample leaves the published
+        // per-coordinate view on the last completed one.
+        let report = traced_update(
+            &mut self.learner,
+            &features,
+            target,
+            &mut self.attempt_changes,
+        )?;
+        self.changes = self.attempt_changes;
         self.features = features;
         self.target = target;
         self.sample += 1;
@@ -101,8 +113,37 @@ impl Walkthrough {
 }
 
 #[cfg(test)]
+#[expect(clippy::float_cmp, reason = "tests assert exact, deterministic values")]
 mod tests {
     use super::*;
+
+    #[test]
+    fn samples_are_rounded_draws_and_the_target_follows_the_coefficients() {
+        let mut stream = Rng::new(4);
+        let mut walk = Walkthrough::new(4);
+        walk.advance().expect("first");
+        let expected: Vec<f64> = (0..WALKTHROUGH_FEATURES)
+            .map(|_| (stream.standard_normal() * 10.0).round() / 10.0)
+            .collect();
+        assert_eq!(walk.features(), expected.as_slice());
+        assert!(
+            walk.features().iter().any(|x| x.abs() > 0.2),
+            "the draws are not all rounded away: {:?}",
+            walk.features()
+        );
+        let inputs: Vec<f64> = walk.changes().iter().map(|c| c.input).collect();
+        assert_eq!(
+            inputs.as_slice(),
+            walk.features(),
+            "the coordinate view describes the completed sample"
+        );
+        let x = walk.features();
+        assert_eq!(walk.target(), 2.0 * x[0] - x[1]);
+        assert!(
+            walk.target() != 2.0 * x[0] + x[1],
+            "the second coefficient is negative: {x:?}"
+        );
+    }
 
     #[test]
     fn first_update_leaves_beta_unchanged_then_beta_moves() {

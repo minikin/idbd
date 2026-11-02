@@ -212,6 +212,95 @@ mod tests {
         );
     }
 
+    fn trajectory(relevant_group: usize) -> Trajectory {
+        let step_sizes = (0..NUM_FEATURES)
+            .map(|i| f64::from(u8::try_from(i).expect("twenty inputs")))
+            .collect();
+        Trajectory {
+            seed: 0,
+            checkpoints: Vec::new(),
+            final_step_sizes: step_sizes,
+            relevant_group,
+            tail_mse: None,
+            failure: None,
+        }
+    }
+
+    #[test]
+    fn the_split_follows_the_group_the_task_reports() {
+        let t = trajectory(1);
+        let relevant = t.final_relevant().expect("five relevant inputs");
+        assert_eq!(relevant.count(), GROUP_SIZE);
+        // Step sizes are 0..20, so group 1 holds 5..10.
+        assert!((relevant.mean() - 7.0).abs() < 1e-12, "{relevant:?}");
+        let irrelevant = t.final_irrelevant().expect("fifteen irrelevant inputs");
+        assert_eq!(irrelevant.count(), NUM_FEATURES - GROUP_SIZE);
+        // Indices 0..5 and 10..20 sum to 155.
+        assert!(
+            (irrelevant.mean() - 155.0 / 15.0).abs() < 1e-12,
+            "{irrelevant:?}"
+        );
+        let max = t.final_irrelevant_max().expect("fifteen irrelevant inputs");
+        assert!(
+            (max - 19.0).abs() < 1e-12,
+            "largest irrelevant step size {max}"
+        );
+    }
+
+    #[test]
+    fn tail_mse_averages_the_last_interval_of_samples() {
+        let config = Config::new(0.05, 0.001).expect("valid");
+        let recorded = record(Preset::Sutton1992, 4, 120, 50, config).expect("valid");
+
+        let mut learner = Idbd::new(NUM_FEATURES, config).expect("valid");
+        let mut world = World::new(Preset::Sutton1992, 4);
+        let mut x = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        let mut tail = 0.0;
+        let mut head = 0.0;
+        let mut counted = 0_u32;
+        for sample in 1..=120_u64 {
+            let target = world.next_sample(&mut x, &mut events);
+            let error = learner.update(&x, target).expect("finite").error;
+            if sample > 70 {
+                tail += error * error;
+                counted += 1;
+            } else {
+                head += error * error;
+            }
+        }
+        assert_eq!(counted, 50, "the tail is the last interval of samples");
+        assert!(head > 0.0, "the earlier samples carry error too");
+        let measured = recorded.tail_mse.expect("the run completed");
+        assert_eq!(
+            measured.to_bits(),
+            (tail / 50.0).to_bits(),
+            "{measured} vs {}",
+            tail / 50.0
+        );
+    }
+
+    #[test]
+    fn a_run_without_samples_has_no_tail() {
+        let config = Config::new(0.05, 0.001).expect("valid");
+        let t = record(Preset::Sutton1992, 1, 0, 10, config).expect("valid");
+        assert!(t.checkpoints.is_empty(), "{t:?}");
+        assert!(t.failure.is_none(), "{t:?}");
+        assert_eq!(t.tail_mse, None, "no sample was measured");
+    }
+
+    #[test]
+    fn a_failed_run_has_no_tail_mse() {
+        let config = Config::new(0.5, 1e6).expect("valid");
+        let t = record(Preset::Sutton1992, 1, 2_000, 2_000, config).expect("valid");
+        let failure = t.failure.clone().expect("a huge meta step size diverges");
+        assert!(
+            failure.sample > 1,
+            "samples completed before the failure: {failure:?}"
+        );
+        assert_eq!(t.tail_mse, None, "a partial tail is not a mean");
+    }
+
     #[test]
     fn runs_are_reproducible() {
         let config = Config::new(0.05, 0.001).expect("valid");

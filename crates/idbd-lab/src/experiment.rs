@@ -98,11 +98,25 @@ pub fn run(spec: &RunSpec) -> Result<RunResult, String> {
         Learner::Idbd(l) => l.step_sizes().collect(),
         Learner::Lms(_) => Vec::new(),
     };
-    let mse = failure
+    // A squared error above 1.3e154 overflows the sum while the weights stay finite, so
+    // the run completes every sample with no measurable mean. That is a failure of the
+    // measurement, not a missing value: recording it as `None` alone would hide the
+    // divergence from `Point::failures` and let `sweep::best` select the value.
+    let mut mse = failure
         .is_none()
         .then(|| sum / measured_as_f64(spec.measured));
+    if failure.is_none() && !mse.is_some_and(f64::is_finite) {
+        failure = Some((
+            spec.warmup + spec.measured,
+            format!(
+                "no finite mean over {} measured samples: squared errors sum to {sum}",
+                spec.measured
+            ),
+        ));
+        mse = None;
+    }
     Ok(RunResult {
-        mse: mse.filter(|m| m.is_finite()),
+        mse,
         failure,
         final_step_sizes,
     })
@@ -147,6 +161,80 @@ mod tests {
     #[test]
     fn diverging_runs_report_their_failure() {
         let result = run(&spec(LearnerSpec::Lms { step_size: 5.0 })).expect("valid");
+        assert!(result.mse.is_none(), "{result:?}");
+        assert!(result.failure.is_some(), "{result:?}");
+    }
+
+    #[test]
+    fn mse_averages_the_measured_window_only() {
+        let spec = RunSpec {
+            preset: Preset::Sutton1992,
+            seed: 5,
+            warmup: 30,
+            measured: 7,
+            learner: LearnerSpec::Lms { step_size: 0.04 },
+        };
+        let measured = run(&spec).expect("valid").mse.expect("completed");
+
+        let mut world = World::new(spec.preset, spec.seed);
+        let mut lms = Lms::new(NUM_FEATURES, 0.04).expect("valid");
+        let mut x = [0.0; NUM_FEATURES];
+        let mut events = Vec::new();
+        let mut sum = 0.0;
+        let mut counted = 0_u64;
+        let mut warmup_sum = 0.0;
+        for t in 1..=37_u64 {
+            let target = world.next_sample(&mut x, &mut events);
+            let error = lms.update(&x, target).expect("finite").error;
+            if t > 30 {
+                sum += error * error;
+                counted += 1;
+            } else {
+                warmup_sum += error * error;
+            }
+        }
+        assert_eq!(counted, 7, "samples 31..=37 are measured");
+        assert!(warmup_sum > 0.0, "the warmup errors are nonzero");
+        assert_eq!(
+            measured.to_bits(),
+            (sum / 7.0).to_bits(),
+            "{measured} vs {}",
+            sum / 7.0
+        );
+    }
+
+    #[test]
+    fn an_overflowing_error_sum_is_a_failure() {
+        // With this step size the squared error overflows at sample 147 while the weights
+        // stay finite until sample 289, so every measured sample completes and the mean
+        // is still not a number.
+        let result = run(&RunSpec {
+            preset: Preset::Sutton1992,
+            seed: 1,
+            warmup: 100,
+            measured: 100,
+            learner: LearnerSpec::Lms { step_size: 5.0 },
+        })
+        .expect("valid");
+        assert!(result.mse.is_none(), "{result:?}");
+        let (sample, reason) = result.failure.expect("an unmeasurable run is a failure");
+        assert_eq!(
+            sample, 200,
+            "the run reached the end of the measured window"
+        );
+        assert!(reason.contains("no finite mean"), "{reason}");
+    }
+
+    #[test]
+    fn a_run_without_measured_samples_is_a_failure() {
+        let result = run(&RunSpec {
+            preset: Preset::Stationary,
+            seed: 1,
+            warmup: 10,
+            measured: 0,
+            learner: LearnerSpec::Lms { step_size: 0.04 },
+        })
+        .expect("valid");
         assert!(result.mse.is_none(), "{result:?}");
         assert!(result.failure.is_some(), "{result:?}");
     }
