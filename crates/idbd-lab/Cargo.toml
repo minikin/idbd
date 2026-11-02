@@ -1,0 +1,19 @@
+[package]
+name = "idbd-lab"
+description = "Seeded tracking tasks, an LMS baseline and paired experiment sessions for the idbd crate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+idbd = { path = "../idbd" }
+
+[dev-dependencies]
+proptest = "1.11.0"
+
+[lints]
+workspace = true
