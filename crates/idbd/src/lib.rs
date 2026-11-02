@@ -94,3 +94,7 @@ mod state;
 pub use config::{BoundKind, Bounds, Config, ConfigError};
 pub use learner::{Error, Idbd, Stage, StepSizes, Update};
 pub use state::{State, StateError};
+
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
