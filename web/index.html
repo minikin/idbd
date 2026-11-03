@@ -292,12 +292,13 @@
             </div>
             <div class="lanes" id="lanes"></div>
             <figcaption class="stats">
-              <div class="stat"><span class="muted">IDBD's typical miss</span><span class="mono value idbd" id="run-idbd">-</span></div>
-              <div class="stat"><span class="muted">Fixed speed's typical miss</span><span class="mono value lms" id="run-lms">-</span></div>
+              <div class="stat"><span class="muted">IDBD's accuracy</span><span class="mono value idbd" id="run-idbd">-</span></div>
+              <div class="stat"><span class="muted">Fixed speed's accuracy</span><span class="mono value lms" id="run-lms">-</span></div>
               <p class="muted small">
-                These two numbers are from this one run. We also ran this house 10 times: IDBD's typical
-                miss was 0.74 &deg;C against 0.79 &deg;C for the best fixed speed, and it was closer in all
-                10 runs. In the same house with nothing changing, the fixed speed was closer in all 10.
+                Accuracy as in the game: 100% is as close as anyone can get, 0% is no better than always
+                guessing "no change". These two numbers are from this one run. We also ran this house 10
+                times: IDBD was more accurate than the best fixed speed in all 10 runs. In the same house
+                with nothing changing, the fixed speed was more accurate in all 10.
                 <a href="https://github.com/minikin/idbd/blob/main/docs/results/house/README.md">How we measured</a>
               </p>
             </figcaption>
@@ -316,7 +317,7 @@
           <ol>
           <li><strong>You guess too.</strong> Every reading, your guess is each sensor's value times your slider, added up.</li>
           <li><strong>A slider says what a sensor does.</strong> +1.0 means "when this sensor goes up by 1, the room warms by 1 &deg;C". 0 means "ignore it". Below 0 means it cools the room.</li>
-          <li><strong>Highest accuracy wins.</strong> 100% is as close as anyone can get: the readings are noisy, so even a perfect guess is still about 0.5 &deg;C off. 0% is no better than always guessing "the temperature won't change". A round is 600 readings, one minute.</li>
+          <li><strong>Highest accuracy wins.</strong> 100% is as close as anyone can get: the readings are noisy, so even a perfect guess misses a little. 0% is no better than always guessing "the temperature won't change". A round is 600 readings, one minute.</li>
           </ol>
         </div>
 

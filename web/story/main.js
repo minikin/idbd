@@ -191,10 +191,12 @@ function fillLanes(house) {
   const strong = Array.from({ length: house.relevant }, () => []);
   let idbd = 0;
   let lms = 0;
+  let nothing = 0;
   for (let t = 0; t < LANES_SHOWN; t += 1) {
     race.step();
     const flags = race.strong();
     flags.forEach((flag, k) => strong[k].push(flag === 1));
+    nothing += race.target() ** 2;
     idbd += (race.target() - race.idbdPrediction()) ** 2;
     lms += (race.target() - race.lmsPrediction()) ** 2;
   }
@@ -240,9 +242,14 @@ function fillLanes(house) {
   speedLabel.textContent = "speed";
   lanes.append(axis, axisLabel, speedLabel);
 
+  // Accuracy as in the game: 100% misses only by the noise (0.25 squared), 0% is no
+  // better than always guessing "no change".
+  const accuracyOf = (mse) => Math.max(0, Math.min(1, (nothing / LANES_SHOWN - mse) / (nothing / LANES_SHOWN - 0.25)));
   const result = { idbd: idbd / LANES_SHOWN, lms: lms / LANES_SHOWN, strong };
-  $("run-idbd").textContent = `${Math.sqrt(result.idbd).toFixed(2)} \u00b0C`;
-  $("run-lms").textContent = `${Math.sqrt(result.lms).toFixed(2)} \u00b0C`;
+  result.idbdAccuracy = accuracyOf(result.idbd);
+  result.lmsAccuracy = accuracyOf(result.lms);
+  $("run-idbd").textContent = `${Math.round(result.idbdAccuracy * 100)}%`;
+  $("run-lms").textContent = `${Math.round(result.lmsAccuracy * 100)}%`;
   return result;
 }
 

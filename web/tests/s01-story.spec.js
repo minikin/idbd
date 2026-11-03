@@ -17,7 +17,7 @@ const story = (page) =>
     renderer: window.idbdStory.renderer,
     hero: window.idbdStory.hero(),
     desk: window.idbdStory.desk,
-    lanes: { idbd: window.idbdStory.lanes.idbd, lms: window.idbdStory.lanes.lms },
+    lanes: { idbd: window.idbdStory.lanes.idbdAccuracy, lms: window.idbdStory.lanes.lmsAccuracy },
     game: window.idbdStory.game(),
     slow: window.idbdStory.slow(),
   }));
@@ -45,8 +45,8 @@ test("S01 the chapters show step sizes and errors computed by the crate", async 
   const labels = await page.$$eval("#desk .fader-label .mono", (nodes) => nodes.map((n) => n.textContent));
   expect(labels).toEqual(s.desk.map((a) => a.toFixed(3)));
 
-  await expect(page.locator("#run-idbd")).toHaveText(`${Math.sqrt(s.lanes.idbd).toFixed(2)} \u00b0C`);
-  await expect(page.locator("#run-lms")).toHaveText(`${Math.sqrt(s.lanes.lms).toFixed(2)} \u00b0C`);
+  await expect(page.locator("#run-idbd")).toHaveText(`${Math.round(s.lanes.idbd * 100)}%`);
+  await expect(page.locator("#run-lms")).toHaveText(`${Math.round(s.lanes.lms * 100)}%`);
   expect(errors).toEqual([]);
 });
 

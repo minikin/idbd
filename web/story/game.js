@@ -157,15 +157,13 @@ export function createGame(wasm, house, nodes) {
     prefix.textContent = "accuracy";
     const value = document.createElement("span");
     value.className = "value";
-    const degrees = document.createElement("span");
-    degrees.className = "degrees";
     const caption = document.createElement("span");
     caption.className = "note";
     const lead = document.createElement("span");
     lead.className = "lead";
-    root.append(who, prefix, value, degrees, caption, lead);
+    root.append(who, prefix, value, caption, lead);
     nodes.scores.append(root);
-    return { ...player, root, value, degrees, captionNode: caption, lead };
+    return { ...player, root, value, captionNode: caption, lead };
   });
 
   const learned = house.sensors.map((name, sensor) => {
@@ -360,7 +358,6 @@ export function createGame(wasm, house, nodes) {
       const value = errors[player.key];
       const share = acc[player.key];
       player.value.textContent = share === null ? "--" : `${Math.round(share * 100)}%`;
-      player.degrees.textContent = value === null ? "" : `usually off by ${value.toFixed(2)} \u00b0C`;
       player.root.className = leader === player.key ? `score lead-${player.key}` : "score";
       player.captionNode.textContent = player.caption();
       const lead = finished ? "winner" : "in the lead";
