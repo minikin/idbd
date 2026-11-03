@@ -70,7 +70,9 @@
 //!   [`State`] and [`Idbd`]. Deserializing a `Config` or `Bounds` runs the same checks as
 //!   their constructors, and deserializing an `Idbd` runs [`Idbd::from_state`]. A
 //!   deserialized `State` is unvalidated, as with [`State::new`]. Off by default, so the
-//!   default build has no dependencies.
+//!   default build has no dependencies. A checkpoint resumes bit for bit only if the
+//!   format restores every `f64` exactly. With `serde_json`, enable its
+//!   `float_roundtrip` feature: the default parser can change the last digit.
 //!
 //! # Limitations
 //!

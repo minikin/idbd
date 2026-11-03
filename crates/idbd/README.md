@@ -81,7 +81,8 @@ step sizes.
   off by default. The paper's experiments ran without them.
 - **No dependencies, no `unsafe`.** MSRV 1.85. The optional `serde` feature adds `Serialize`
   and `Deserialize` for `Config`, `Bounds`, `State` and `Idbd`. Deserializing an `Idbd` runs the
-  same checks as `from_state`.
+  same checks as `from_state`. For bit-exact JSON checkpoints, enable `serde_json`'s
+  `float_roundtrip` feature.
 
 ## When to use it
 
