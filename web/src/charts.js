@@ -6,6 +6,7 @@ import { fmtAlpha, fmtCount, fmtMse, fmtSigned } from "./format.js";
 
 const IDBD = "var(--idbd)";
 const LMS = "var(--lms)";
+const AUTOSTEP = "var(--autostep)";
 
 function frame(container, height, margin) {
   const width = Math.max(240, Math.floor(container.clientWidth) || 320);
@@ -150,7 +151,7 @@ function hitArea(root, geometry, onMove) {
  * marked and a crosshair tooltip.
  */
 export function renderErrorChart(container, data) {
-  const { samples, idbd, lms, events, label } = data;
+  const { samples, idbd, lms, autostep, events, label } = data;
   if (samples.length < 2) {
     emptyState(container, 240, "No completed samples yet. Choose Step or Run.");
     return;
@@ -161,7 +162,7 @@ export function renderErrorChart(container, data) {
 
   const xMin = samples[0];
   const xMax = samples[samples.length - 1];
-  const finite = [...idbd, ...lms].filter((value) => Number.isFinite(value));
+  const finite = [...idbd, ...lms, ...autostep].filter((value) => Number.isFinite(value));
   const yMax = Math.max(1e-6, ...finite) * 1.12;
   const xOf = (sample) =>
     margin.left + ((sample - xMin) / Math.max(1, xMax - xMin)) * plotWidth;
@@ -225,6 +226,7 @@ export function renderErrorChart(container, data) {
         return `${index === 0 ? "M" : "L"}${xOf(samples[index]).toFixed(2)} ${y.toFixed(2)}`;
       })
       .join(" ");
+  root.append(svg("path", { d: path(autostep), class: "series-autostep" }));
   root.append(svg("path", { d: path(lms), class: "series-lms" }));
   root.append(svg("path", { d: path(idbd), class: "series-idbd" }));
 
@@ -247,6 +249,15 @@ export function renderErrorChart(container, data) {
       text: "LMS",
     }),
   );
+  root.append(
+    svg("text", {
+      x: margin.left + plotWidth + 6,
+      y: yOf(autostep[last]) + 3,
+      class: "tick-label",
+      fill: AUTOSTEP,
+      text: "AUTO",
+    }),
+  );
 
   const crosshair = svg("line", {
     y1: margin.top,
@@ -267,6 +278,7 @@ export function renderErrorChart(container, data) {
         `sample ${fmtCount(samples[index])}`,
         `IDBD rolling MSE ${fmtMse(idbd[index])}`,
         `LMS rolling MSE ${fmtMse(lms[index])}`,
+        `Autostep rolling MSE ${fmtMse(autostep[index])}`,
       ],
       pointer.clientX,
       pointer.clientY,

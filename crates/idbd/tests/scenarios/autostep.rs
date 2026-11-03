@@ -394,3 +394,22 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn a05_clone_from_copies_a_learner_of_any_size() {
+    let config = Config::new(0.2)
+        .and_then(|c| c.with_meta_step_size(0.05))
+        .expect("valid");
+    let mut source = Autostep::new(3, config).expect("valid");
+    source.update(&[1.0, -0.5, 2.0], 0.7).expect("finite");
+    let mut target = learner(5, 0.1);
+    target.clone_from(&source);
+    assert_eq!(target.config(), source.config());
+    assert_eq!(bits(&target), bits(&source));
+    let a = source.update(&[0.3, 0.1, -1.0], 0.2).expect("finite");
+    let b = target
+        .update(&[0.3, 0.1, -1.0], 0.2)
+        .expect("the candidate buffer was resized");
+    assert_eq!(a, b);
+    assert_eq!(bits(&target), bits(&source));
+}

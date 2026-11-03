@@ -18,6 +18,7 @@
      floor, CVD separation and contrast. */
   --idbd: #e0603f;
   --lms: #3f87d8;
+  --autostep: #38b29a;
   --truth: #9aa3b0;
   --warn: #d99a2b;
 
@@ -738,6 +739,14 @@ main,
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.series-autostep {
+  stroke: var(--autostep);
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 7 4;
+  stroke-linejoin: round;
 }
 
 .alpha-line {

@@ -17,6 +17,8 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 - `autostep::Autostep`, the Autostep learner of Mahmood, Sutton, Degris and Pilarski (2012),
   with its own `Config`, `State`, `StateError` and `Update`, and the stages `Normalizer` and
   `EffectiveStepSize`.
+- `Clone::clone_from` on `Idbd` and `Autostep` reuses the destination's buffers, so a scratch
+  copy can be refreshed every sample without allocating.
 - Optional `serde` feature: `Serialize` and `Deserialize` for `Config`, `Bounds`, `State` and
   `Idbd`, and for the Autostep types. Deserialization validates configurations and learners
   like their constructors.

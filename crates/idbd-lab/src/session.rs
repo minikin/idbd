@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeSet, VecDeque};
 use std::fmt;
+use std::mem;
 
+use idbd::autostep::{self, Autostep};
 use idbd::{Config, Idbd, Update};
 
 use crate::lms::{Lms, LmsError};
@@ -34,6 +36,8 @@ pub struct Settings {
     pub idbd: Config,
     /// Fixed LMS step size.
     pub lms_step_size: f64,
+    /// Autostep configuration.
+    pub autostep: autostep::Config,
 }
 
 /// Which learner failed.
@@ -43,6 +47,8 @@ pub enum Learner {
     Idbd,
     /// The LMS baseline.
     Lms,
+    /// The Autostep learner.
+    Autostep,
 }
 
 /// Why a sample could not be completed by both learners.
@@ -52,6 +58,8 @@ pub enum FailureCause {
     Idbd(idbd::Error),
     /// The LMS baseline rejected the sample.
     Lms(LmsError),
+    /// The Autostep learner rejected the sample.
+    Autostep(idbd::Error),
 }
 
 /// A sample that failed. The session stays at the last sample both learners completed
@@ -70,6 +78,7 @@ impl Failure {
         match self.cause {
             FailureCause::Idbd(_) => Learner::Idbd,
             FailureCause::Lms(_) => Learner::Lms,
+            FailureCause::Autostep(_) => Learner::Autostep,
         }
     }
 }
@@ -79,6 +88,9 @@ impl fmt::Display for Failure {
         match self.cause {
             FailureCause::Idbd(e) => write!(f, "IDBD failed at sample {}: {e}", self.sample),
             FailureCause::Lms(e) => write!(f, "LMS failed at sample {}: {e}", self.sample),
+            FailureCause::Autostep(e) => {
+                write!(f, "Autostep failed at sample {}: {e}", self.sample)
+            }
         }
     }
 }
@@ -142,6 +154,10 @@ pub struct Record {
     pub idbd_rolling_mse: f64,
     /// LMS rolling MSE after this sample.
     pub lms_rolling_mse: f64,
+    /// Autostep pre-update error.
+    pub autostep_error: f64,
+    /// Autostep rolling MSE after this sample.
+    pub autostep_rolling_mse: f64,
 }
 
 /// Running sums over every completed sample.
@@ -153,19 +169,28 @@ pub struct Totals {
     pub idbd_squared_error: f64,
     /// Sum of LMS squared pre-update errors.
     pub lms_squared_error: f64,
+    /// Sum of Autostep squared pre-update errors.
+    pub autostep_squared_error: f64,
 }
 
-/// A paired experiment: IDBD and LMS learn from the same stream, one sample at a time.
+/// A shared experiment: IDBD, LMS and Autostep learn from the same stream, one sample at
+/// a time.
 ///
-/// Every view of a session refers to the last sample that both learners completed. If
-/// either learner rejects a sample, neither learns from it, the session records the
-/// [`Failure`], and further steps are refused.
+/// Every view of a session refers to the last sample that every learner completed. If
+/// any learner rejects a sample, none learns from it, the session records the
+/// [`Failure`], and further steps are refused. The learners are checked in the order
+/// LMS, IDBD, Autostep, and the first rejection is the one reported.
 #[derive(Debug, Clone)]
 pub struct Session {
     settings: Settings,
     world: World,
     idbd: Idbd,
     lms: Lms,
+    autostep: Autostep,
+    /// Learners update these copies first, so a sample that one learner rejects leaves
+    /// the others unchanged. `clone_from` refreshes them without allocating.
+    idbd_scratch: Idbd,
+    autostep_scratch: Autostep,
     features: [f64; NUM_FEATURES],
     attempt: [f64; NUM_FEATURES],
     coefficients: [f64; NUM_FEATURES],
@@ -174,8 +199,10 @@ pub struct Session {
     attempt_changes: [CoordinateChange; NUM_FEATURES],
     last_idbd: Option<Update>,
     last_lms_error: Option<f64>,
+    last_autostep_error: Option<f64>,
     idbd_rolling: Rolling,
     lms_rolling: Rolling,
+    autostep_rolling: Rolling,
     history: VecDeque<Record>,
     alpha_history: VecDeque<[f64; NUM_FEATURES]>,
     events: VecDeque<TimedEvent>,
@@ -242,14 +269,19 @@ impl Session {
             .map_err(|_| SettingsError::LmsStepSize)?;
         let idbd = Idbd::new(NUM_FEATURES, settings.idbd)
             .expect("NUM_FEATURES is nonzero and Config is validated");
+        let autostep = Autostep::new(NUM_FEATURES, settings.autostep)
+            .expect("NUM_FEATURES is nonzero and autostep::Config is validated");
         let world = World::new(settings.preset, settings.seed);
         let mut coefficients = [0.0; NUM_FEATURES];
         coefficients.copy_from_slice(world.coefficients());
         Ok(Self {
             settings,
             world,
+            idbd_scratch: idbd.clone(),
+            autostep_scratch: autostep.clone(),
             idbd,
             lms,
+            autostep,
             features: [0.0; NUM_FEATURES],
             attempt: [0.0; NUM_FEATURES],
             coefficients,
@@ -258,8 +290,10 @@ impl Session {
             attempt_changes: [CoordinateChange::default(); NUM_FEATURES],
             last_idbd: None,
             last_lms_error: None,
+            last_autostep_error: None,
             idbd_rolling: Rolling::new(),
             lms_rolling: Rolling::new(),
+            autostep_rolling: Rolling::new(),
             history: VecDeque::with_capacity(HISTORY_CAPACITY),
             alpha_history: VecDeque::with_capacity(HISTORY_CAPACITY),
             events: VecDeque::with_capacity(EVENT_CAPACITY),
@@ -297,8 +331,9 @@ impl Session {
         };
         // Traced into a scratch buffer so a rejected sample cannot leave its inputs in the
         // published per-coordinate view beside the last completed sample's weights.
+        self.idbd_scratch.clone_from(&self.idbd);
         let report = match traced_update(
-            &mut self.idbd,
+            &mut self.idbd_scratch,
             &self.attempt,
             target,
             &mut self.attempt_changes,
@@ -306,10 +341,17 @@ impl Session {
             Ok(report) => report,
             Err(e) => return Err(self.fail(sample, FailureCause::Idbd(e))),
         };
+        self.autostep_scratch.clone_from(&self.autostep);
+        let autostep_error = match self.autostep_scratch.update(&self.attempt, target) {
+            Ok(update) => update.error,
+            Err(e) => return Err(self.fail(sample, FailureCause::Autostep(e))),
+        };
+        mem::swap(&mut self.idbd, &mut self.idbd_scratch);
+        mem::swap(&mut self.autostep, &mut self.autostep_scratch);
         self.lms
             .update(&self.attempt, target)
             .expect("Lms::check accepted this example");
-        self.commit(sample, target, report, lms.error);
+        self.commit(sample, target, report, lms.error, autostep_error);
         Ok(())
     }
 
@@ -338,19 +380,30 @@ impl Session {
         failure
     }
 
-    fn commit(&mut self, sample: u64, target: f64, report: Update, lms_error: f64) {
+    fn commit(
+        &mut self,
+        sample: u64,
+        target: f64,
+        report: Update,
+        lms_error: f64,
+        autostep_error: f64,
+    ) {
         self.features = self.attempt;
         self.changes = self.attempt_changes;
         self.coefficients.copy_from_slice(self.world.coefficients());
         self.target = target;
         self.last_idbd = Some(report);
         self.last_lms_error = Some(lms_error);
+        self.last_autostep_error = Some(autostep_error);
         let (idbd_sq, lms_sq) = (report.error * report.error, lms_error * lms_error);
         self.idbd_rolling.push(idbd_sq);
         self.lms_rolling.push(lms_sq);
+        let autostep_sq = autostep_error * autostep_error;
+        self.autostep_rolling.push(autostep_sq);
         self.totals.samples = sample;
         self.totals.idbd_squared_error += idbd_sq;
         self.totals.lms_squared_error += lms_sq;
+        self.totals.autostep_squared_error += autostep_sq;
         if self.history.len() == HISTORY_CAPACITY {
             self.history.pop_front();
             self.alpha_history.pop_front();
@@ -362,6 +415,8 @@ impl Session {
             lms_error,
             idbd_rolling_mse: self.idbd_rolling.mean().expect(pushed),
             lms_rolling_mse: self.lms_rolling.mean().expect(pushed),
+            autostep_error,
+            autostep_rolling_mse: self.autostep_rolling.mean().expect(pushed),
         });
         let mut alphas = [0.0; NUM_FEATURES];
         for (a, alpha) in alphas.iter_mut().zip(self.idbd.step_sizes()) {
@@ -461,6 +516,11 @@ impl Session {
         &self.lms
     }
 
+    /// Returns the Autostep learner at the last completed sample.
+    pub fn autostep(&self) -> &Autostep {
+        &self.autostep
+    }
+
     /// Returns the inputs of the last completed sample.
     pub fn features(&self) -> &[f64] {
         &self.features
@@ -487,6 +547,12 @@ impl Session {
         self.last_lms_error
     }
 
+    /// Returns the Autostep pre-update error of the last completed sample, or `None`
+    /// before the first one.
+    pub fn last_autostep_error(&self) -> Option<f64> {
+        self.last_autostep_error
+    }
+
     /// Returns each coordinate's IDBD change on the last completed sample.
     pub fn changes(&self) -> &[CoordinateChange] {
         &self.changes
@@ -502,6 +568,12 @@ impl Session {
     /// `None` before the first one.
     pub fn lms_rolling_mse(&self) -> Option<f64> {
         self.lms_rolling.mean()
+    }
+
+    /// Returns the Autostep rolling MSE over the last `min(ROLLING_WINDOW, completed)`
+    /// pre-update errors, or `None` before the first sample.
+    pub fn autostep_rolling_mse(&self) -> Option<f64> {
+        self.autostep_rolling.mean()
     }
 
     /// Returns running sums over every completed sample.
@@ -537,6 +609,7 @@ mod tests {
             seed,
             idbd: Config::new(0.05, 0.01).expect("valid"),
             lms_step_size: 0.04,
+            autostep: autostep::Config::new(0.005).expect("valid"),
         }
     }
 
@@ -547,8 +620,82 @@ mod tests {
             .chain(idbd.log_step_sizes())
             .chain(idbd.traces())
             .chain(session.lms().weights())
+            .chain(session.autostep().weights())
+            .chain(session.autostep().step_sizes())
+            .chain(session.autostep().traces())
+            .chain(session.autostep().normalizers())
             .map(|v| v.to_bits())
             .collect()
+    }
+
+    #[test]
+    fn d08_an_autostep_failure_leaves_every_learner_at_the_last_sample() {
+        let mut settings = settings(Preset::Sutton1992, 5);
+        settings.autostep = autostep::Config::new(0.005)
+            .and_then(|c| c.with_meta_step_size(1e6))
+            .expect("valid");
+        let mut session = Session::new(settings).expect("valid");
+        session
+            .step()
+            .expect("every trace is zero, so no step size adapts yet");
+        let before = state_bits(&session);
+        let errors = (
+            session.last_lms_error(),
+            session.last_autostep_error(),
+            session.idbd_rolling_mse(),
+        );
+        let failure = session.step().expect_err("exp(1e6 * g / v) overflows");
+        assert_eq!(failure.learner(), Learner::Autostep);
+        assert_eq!(failure.sample, 2);
+        assert!(
+            failure.to_string().starts_with(
+                "Autostep failed at sample 2: numerical failure at the step size stage"
+            ),
+            "{failure}"
+        );
+        assert_eq!(
+            state_bits(&session),
+            before,
+            "no learner learned from sample 2"
+        );
+        assert_eq!(session.completed(), 1);
+        assert_eq!(
+            (
+                session.last_lms_error(),
+                session.last_autostep_error(),
+                session.idbd_rolling_mse()
+            ),
+            errors
+        );
+        assert_eq!(session.step(), Err(failure), "further steps are refused");
+    }
+
+    #[test]
+    fn d07_autostep_is_scored_on_the_same_stream() {
+        let mut session = Session::new(settings(Preset::Sutton1992, 12)).expect("valid");
+        assert_eq!(session.last_autostep_error(), None);
+        assert_eq!(session.autostep_rolling_mse(), None);
+        session.run(150).expect("run");
+        let mut learner = Autostep::new(NUM_FEATURES, session.settings().autostep).expect("valid");
+        let mut world = World::new(Preset::Sutton1992, 12);
+        let (mut x, mut events) = ([0.0; NUM_FEATURES], Vec::new());
+        let mut squared = Vec::new();
+        for _ in 0..150 {
+            let target = world.next_sample(&mut x, &mut events);
+            let error = learner.update(&x, target).expect("finite").error;
+            squared.push(error * error);
+        }
+        assert_eq!(session.autostep().snapshot(), learner.snapshot());
+        let last = session.history().last().copied().expect("history");
+        assert_eq!(Some(last.autostep_error), session.last_autostep_error());
+        let window = &squared[squared.len() - ROLLING_WINDOW..];
+        let expected = window.iter().sum::<f64>()
+            / crate::stats::exact_f64(u64::try_from(window.len()).expect("small"));
+        let rolling = session.autostep_rolling_mse().expect("samples completed");
+        assert!((rolling - expected).abs() < 1e-12 * expected.max(1.0));
+        assert_eq!(last.autostep_rolling_mse, rolling);
+        let total: f64 = squared.iter().sum();
+        assert!((session.totals().autostep_squared_error - total).abs() < 1e-9 * total);
     }
 
     #[test]
@@ -601,7 +748,11 @@ mod tests {
                 "the coordinate view describes the completed sample"
             );
         }
-        stopped.expect("a meta step size of 1e6 diverges within 10,000 samples");
+        let failure = stopped.expect("a meta step size of 1e6 diverges within 10,000 samples");
+        assert!(
+            failure.to_string().starts_with("IDBD failed at sample"),
+            "{failure}"
+        );
     }
 
     #[test]

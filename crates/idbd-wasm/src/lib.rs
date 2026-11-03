@@ -6,6 +6,7 @@
 //! ([`Explorer`]). This crate only validates arguments, calls into those crates and
 //! copies committed state across the boundary.
 
+use idbd::autostep;
 use idbd::{Config, Idbd, Update};
 use idbd_lab::rng::GENERATOR;
 use idbd_lab::session::{
@@ -133,12 +134,13 @@ fn failed_learner_name(failure: &Failure) -> &'static str {
     match failure.learner() {
         FailedLearner::Idbd => "IDBD",
         FailedLearner::Lms => "LMS",
+        FailedLearner::Autostep => "Autostep",
     }
 }
 
 fn failure_cause_message(failure: &Failure) -> String {
     match failure.cause {
-        FailureCause::Idbd(e) => e.to_string(),
+        FailureCause::Idbd(e) | FailureCause::Autostep(e) => e.to_string(),
         FailureCause::Lms(e) => e.to_string(),
     }
 }
@@ -359,6 +361,16 @@ pub struct Explorer {
     session: Session,
 }
 
+/// Autostep's starting step size in the demo: 0.1 / n, the rule the paper used on its
+/// idealized problems. Mu and tau are the paper's defaults, so the demo shows Autostep
+/// untuned.
+const AUTOSTEP_INITIAL_STEP_SIZE: f64 = 0.1 / 20.0;
+
+const _: () = assert!(
+    NUM_FEATURES == 20,
+    "AUTOSTEP_INITIAL_STEP_SIZE assumes 20 inputs"
+);
+
 /// The adapter's own fallible operations. The exported methods below wrap these and
 /// turn the message into a JavaScript `Error`.
 impl Explorer {
@@ -377,6 +389,8 @@ impl Explorer {
             seed: seed_from_number(seed)?,
             idbd,
             lms_step_size,
+            autostep: autostep::Config::new(AUTOSTEP_INITIAL_STEP_SIZE)
+                .expect("the constant is a valid step size"),
         };
         Session::new(settings)
             .map(|session| Self { session })
@@ -676,6 +690,59 @@ impl Explorer {
         totals.lms_squared_error / count_to_f64(totals.samples)
     }
 
+    /// Returns the Autostep mean squared error over every completed sample.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepMeanSquaredError)]
+    pub fn autostep_mean_squared_error(&self) -> f64 {
+        let totals = self.session.totals();
+        if totals.samples == 0 {
+            return 0.0;
+        }
+        totals.autostep_squared_error / count_to_f64(totals.samples)
+    }
+
+    /// Returns the Autostep weights after the last completed sample.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepWeights)]
+    pub fn autostep_weights(&self) -> Vec<f64> {
+        self.session.autostep().weights().to_vec()
+    }
+
+    /// Returns the Autostep step sizes after the last completed sample.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepStepSizes)]
+    pub fn autostep_step_sizes(&self) -> Vec<f64> {
+        self.session.autostep().step_sizes().to_vec()
+    }
+
+    /// Returns the Autostep pre-update error of the last completed sample.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepError)]
+    pub fn autostep_error(&self) -> Option<f64> {
+        self.session.last_autostep_error()
+    }
+
+    /// Returns the Autostep rolling mean squared error over the last
+    /// `min(100, completed)` pre-update errors.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepRollingMse)]
+    pub fn autostep_rolling_mse(&self) -> Option<f64> {
+        self.session.autostep_rolling_mse()
+    }
+
+    /// Returns Autostep's configuration as JSON: initial step size, mu and tau.
+    #[must_use]
+    #[wasm_bindgen(js_name = autostepConfigJson)]
+    pub fn autostep_config_json(&self) -> String {
+        let config = self.session.settings().autostep;
+        format!(
+            "{{\"initialStepSize\":{},\"metaStepSize\":{},\"timeScale\":{}}}",
+            json_number(config.initial_step_size()),
+            json_number(config.meta_step_size()),
+            json_number(config.time_scale())
+        )
+    }
+
     /// Returns one coordinate's values before and after the last completed update, as
     /// JSON.
     ///
@@ -727,6 +794,14 @@ impl Explorer {
     #[wasm_bindgen(js_name = historyLmsRollingMse)]
     pub fn history_lms_rolling_mse(&self, max_points: usize) -> Vec<f64> {
         self.history_series(max_points, |record| record.lms_rolling_mse)
+    }
+
+    /// Returns up to `max_points` evenly spaced Autostep rolling MSE values, oldest
+    /// first, for the same samples as [`Explorer::history_samples`].
+    #[must_use]
+    #[wasm_bindgen(js_name = historyAutostepRollingMse)]
+    pub fn history_autostep_rolling_mse(&self, max_points: usize) -> Vec<f64> {
+        self.history_series(max_points, |record| record.autostep_rolling_mse)
     }
 
     /// Returns up to `max_points` evenly spaced step sizes of one input, oldest first,
@@ -1045,6 +1120,48 @@ mod tests {
         assert!(explorer.events_json().contains("signFlip"), "sign flips");
         let coordinate = explorer.coordinate(0).expect("feature 0");
         assert!(coordinate.contains("\"newAlpha\""), "{coordinate}");
+    }
+
+    #[test]
+    fn an_explorer_runs_autostep_untuned_on_the_same_stream() {
+        let mut explorer =
+            Explorer::create("sutton1992", 1.0, 0.05, 0.01, 0.04).expect("valid settings");
+        assert_eq!(explorer.autostep_mean_squared_error(), 0.0);
+        assert_eq!(explorer.autostep_error(), None);
+        assert_eq!(explorer.autostep_rolling_mse(), None);
+        assert_eq!(
+            explorer.autostep_config_json(),
+            r#"{"initialStepSize":0.005,"metaStepSize":0.01,"timeScale":10000.0}"#
+        );
+        explorer.advance(120).expect("run");
+        assert_eq!(explorer.autostep_weights().len(), NUM_FEATURES);
+        assert_eq!(explorer.autostep_step_sizes().len(), NUM_FEATURES);
+        let error = explorer.autostep_error().expect("a sample completed");
+        let last = explorer.session.history().last().copied().expect("history");
+        assert_eq!(error, last.autostep_error);
+        assert_eq!(
+            explorer.autostep_rolling_mse(),
+            Some(last.autostep_rolling_mse)
+        );
+        let rolling = explorer.history_autostep_rolling_mse(60);
+        assert_eq!(rolling.len(), 60);
+        assert_eq!(rolling.last().copied(), Some(last.autostep_rolling_mse));
+        let total = explorer.session.totals().autostep_squared_error;
+        assert_eq!(explorer.autostep_mean_squared_error(), total / 120.0);
+    }
+
+    #[test]
+    fn an_autostep_failure_is_named_and_explained() {
+        let error = idbd::Error::Numerical {
+            stage: idbd::Stage::StepSize,
+            coordinate: Some(3),
+        };
+        let failure = Failure {
+            sample: 9,
+            cause: FailureCause::Autostep(error),
+        };
+        assert_eq!(failed_learner_name(&failure), "Autostep");
+        assert_eq!(failure_cause_message(&failure), error.to_string());
     }
 
     #[test]

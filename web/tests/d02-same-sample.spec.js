@@ -34,12 +34,15 @@ test("D02 the table values equal the state the charts were drawn from", async ({
       fmtSigned(state.lmsWeights[index], 5),
       fmtAlpha(state.alphas[index]),
       fmtSigned(state.traces[index], 5),
+      fmtSigned(state.autostepWeights[index], 5),
+      fmtAlpha(state.autostepAlphas[index]),
     ]);
   }
 
   const metrics = await page.locator("#metrics-pairs").innerText();
   expect(metrics).toContain(fmtMse(state.idbdRollingMse));
   expect(metrics).toContain(fmtMse(state.lmsRollingMse));
+  expect(metrics).toContain(fmtMse(state.autostepRollingMse));
 });
 
 test("D02 the feature inspector agrees with the selected row", async ({ page }) => {

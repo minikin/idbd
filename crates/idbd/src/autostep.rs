@@ -162,7 +162,10 @@ impl Config {
 /// A dense linear learner that adapts one step size per input with Autostep.
 ///
 /// See the [module documentation](self) for the update equations.
-#[derive(Clone)]
+///
+/// [`Clone::clone_from`] reuses the destination's buffers when it has the same number
+/// of features, so a caller can keep a scratch copy and refresh it on every sample
+/// without allocating.
 pub struct Autostep {
     config: Config,
     committed: Vectors,
@@ -171,12 +174,50 @@ pub struct Autostep {
     candidate: Vectors,
 }
 
-#[derive(Clone)]
 struct Vectors {
     weights: Vec<f64>,
     step_sizes: Vec<f64>,
     traces: Vec<f64>,
     normalizers: Vec<f64>,
+}
+
+// Hand-written so that `clone_from` forwards to `Vec::clone_from`, which reuses the
+// existing allocation. The derived impl would allocate fresh vectors every time.
+impl Clone for Vectors {
+    fn clone(&self) -> Self {
+        Self {
+            weights: self.weights.clone(),
+            step_sizes: self.step_sizes.clone(),
+            traces: self.traces.clone(),
+            normalizers: self.normalizers.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.weights.clone_from(&source.weights);
+        self.step_sizes.clone_from(&source.step_sizes);
+        self.traces.clone_from(&source.traces);
+        self.normalizers.clone_from(&source.normalizers);
+    }
+}
+
+impl Clone for Autostep {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config,
+            committed: self.committed.clone(),
+            candidate: self.candidate.clone(),
+        }
+    }
+
+    // The candidate buffer holds no state between updates, so only its length matters.
+    fn clone_from(&mut self, source: &Self) {
+        self.config = source.config;
+        self.committed.clone_from(&source.committed);
+        if self.candidate.weights.len() != source.candidate.weights.len() {
+            self.candidate.clone_from(&source.candidate);
+        }
+    }
 }
 
 impl Vectors {
