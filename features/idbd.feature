@@ -499,6 +499,11 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And labels or shapes distinguish IDBD, LMS and true coefficients
       And a text/table view exposes the selected feature and current metrics
 
+    Scenario: D15 Pass automated WCAG checks in every supported browser
+      Given the page at rest, after a run with a world change, and in the dark color scheme
+      When axe-core checks the WCAG 2.2 A and AA rules in Chromium, Firefox and WebKit
+      Then it reports no violations
+
     Scenario: D11 Keep playback bounded and responsive
       Given the default experiment has 20 features and a rolling chart history
       When playback runs for 100000 samples
