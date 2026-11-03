@@ -1,10 +1,19 @@
 // The live experiment: one shared stream, IDBD and a fixed-step LMS baseline.
 // All learning happens in the Rust session; this file reads committed state and draws.
 
-import { renderAlphaChart, renderErrorChart, renderSparkline, renderTimeline, renderWeightRow, weightRowLabel } from "./charts.js";
-import { clear, el, fillLegend, fillPairs, onResize } from "./dom.js";
-import { featureName, fmt, fmtAlpha, fmtCount, fmtMse, fmtSigned, signWord } from "./format.js";
 import {
+  inspection,
+  renderAlphaChart,
+  renderErrorChart,
+  renderSparkline,
+  renderTimeline,
+  renderWeightRow,
+  weightRowLabel,
+} from "./charts.js";
+import { clear, el, fillLegend, fillPairs, onResize, tooltip } from "./dom.js";
+import { NO_SAMPLE, featureName, fmtAlpha, fmtCount, fmtMse, fmtSetting, fmtSigned, signWord } from "./format.js";
+import {
+  AUTOSTEP_NOTE,
   DEFAULT_INITIAL_STEP_SIZE,
   DEFAULT_SEED,
   DEFAULT_SPEED,
@@ -24,6 +33,9 @@ const BATCH = 256;
 
 /** Milliseconds of work one playback tick may do before it yields. */
 const TICK_BUDGET_MS = 8;
+
+/** World events listed under the timeline, newest first. */
+const EVENTS_LISTED = 12;
 
 /** Minimum milliseconds between redraws while running. */
 const RENDER_INTERVAL_MS = 60;
@@ -48,6 +60,7 @@ export function createExperiment(wasm) {
     theta: document.getElementById("theta"),
     lmsStep: document.getElementById("lms-step"),
     apply: document.getElementById("apply-settings"),
+    settingsError: document.getElementById("settings-error"),
     playbackState: document.getElementById("playback-state"),
     runHeader: document.getElementById("run-header"),
     failure: document.getElementById("failure"),
@@ -59,6 +72,8 @@ export function createExperiment(wasm) {
     errorChart: document.getElementById("error-chart"),
     alphaLegend: document.getElementById("alpha-legend"),
     alphaChart: document.getElementById("alpha-chart"),
+    errorReadout: document.getElementById("error-readout"),
+    alphaReadout: document.getElementById("alpha-readout"),
     eventsLegend: document.getElementById("events-legend"),
     timeline: document.getElementById("event-timeline"),
     eventSummary: document.getElementById("event-summary"),
@@ -137,7 +152,10 @@ export function createExperiment(wasm) {
   ]);
   nodes.errorSubtitle.textContent =
     `Rolling mean squared error of the pre-update prediction error over the last ` +
-    `min(${rollingWindow}, completed) samples, for both learners.`;
+    `${rollingWindow} samples (fewer at the start of a run), for all three learners. ` +
+    `Focus the chart and use the arrow keys to read past values.`;
+  inspection.attach(nodes.errorChart, nodes.errorReadout);
+  inspection.attach(nodes.alphaChart, nodes.alphaReadout);
 
   buildWeightRows();
   describePreset();
@@ -159,14 +177,19 @@ export function createExperiment(wasm) {
 
   /* ---------- session lifecycle ---------- */
 
-  function build(plan = null) {
+  /**
+   * Starts a fresh run. `candidate` becomes the committed settings only if the session
+   * constructs, so a rejected value never reaches Reset.
+   */
+  function build(plan = null, candidate = settings) {
     stop();
+    tooltip.hide();
     const next = new wasm.Explorer(
-      settings.preset,
-      settings.seed,
-      settings.initialStepSize,
-      settings.theta,
-      settings.lmsStepSize,
+      candidate.preset,
+      candidate.seed,
+      candidate.initialStepSize,
+      candidate.theta,
+      candidate.lmsStepSize,
     );
     try {
       for (const sample of plan ? plan.changes : []) {
@@ -180,6 +203,7 @@ export function createExperiment(wasm) {
       explorer.free();
     }
     explorer = next;
+    settings = candidate;
     replay = plan ? { ...plan, reached: false } : null;
     loadError = null;
     backlog = 0;
@@ -205,18 +229,31 @@ export function createExperiment(wasm) {
     nodes.presetDescription.textContent = copy ? copy.description : "";
   }
 
+  /** Reads the settings fields. Throws an Error that names the first invalid field. */
   function readSettings() {
-    const seed = Number(nodes.seed.value);
-    const initialStepSize = Number(nodes.alpha0.value);
-    const theta = Number(nodes.theta.value);
-    const lmsStepSize = Number(nodes.lmsStep.value);
-    return {
-      preset: nodes.preset.value,
-      seed: Number.isInteger(seed) && seed >= 0 ? seed : settings.seed,
-      initialStepSize: initialStepSize > 0 ? initialStepSize : settings.initialStepSize,
-      theta: theta >= 0 ? theta : settings.theta,
-      lmsStepSize: lmsStepSize > 0 ? lmsStepSize : settings.lmsStepSize,
-    };
+    const number = (node) => (node.value.trim() === "" ? NaN : Number(node.value));
+    const seed = number(nodes.seed);
+    const initialStepSize = number(nodes.alpha0);
+    const theta = number(nodes.theta);
+    const lmsStepSize = number(nodes.lmsStep);
+    if (!Number.isSafeInteger(seed) || seed < 0) {
+      throw new Error("The seed must be a whole number from 0 to 9,007,199,254,740,991.");
+    }
+    if (!(Number.isFinite(initialStepSize) && initialStepSize > 0)) {
+      throw new Error("The initial step size alpha0 must be a number above 0.");
+    }
+    if (!(Number.isFinite(theta) && theta >= 0)) {
+      throw new Error("The meta step size theta must be a number of 0 or more.");
+    }
+    if (!(Number.isFinite(lmsStepSize) && lmsStepSize > 0)) {
+      throw new Error("The LMS step size must be a number above 0.");
+    }
+    return { preset: nodes.preset.value, seed, initialStepSize, theta, lmsStepSize };
+  }
+
+  function showSettingsError(error) {
+    nodes.settingsError.hidden = error === null;
+    nodes.settingsError.textContent = error === null ? "" : error instanceof Error ? error.message : String(error);
   }
 
   /* ---------- playback ---------- */
@@ -399,19 +436,19 @@ export function createExperiment(wasm) {
       ["generator", wasm.generatorId()],
       [
         "idbd",
-        `${featureCount} inputs, alpha0 ${fmtAlpha(state.initialStepSize)}, theta ${fmt(state.theta, 4)}, no bounds`,
+        `${featureCount} inputs, alpha0 ${fmtSetting(state.initialStepSize)}, theta ${fmtSetting(state.theta)}, no bounds`,
       ],
       ["theta note", THETA_NOTE, "wide-pair"],
       [
         "lms baseline",
-        `fixed-step LMS, ${featureCount} inputs, alpha ${fmt(state.lmsStepSize, 4)}`,
+        `fixed-step LMS, ${featureCount} inputs, alpha ${fmtSetting(state.lmsStepSize)}`,
       ],
       ["lms note", LMS_NOTE, "wide-pair"],
       [
         "autostep",
-        `${featureCount} inputs, alpha0 ${fmtAlpha(state.autostepConfig.initialStepSize)}, ` +
-          `mu ${fmt(state.autostepConfig.metaStepSize, 4)}, tau ${fmtCount(state.autostepConfig.timeScale)}: ` +
-          `the paper's defaults, not tuned to this task`,
+        `${featureCount} inputs, alpha0 ${fmtSetting(state.autostepConfig.initialStepSize)}, ` +
+          `mu ${fmtSetting(state.autostepConfig.metaStepSize)}, tau ${fmtCount(state.autostepConfig.timeScale)}: ` +
+          AUTOSTEP_NOTE,
       ],
       ["rolling window", `${rollingWindow} samples`],
       ["data", "synthetic, generated in the browser"],
@@ -426,7 +463,7 @@ export function createExperiment(wasm) {
       nodes.failure.append(
         el("p", {}, [
           el("strong", { text: `${state.failure.learner} failed on sample ${fmtCount(state.failure.sample)}.` }),
-          ` ${state.failure.cause}. Neither learner learned from that sample, so every panel below stays at sample ${fmtCount(state.sample)}, the last one both completed. Choose Reset to start a fresh run.`,
+          ` ${state.failure.cause}. No learner learned from that sample, so every panel below stays at sample ${fmtCount(state.sample)}, the last one all three completed. Choose Reset to start a fresh run.`,
         ]),
       );
     }
@@ -583,6 +620,11 @@ export function createExperiment(wasm) {
     }
   }
 
+  /** The core reports 0 before the first sample. That is no measurement, not zero error. */
+  function measured(value) {
+    return state.sample === 0 ? null : value;
+  }
+
   function renderMetrics() {
     fillPairs(nodes.metricsPairs, [
       ["completed samples", fmtCount(state.sample)],
@@ -590,9 +632,9 @@ export function createExperiment(wasm) {
       [`idbd rolling mse (last ${rollingWindow})`, fmtMse(state.idbdRollingMse)],
       [`lms rolling mse (last ${rollingWindow})`, fmtMse(state.lmsRollingMse)],
       [`autostep rolling mse (last ${rollingWindow})`, fmtMse(state.autostepRollingMse)],
-      ["idbd mse, all samples", fmtMse(state.idbdMse)],
-      ["lms mse, all samples", fmtMse(state.lmsMse)],
-      ["autostep mse, all samples", fmtMse(state.autostepMse)],
+      ["idbd mse, all samples", fmtMse(measured(state.idbdMse))],
+      ["lms mse, all samples", fmtMse(measured(state.lmsMse))],
+      ["autostep mse, all samples", fmtMse(measured(state.autostepMse))],
       [`target of sample ${fmtCount(state.sample)}`, fmtSigned(state.target, 5)],
       ["idbd prediction before learning", fmtSigned(state.idbdPrediction, 5)],
       ["idbd pre-update error", fmtSigned(state.idbdError, 5)],
@@ -621,18 +663,35 @@ export function createExperiment(wasm) {
   }
 
   function renderEvents() {
-    const flips = state.events.filter((event) => event.kind === "signFlip").length;
-    const shifts = state.events.length - flips;
+    const first = state.samples.length ? state.samples[0] : 1;
+    const last = state.sample;
+    const shown = state.events.filter((event) => event.sample >= first && event.sample <= last);
+    const flips = shown.filter((event) => event.kind === "signFlip").length;
+    const shifts = shown.length - flips;
+    const span = last === 0 ? "so far" : `in samples ${fmtCount(first)} to ${fmtCount(last)}, the range the charts show`;
     nodes.eventSummary.textContent =
-      `${fmtCount(flips)} sign flips and ${fmtCount(shifts)} relevance shifts in the ` +
-      `retained window. Only relevance shifts are marked on the charts above.`;
+      `${fmtCount(flips)} sign ${flips === 1 ? "flip" : "flips"} and ${fmtCount(shifts)} relevance ` +
+      `${shifts === 1 ? "shift" : "shifts"} ${span}. Only relevance shifts are marked on the charts above.`;
     clear(nodes.eventList);
-    const recent = state.events.slice(-12).reverse();
-    if (!recent.length) {
+    if (state.changePending) {
+      nodes.eventList.append(
+        el("li", {
+          class: "pending",
+          text: `sample ${fmtCount(state.sample + 1)}: relevance will move to the next group of five inputs (you changed the world, applies on the next sample)`,
+        }),
+      );
+    }
+    const recent = shown.slice(-EVENTS_LISTED).reverse();
+    if (!recent.length && !state.changePending) {
       nodes.eventList.append(el("li", { text: "No events yet." }));
     }
     for (const event of recent) {
       nodes.eventList.append(el("li", { text: eventText(event) }));
+    }
+    if (shown.length > recent.length) {
+      nodes.eventList.append(
+        el("li", { class: "more", text: `${fmtCount(recent.length)} newest of ${fmtCount(shown.length)} shown. Export run lists them all.` }),
+      );
     }
   }
 
@@ -710,7 +769,7 @@ export function createExperiment(wasm) {
         autostep: {
           numFeatures: featureCount,
           ...state.autostepConfig,
-          selection: "the paper's defaults, not tuned to this task",
+          selection: AUTOSTEP_NOTE,
         },
         requestedChanges: state.requestedChanges,
       },
@@ -839,13 +898,11 @@ export function createExperiment(wasm) {
   }
 
   async function loadRunFile(file) {
-    const previous = settings;
     try {
       const { settings: loaded, plan } = parseRun(await file.text(), file.name);
-      settings = loaded;
-      build(plan);
+      build(plan, loaded);
+      showSettingsError(null);
     } catch (error) {
-      settings = previous;
       loadError = error instanceof Error ? error.message : String(error);
       renderReplayNote();
     }
@@ -893,13 +950,18 @@ export function createExperiment(wasm) {
   });
   nodes.preset.addEventListener("change", () => {
     describePreset();
-    settings = { ...settings, preset: nodes.preset.value };
-    build();
+    build(null, { ...settings, preset: nodes.preset.value });
+    showSettingsError(null);
   });
   nodes.apply.addEventListener("click", () => {
-    settings = readSettings();
+    try {
+      build(null, readSettings());
+    } catch (error) {
+      showSettingsError(error);
+      return;
+    }
+    showSettingsError(null);
     showSettings();
-    build();
   });
 
   return {

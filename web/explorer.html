@@ -178,6 +178,7 @@
               Apply and start a new run
             </button>
             <p class="note">Changing any setting above starts a new run from sample 0.</p>
+            <p class="notice error" id="settings-error" role="alert" hidden></p>
           </div>
         </div>
 
@@ -214,12 +215,13 @@
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
             <div class="legend" id="error-legend"></div>
-            <div class="chart" id="error-chart"></div>
+            <div class="chart" id="error-chart" aria-label="Prediction error chart. Arrow keys read past values."></div>
+            <p class="chart-readout mono" id="error-readout" aria-live="polite" hidden></p>
             <p class="note">
-              The chart keeps the most recent 2,000 samples. A run starts both learners
-              at zero weights, so its first samples include an initial transient. This
-              single run on synthetic data does not show that either rule is better in
-              general.
+              The chart keeps the most recent 2,000 samples. A run starts all three
+              learners at zero weights, so its first samples include an initial transient.
+              This single run on synthetic data does not show that any one rule is better
+              in general.
             </p>
           </div>
 
@@ -235,7 +237,8 @@
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
             <div class="legend" id="alpha-legend"></div>
-            <div class="chart" id="alpha-chart"></div>
+            <div class="chart" id="alpha-chart" aria-label="Step size chart. Arrow keys read past values."></div>
+            <p class="chart-readout mono" id="alpha-readout" aria-live="polite" hidden></p>
           </div>
 
           <div class="panel" id="events-panel">
@@ -262,7 +265,7 @@
                 </h3>
                 <p class="note">
                   The true coefficient is known simulator information, not something
-                  either learner is told.
+                  any learner is told.
                 </p>
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
@@ -275,15 +278,16 @@
           <div class="panel" id="table-panel">
             <div class="panel-head">
               <div>
-                <h3 class="panel-title">Exact values</h3>
+                <h3 class="panel-title">Values</h3>
                 <p class="note">
-                  The same state the charts draw, as numbers. Copy from here rather than
-                  reading values off a mark.
+                  The same state the charts draw, as numbers rounded for reading. Export run
+                  saves every value at full precision.
                 </p>
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
-            <dl class="pairs" id="metrics-pairs"></dl>
+            <dl class="pairs metrics" id="metrics-pairs"></dl>
+            <p class="scroll-hint note" aria-hidden="true">Scroll the table sideways for every column &rarr;</p>
             <div class="table-scroll" tabindex="0" role="region" aria-label="Per-input state table">
               <table class="data-table" id="state-table">
                 <caption class="visually-hidden">

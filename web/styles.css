@@ -694,7 +694,26 @@ main,
 }
 
 .chart.timeline svg {
-  height: 72px;
+  height: 44px;
+}
+
+.chart[tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chart-readout {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+/* Sign flips come every 20 samples on the paper task, so each tick is faint and a dense
+   run reads as a band. The event list carries the individual values. */
+.flip-mark {
+  stroke: var(--truth);
+  stroke-width: 1;
+  opacity: 0.45;
 }
 
 .chart.sparkline svg {
@@ -753,12 +772,12 @@ main,
   fill: none;
   stroke: var(--ink-3);
   stroke-width: 1;
-  opacity: 0.75;
 }
 
+/* 0.7 keeps the dashed lines at 3.1:1 against the panel, the WCAG minimum for marks. */
 .alpha-line.irrelevant {
   stroke-dasharray: 9 5;
-  opacity: 0.4;
+  opacity: 0.7;
 }
 
 .alpha-line.selected {
@@ -805,8 +824,40 @@ main,
   font-family: var(--mono);
   font-size: 0.75rem;
   color: var(--ink-2);
-  max-height: 9rem;
+  max-height: 10.5rem;
   overflow-y: auto;
+  padding-bottom: var(--step-3);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent);
+}
+
+.event-list .pending {
+  color: var(--warn);
+}
+
+.event-list .more {
+  color: var(--ink-3);
+}
+
+.notice.error {
+  margin: 0;
+  border-left-color: var(--warn);
+}
+
+.scroll-hint {
+  display: none;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .scroll-hint {
+    display: block;
+  }
+}
+
+@media (min-width: 901px) {
+  .pairs.metrics {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
 }
 
 .table-scroll {

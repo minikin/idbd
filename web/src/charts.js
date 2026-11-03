@@ -93,7 +93,15 @@ function mseTick(value) {
   return Math.abs(value) >= 0.01 ? value.toFixed(3) : value.toExponential(1);
 }
 
+/** The empty-state line for a time chart, which needs two samples to draw a line. */
+function waiting(count) {
+  return count === 0
+    ? "No completed samples yet. Choose Step or Run."
+    : "One sample so far. The line starts at sample 2.";
+}
+
 function emptyState(container, height, message, measured) {
+  inspection.set(container, null);
   const { root, width } = frame(container, height, { top: 0, right: 0, bottom: 0, left: 0 }, measured);
   root.setAttribute("aria-label", message);
   root.append(
@@ -132,6 +140,72 @@ function eventMarks(group, events, xOf, top, bottom) {
   }
 }
 
+function indexAt(x, geometry, count) {
+  const ratio = (x - geometry.margin.left) / geometry.plotWidth;
+  return Math.min(count - 1, Math.max(0, Math.round(ratio * (count - 1))));
+}
+
+/**
+ * Keyboard reading for a time chart: the container takes focus, arrow keys move a
+ * crosshair and a visible readout shows the same values the pointer tooltip does. The
+ * position is kept as an offset from the newest sample, so it holds while a run adds
+ * samples and the charts redraw.
+ */
+export const inspection = {
+  charts: new WeakMap(),
+  attach(container, readout) {
+    const entry = { readout, chart: null, back: null };
+    this.charts.set(container, entry);
+    container.tabIndex = 0;
+    container.addEventListener("keydown", (event) => {
+      if (!entry.chart) {
+        return;
+      }
+      const last = entry.chart.count - 1;
+      const index = entry.back === null ? last : Math.max(0, last - entry.back);
+      const step = event.shiftKey ? 10 : 1;
+      const moves = {
+        ArrowLeft: index - step,
+        ArrowRight: index + step,
+        Home: 0,
+        End: last,
+      };
+      if (event.key in moves) {
+        event.preventDefault();
+        entry.back = last - Math.max(0, Math.min(last, moves[event.key]));
+        this.show(entry);
+      } else if (event.key === "Escape") {
+        this.clear(entry);
+      }
+    });
+    container.addEventListener("blur", () => this.clear(entry));
+  },
+  set(container, chart) {
+    const entry = this.charts.get(container);
+    if (!entry) {
+      return;
+    }
+    entry.chart = chart;
+    if (!chart) {
+      this.clear(entry);
+    } else if (entry.back !== null) {
+      this.show(entry);
+    }
+  },
+  show(entry) {
+    const index = Math.max(0, entry.chart.count - 1 - entry.back);
+    entry.chart.mark(index);
+    entry.readout.textContent = entry.chart.lines(index).join(", ");
+    entry.readout.hidden = false;
+  },
+  clear(entry) {
+    entry.back = null;
+    entry.chart?.mark(null);
+    entry.readout.textContent = "";
+    entry.readout.hidden = true;
+  },
+};
+
 function hitArea(root, geometry, onMove) {
   const { margin, plotWidth, plotHeight } = geometry;
   const area = svg("rect", {
@@ -157,7 +231,7 @@ function hitArea(root, geometry, onMove) {
 export function renderErrorChart(container, data) {
   const { samples, idbd, lms, autostep, events, label, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 240, "No completed samples yet. Choose Step or Run.", measured);
+    emptyState(container, 240, waiting(samples.length), measured);
     return;
   }
   const geometry = frame(container, 240, { top: 18, right: 54, bottom: 30, left: 56 }, measured);
@@ -223,22 +297,52 @@ export function renderErrorChart(container, data) {
 
   eventMarks(root, events, xOf, margin.top, margin.top + plotHeight);
 
-  const path = (values) =>
-    values
-      .map((value, index) => {
-        const y = yOf(Number.isFinite(value) ? value : 0);
-        return `${index === 0 ? "M" : "L"}${xOf(samples[index]).toFixed(2)} ${y.toFixed(2)}`;
-      })
-      .join(" ");
+  // A diverged learner's rolling MSE overflows to infinity. The line stops at its last
+  // finite value and climbs to the top edge, so divergence never reads as zero error.
+  const path = (values) => {
+    let d = "";
+    let drawing = false;
+    values.forEach((value, index) => {
+      const x = xOf(samples[index]).toFixed(2);
+      if (Number.isFinite(value)) {
+        d += `${drawing ? "L" : "M"}${x} ${yOf(value).toFixed(2)}`;
+        drawing = true;
+      } else if (drawing) {
+        d += `L${x} ${margin.top}`;
+        drawing = false;
+      }
+    });
+    return d;
+  };
+  const overflow = (values, className) => {
+    const index = values.findIndex((value) => !Number.isFinite(value));
+    if (index < 0) {
+      return;
+    }
+    const x = xOf(samples[index]);
+    root.append(svg("path", { d: `M${x - 4} ${margin.top + 6} L${x} ${margin.top} L${x + 4} ${margin.top + 6}`, class: className }));
+    root.append(
+      svg("text", {
+        x: Math.min(x + 6, margin.left + plotWidth - 4),
+        y: margin.top + 10,
+        class: "tick-label",
+        text: "overflow",
+      }),
+    );
+  };
   root.append(svg("path", { d: path(autostep), class: "series-autostep" }));
   root.append(svg("path", { d: path(lms), class: "series-lms" }));
   root.append(svg("path", { d: path(idbd), class: "series-idbd" }));
+  overflow(autostep, "series-autostep");
+  overflow(lms, "series-lms");
+  overflow(idbd, "series-idbd");
 
   const last = samples.length - 1;
+  const endY = (value) => (Number.isFinite(value) ? yOf(value) : margin.top) + 3;
   root.append(
     svg("text", {
       x: margin.left + plotWidth + 6,
-      y: yOf(idbd[last]) + 3,
+      y: endY(idbd[last]),
       class: "tick-label",
       fill: IDBD,
       text: "IDBD",
@@ -247,7 +351,7 @@ export function renderErrorChart(container, data) {
   root.append(
     svg("text", {
       x: margin.left + plotWidth + 6,
-      y: yOf(lms[last]) + 3,
+      y: endY(lms[last]),
       class: "tick-label",
       fill: LMS,
       text: "LMS",
@@ -256,7 +360,7 @@ export function renderErrorChart(container, data) {
   root.append(
     svg("text", {
       x: margin.left + plotWidth + 6,
-      y: yOf(autostep[last]) + 3,
+      y: endY(autostep[last]),
       class: "tick-label",
       fill: AUTOSTEP,
       text: "AUTO",
@@ -270,34 +374,38 @@ export function renderErrorChart(container, data) {
     opacity: 0,
   });
   root.append(crosshair);
-  hitArea(root, geometry, (x, pointer) => {
-    const ratio = (x - margin.left) / plotWidth;
-    const index = Math.min(samples.length - 1, Math.max(0, Math.round(ratio * (samples.length - 1))));
+  const lines = (index) => [
+    `sample ${fmtCount(samples[index])}`,
+    `IDBD rolling MSE ${fmtMse(idbd[index])}`,
+    `LMS rolling MSE ${fmtMse(lms[index])}`,
+    `Autostep rolling MSE ${fmtMse(autostep[index])}`,
+  ];
+  const mark = (index) => {
+    if (index === null) {
+      crosshair.setAttribute("opacity", 0);
+      return;
+    }
     const cx = xOf(samples[index]);
     crosshair.setAttribute("x1", cx);
     crosshair.setAttribute("x2", cx);
     crosshair.setAttribute("opacity", 1);
-    tooltip.show(
-      [
-        `sample ${fmtCount(samples[index])}`,
-        `IDBD rolling MSE ${fmtMse(idbd[index])}`,
-        `LMS rolling MSE ${fmtMse(lms[index])}`,
-        `Autostep rolling MSE ${fmtMse(autostep[index])}`,
-      ],
-      pointer.clientX,
-      pointer.clientY,
-    );
+  };
+  hitArea(root, geometry, (x, pointer) => {
+    const index = indexAt(x, geometry, samples.length);
+    mark(index);
+    tooltip.show(lines(index), pointer.clientX, pointer.clientY);
   });
 
   clear(container);
   container.append(root);
+  inspection.set(container, { count: samples.length, lines, mark });
 }
 
 /** Every input's step size against the sample index, on a base-10 log scale. */
 export function renderAlphaChart(container, data) {
   const { samples, series, relevant, selected, events, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 352, "No completed samples yet. Choose Step or Run.", measured);
+    emptyState(container, 352, waiting(samples.length), measured);
     return;
   }
   const geometry = frame(container, 352, { top: 18, right: 16, bottom: 30, left: 56 }, measured);
@@ -321,8 +429,10 @@ export function renderAlphaChart(container, data) {
     emptyState(container, 352, "No step sizes recorded yet.", measured);
     return;
   }
-  low = Math.max(low / 1.6, 1e-10);
-  high = high * 1.6;
+  // Padding on a log scale. A fixed floor would sit above a tiny valid alpha0 and invert
+  // the axis.
+  low /= 1.6;
+  high *= 1.6;
 
   const xMin = samples[0];
   const xMax = samples[samples.length - 1];
@@ -399,23 +509,46 @@ export function renderAlphaChart(container, data) {
     draw(selected);
   }
 
-  hitArea(root, geometry, (x, pointer) => {
-    const ratio = (x - margin.left) / plotWidth;
-    const index = Math.min(samples.length - 1, Math.max(0, Math.round(ratio * (samples.length - 1))));
-    const lines = [`sample ${fmtCount(samples[index])}`];
+  const crosshair = svg("line", {
+    y1: margin.top,
+    y2: margin.top + plotHeight,
+    class: "crosshair",
+    opacity: 0,
+  });
+  root.append(crosshair);
+  const lines = (index) => {
+    const rows = [`sample ${fmtCount(samples[index])}`];
     if (selected >= 0) {
-      lines.push(`x${selected} alpha ${fmtAlpha(series[selected][index])}`);
+      rows.push(`x${selected} alpha ${fmtAlpha(series[selected][index])}`);
     }
     const relevantValues = series.filter((_, i) => relevant[i]).map((values) => values[index]);
     if (relevantValues.length) {
-      lines.push(`relevant inputs ${fmtAlpha(Math.min(...relevantValues))} to ${fmtAlpha(Math.max(...relevantValues))}`);
+      rows.push(`relevant inputs ${fmtAlpha(Math.min(...relevantValues))} to ${fmtAlpha(Math.max(...relevantValues))}`);
     }
-    tooltip.show(lines, pointer.clientX, pointer.clientY);
+    return rows;
+  };
+  const mark = (index) => {
+    if (index === null) {
+      crosshair.setAttribute("opacity", 0);
+      return;
+    }
+    const cx = xOf(samples[index]);
+    crosshair.setAttribute("x1", cx);
+    crosshair.setAttribute("x2", cx);
+    crosshair.setAttribute("opacity", 1);
+  };
+  hitArea(root, geometry, (x, pointer) => {
+    const index = indexAt(x, geometry, samples.length);
+    mark(index);
+    tooltip.show(lines(index), pointer.clientX, pointer.clientY);
   });
 
   clear(container);
   container.append(root);
+  inspection.set(container, { count: samples.length, lines, mark });
 }
+
+const TIMELINE_HEIGHT = 44;
 
 /**
  * A strip of world events over the retained sample window. Sign flips are ticks and
@@ -424,10 +557,10 @@ export function renderAlphaChart(container, data) {
 export function renderTimeline(container, data) {
   const { samples, events, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 72, "No samples yet.", measured);
+    emptyState(container, TIMELINE_HEIGHT, waiting(samples.length), measured);
     return;
   }
-  const geometry = frame(container, 72, { top: 14, right: 16, bottom: 22, left: 16 }, measured);
+  const geometry = frame(container, TIMELINE_HEIGHT, { top: 6, right: 16, bottom: 20, left: 16 }, measured);
   const { root, margin, plotWidth, plotHeight } = geometry;
   root.setAttribute("aria-label", "World events over the retained samples");
 
@@ -467,20 +600,13 @@ export function renderTimeline(container, data) {
       );
       root.append(
         svg("path", {
-          d: `M${x - 5} ${margin.top} L${x + 5} ${margin.top} L${x} ${margin.top + 9} Z`,
+          d: `M${x - 4} ${margin.top} L${x + 4} ${margin.top} L${x} ${margin.top + 7} Z`,
           class: "event-glyph",
         }),
       );
     } else {
       root.append(
-        svg("line", {
-          x1: x,
-          y1: baseline - 9,
-          x2: x,
-          y2: baseline,
-          stroke: "var(--truth)",
-          "stroke-width": 1,
-        }),
+        svg("line", { x1: x, y1: margin.top + 4, x2: x, y2: baseline, class: "flip-mark" }),
       );
     }
   }
@@ -492,7 +618,7 @@ export function renderTimeline(container, data) {
 export function renderSparkline(container, data) {
   const { samples, values, name, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 90, "No step-size history yet.", measured);
+    emptyState(container, 90, waiting(samples.length), measured);
     return;
   }
   const geometry = frame(container, 90, { top: 10, right: 12, bottom: 18, left: 50 }, measured);
@@ -504,7 +630,7 @@ export function renderSparkline(container, data) {
     emptyState(container, 90, "No step-size history yet.", measured);
     return;
   }
-  const low = Math.max(Math.min(...positive) / 1.6, 1e-10);
+  const low = Math.min(...positive) / 1.6;
   const high = Math.max(...positive) * 1.6;
   const xOf = (index) => margin.left + (index / Math.max(1, samples.length - 1)) * plotWidth;
   const logLow = Math.log10(low);

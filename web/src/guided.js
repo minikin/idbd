@@ -25,34 +25,64 @@ export function createGuided(wasm) {
   let walk = new wasm.Walkthrough(GUIDED_SEED);
   let selected = 0;
   let snapshot = null;
+  let choices = [];
 
   function build() {
+    walk.free();
     walk = new wasm.Walkthrough(GUIDED_SEED);
     walk.advance();
     render();
   }
 
-  function select(index) {
+  function select(index, focus = false) {
     selected = index;
     render();
+    if (focus) {
+      choices[index].focus();
+    }
   }
 
-  function renderChoice() {
+  // Built once and updated in place: rebuilding the buttons on every render drops
+  // keyboard focus to the page body.
+  function buildChoice() {
     clear(nodes.choice);
-    for (let index = 0; index < walk.numFeatures(); index += 1) {
+    choices = [];
+    const count = walk.numFeatures();
+    for (let index = 0; index < count; index += 1) {
       const name = featureName(index);
       const button = el("button", {
         type: "button",
         class: "button",
         role: "radio",
-        "aria-checked": index === selected ? "true" : "false",
         "aria-label": `Follow input ${name} through the update`,
         "data-feature": index,
         text: name,
       });
       button.addEventListener("click", () => select(index));
+      button.addEventListener("keydown", (event) => {
+        const moves = {
+          ArrowRight: index + 1,
+          ArrowDown: index + 1,
+          ArrowLeft: index - 1,
+          ArrowUp: index - 1,
+          Home: 0,
+          End: count - 1,
+        };
+        if (event.key in moves) {
+          event.preventDefault();
+          select((moves[event.key] + count) % count, true);
+        }
+      });
       nodes.choice.append(button);
+      choices.push(button);
     }
+  }
+
+  function renderChoice() {
+    choices.forEach((button, index) => {
+      button.setAttribute("aria-checked", index === selected ? "true" : "false");
+      button.tabIndex = index === selected ? 0 : -1;
+    });
   }
 
   function rung(step) {
@@ -123,7 +153,7 @@ export function createGuided(wasm) {
       {
         label: "Error, also measured before learning: target minus prediction",
         value: fmtSigned(error, 4),
-        note: `${fmtSigned(target, 4)} minus ${fmtSigned(prediction, 4)}. Both learners in the experiment below are scored on this pre-update error.`,
+        note: `${fmtSigned(target, 4)} minus ${fmtSigned(prediction, 4)}. All three learners in the experiment below are scored on this pre-update error.`,
       },
       {
         label: `Trace h of ${name} before sample ${sample}`,
@@ -217,6 +247,7 @@ export function createGuided(wasm) {
     document.getElementById("run").focus();
   });
 
+  buildChoice();
   build();
 
   return { snapshot: () => snapshot };

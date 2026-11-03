@@ -45,6 +45,17 @@ export function fmtAlpha(value) {
   return Math.abs(value) >= 1e-3 ? value.toFixed(6) : value.toExponential(3);
 }
 
+/**
+ * Formats a setting the visitor typed, such as theta or a step size, with up to six
+ * significant digits. Fixed decimals would print a valid 0.000001 as 0.0000.
+ */
+export function fmtSetting(value) {
+  if (!Number.isFinite(value)) {
+    return "not finite";
+  }
+  return String(Number(value.toPrecision(6)));
+}
+
 /** Formats a mean squared error. */
 export function fmtMse(value) {
   if (value === null || value === undefined) {

@@ -6,8 +6,8 @@ test("D07 both learners' configurations are displayed", async ({ page }) => {
   await openApp(page);
 
   const header = await page.locator("#run-header").innerText();
-  expect(header).toContain("20 inputs, alpha0 0.050000, theta 0.0100, no bounds");
-  expect(header).toContain("fixed-step LMS, 20 inputs, alpha 0.0300");
+  expect(header).toContain("20 inputs, alpha0 0.05, theta 0.01, no bounds");
+  expect(header).toContain("fixed-step LMS, 20 inputs, alpha 0.03");
   // The step size is labeled with how it was chosen, never as "tuned" on its own.
   expect(header).toContain("best value in our Sutton 1992 Experiment 1 grid");
   expect(header).toContain("20 seeds");
@@ -17,7 +17,8 @@ test("D07 the rolling mean squared error is labeled with its window", async ({ p
   await openApp(page);
 
   const subtitle = await page.locator("#error-subtitle").innerText();
-  expect(subtitle).toContain("min(100, completed)");
+  expect(subtitle).toContain("last 100 samples (fewer at the start of a run)");
+  expect(subtitle).toContain("all three learners");
   expect(subtitle).toContain("pre-update");
 
   const legend = await page.locator("#error-legend").innerText();
@@ -36,7 +37,7 @@ test('D07 no "tuned LMS" claim appears anywhere', async ({ page }) => {
 
   const text = (await page.locator("body").innerText()).toLowerCase();
   expect(text).not.toContain("tuned lms");
-  expect(text).toContain("does not show that either rule is better in general");
+  expect(text).toContain("does not show that any one rule is better in general");
 });
 
 test("D07 both learners are scored on the same stream", async ({ page }) => {
