@@ -1,11 +1,13 @@
 # Fuzzing
 
-Two [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) targets exercise the public API of `idbd` with arbitrary inputs:
+Three [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) targets exercise the public API of `idbd` with arbitrary inputs:
 
 - `update`: any configuration, including bounds, and any stream of samples, some with the wrong length. An accepted update must leave a state that `Idbd::from_state` accepts and restores exactly, and `predict` must agree with the prediction the update reports. A rejected update must leave the learner unchanged.
 - `from_state`: any checkpoint. `Idbd::from_state` either rejects it or restores it exactly, and an update of the restored learner either succeeds or changes nothing.
 
-Neither target may panic.
+- `autostep`: the same properties for `idbd::autostep::Autostep`, with any initial step size, mu and tau, plus an arbitrary checkpoint that must be rejected or restored exactly.
+
+No target may panic.
 
 ```sh
 cd fuzz
