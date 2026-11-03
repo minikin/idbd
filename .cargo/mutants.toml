@@ -24,4 +24,8 @@ exclude_re = [
   # `abs > 0.0` versus `abs >= 0.0` only differs at zero, where both paths print "0.000"
   # after trailing zeros are trimmed to three decimals.
   "report\\.rs.*replace > with >= in magnitude",
+  # `uniform() < p` versus `<=` only differs when a draw equals p exactly. Draws are
+  # multiples of 2^-53 and p is 1/60 or 0, so this happens with probability 2^-53 per
+  # draw at most and never in any tested or published run.
+  "house\\.rs.*replace < with <= in House::next_sample",
 ]
