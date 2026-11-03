@@ -221,7 +221,7 @@
           <div class="slow-top" aria-live="polite">
             <div class="stat-block"><span class="muted">Reading</span><span class="mono value" id="slow-reading">0</span></div>
             <div class="stat-block"><span class="muted">IDBD guessed</span><span class="mono value idbd" id="slow-guess">-</span></div>
-            <div class="stat-block"><span class="muted">Room really changed by</span><span class="mono value" id="slow-actual">-</span></div>
+            <div class="stat-block"><span class="muted">The room really changed by</span><span class="mono value" id="slow-actual">-</span></div>
             <div class="stat-block"><span class="muted">Miss</span><span class="mono value" id="slow-miss">-</span></div>
           </div>
           <p class="slow-summary" id="slow-summary">Press Next reading to start.</p>
@@ -287,13 +287,13 @@
             </div>
             <div class="lanes" id="lanes"></div>
             <figcaption class="stats">
-              <div class="stat"><span class="muted">IDBD, average squared miss</span><span class="mono value idbd" id="run-idbd">-</span></div>
-              <div class="stat"><span class="muted">Fixed speed <span id="run-lms-rate">0.06</span>, average squared miss</span><span class="mono value lms" id="run-lms">-</span></div>
+              <div class="stat"><span class="muted">IDBD's typical miss</span><span class="mono value idbd" id="run-idbd">-</span></div>
+              <div class="stat"><span class="muted">Fixed speed's typical miss</span><span class="mono value lms" id="run-lms">-</span></div>
               <p class="muted small">
                 These two numbers are this run's. Over the 10 evaluation seeds of
                 <a href="https://github.com/minikin/idbd/blob/main/docs/results/house/README.md">scenario E06</a>,
-                IDBD averaged 0.543 against 0.630 for the best fixed speed and was lower on all 10. In
-                the same house with nothing changing, the fixed speed won on all 10.
+                IDBD's typical miss was 0.74 &deg;C against 0.79 &deg;C for the best fixed speed, and it
+                was closer on all 10. In the same house with nothing changing, the fixed speed won on all 10.
               </p>
             </figcaption>
           </figure>
@@ -308,8 +308,8 @@
 
         <ol class="how card" aria-label="How to play">
           <li><strong>You guess too.</strong> Every reading, your guess is each sensor's value times your slider, added up.</li>
-          <li><strong>A slider is your trust.</strong> 1.0 means "when this sensor goes up by 1, the room warms by 1". 0 means "ignore it". Negative means it cools the room.</li>
-          <li><strong>Lower score wins.</strong> The score is the average squared miss over the last 300 readings. Bad noise alone scores about 0.25.</li>
+          <li><strong>A slider says what a sensor does.</strong> +1.0 means "when this sensor goes up by 1, the room warms by 1 &deg;C". 0 means "ignore it". Below 0 means it cools the room.</li>
+          <li><strong>Closest wins.</strong> Each score is how far off that player's guesses are, typically, over the last 300 readings. Random noise keeps even a perfect player about 0.50 &deg;C off.</li>
         </ol>
 
         <div class="levels" role="group" aria-label="Level">
@@ -339,8 +339,8 @@
           <div class="game-main">
             <div class="scores" id="scores" aria-live="polite" aria-atomic="true"></div>
             <div class="card">
-              <div class="card-head"><span>How far off each player is, smoothed over 40 readings</span><span class="mono" id="game-count">reading 0</span></div>
-              <svg viewBox="0 0 600 180" class="race-chart" id="game-chart" role="img" aria-label="Smoothed squared miss over the last 600 readings for you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
+              <div class="card-head"><span>How far off each player is, in &deg;C, over the last 40 readings</span><span class="mono" id="game-count">reading 0</span></div>
+              <svg viewBox="0 0 600 180" class="race-chart" id="game-chart" role="img" aria-label="Typical miss in degrees over the last 600 readings for you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
                 <line x1="0" y1="179" x2="600" y2="179" class="zero"></line>
                 <path id="game-changes" class="changes" d=""></path>
                 <polyline id="game-lms" class="line-lms" points=""></polyline>
@@ -360,10 +360,16 @@
 
         <div class="card reveal">
           <div class="card-head">
-            <span class="strong">What IDBD has worked out</span>
-            <button type="button" class="button small" id="reveal" aria-expanded="false" aria-controls="learned">Show IDBD's trust and speeds</button>
+            <span class="strong">What IDBD has worked out: what each sensor does, and how fast it is still learning about it</span>
+            <button type="button" class="button small" id="reveal" aria-expanded="false" aria-controls="learned-wrap">Show IDBD's trust and speeds</button>
           </div>
-          <div id="learned" class="learned" hidden></div>
+          <div id="learned-wrap" hidden>
+            <div id="learned" class="learned"></div>
+            <p class="muted small learned-note">
+              A sensor can barely matter right now and still be learned about fast. IDBD keeps a high
+              speed for sensors whose effect keeps changing, so it can follow the next change.
+            </p>
+          </div>
         </div>
 
         <p class="mono faint small" id="game-note">

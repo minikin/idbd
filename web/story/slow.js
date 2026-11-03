@@ -88,9 +88,9 @@ export function createSlowMotion(wasm, house, nodes) {
       return;
     }
     const miss = last.target - last.guess;
-    nodes.guess.textContent = fmt(last.guess);
-    nodes.actual.textContent = fmt(last.target);
-    nodes.miss.textContent = fmt(miss);
+    nodes.guess.textContent = `${fmt(last.guess)} \u00b0C`;
+    nodes.actual.textContent = `${fmt(last.target)} \u00b0C`;
+    nodes.miss.textContent = `${fmt(miss)} \u00b0C`;
 
     let biggest = 0;
     let up = 0;
@@ -109,8 +109,8 @@ export function createSlowMotion(wasm, house, nodes) {
     });
     const change = last.weights[biggest] - last.before.weights[biggest];
     nodes.summary.textContent =
-      `IDBD guessed ${fmt(last.guess)}, the room changed by ${fmt(last.target)}, so it missed by ` +
-      `${fmt(miss)}. It moved its trust in the ${house.sensors[biggest]} the most, by ${fmt(change, 3)}. ` +
+      `IDBD guessed ${fmt(last.guess)} \u00b0C, the room changed by ${fmt(last.target)} \u00b0C, so it missed by ` +
+      `${fmt(miss)} \u00b0C. It moved its trust in the ${house.sensors[biggest]} the most, by ${fmt(change, 3)}. ` +
       `${up} of ${rows.length} speeds went up: those sensors' corrections pointed the same way as ` +
       `their recent ones. The rest went down.`;
   }

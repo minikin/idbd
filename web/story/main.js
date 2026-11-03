@@ -240,9 +240,8 @@ function fillLanes(house) {
   lanes.append(axis, axisLabel, speedLabel);
 
   const result = { idbd: idbd / LANES_SHOWN, lms: lms / LANES_SHOWN, strong };
-  $("run-idbd").textContent = result.idbd.toFixed(2);
-  $("run-lms").textContent = result.lms.toFixed(2);
-  $("run-lms-rate").textContent = String(house.lmsStepSize);
+  $("run-idbd").textContent = `${Math.sqrt(result.idbd).toFixed(2)} \u00b0C`;
+  $("run-lms").textContent = `${Math.sqrt(result.lms).toFixed(2)} \u00b0C`;
   return result;
 }
 
@@ -280,6 +279,7 @@ async function main() {
     changes: $("game-changes"),
     reveal: $("reveal"),
     learned: $("learned"),
+    learnedWrap: $("learned-wrap"),
     failure: $("game-failure"),
   });
 

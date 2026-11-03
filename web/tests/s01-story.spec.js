@@ -45,8 +45,8 @@ test("S01 the chapters show step sizes and errors computed by the crate", async 
   const labels = await page.$$eval("#desk .fader-label .mono", (nodes) => nodes.map((n) => n.textContent));
   expect(labels).toEqual(s.desk.map((a) => a.toFixed(3)));
 
-  await expect(page.locator("#run-idbd")).toHaveText(s.lanes.idbd.toFixed(2));
-  await expect(page.locator("#run-lms")).toHaveText(s.lanes.lms.toFixed(2));
+  await expect(page.locator("#run-idbd")).toHaveText(`${Math.sqrt(s.lanes.idbd).toFixed(2)} \u00b0C`);
+  await expect(page.locator("#run-lms")).toHaveText(`${Math.sqrt(s.lanes.lms).toFixed(2)} \u00b0C`);
   expect(errors).toEqual([]);
 });
 
@@ -57,9 +57,9 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-reading")).toHaveText("1");
   const one = (await story(page)).slow;
   const sign = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`;
-  await expect(page.locator("#slow-guess")).toHaveText(sign(one.last.guess));
-  await expect(page.locator("#slow-actual")).toHaveText(sign(one.last.target));
-  await expect(page.locator("#slow-miss")).toHaveText(sign(one.last.target - one.last.guess));
+  await expect(page.locator("#slow-guess")).toHaveText(`${sign(one.last.guess)} \u00b0C`);
+  await expect(page.locator("#slow-actual")).toHaveText(`${sign(one.last.target)} \u00b0C`);
+  await expect(page.locator("#slow-miss")).toHaveText(`${sign(one.last.target - one.last.guess)} \u00b0C`);
   await expect(page.locator("#slow-summary")).toContainText("IDBD guessed");
 
   await page.click("#slow-run");
@@ -82,10 +82,10 @@ test("S03 level 1 rewards matching the truth, and Reset clears everything", asyn
   for (const [sensor, value] of [[0, 1.2], [1, 0.9], [2, -1.1]]) await setSlider(page, sensor, value);
   const tuned = (await story(page)).game;
   expect(tuned.costs.every((c) => c < 0.005)).toBe(true);
-  await expect(page.locator("#trust-0-cost")).toHaveText("spot on");
+  await expect(page.locator("#trust-0-cost")).toHaveText("warms the room a lot \u2713 right");
 
   await setSlider(page, 3, 1.5);
-  await expect(page.locator("#trust-3-cost")).toHaveText("costs you 2.25 per reading, try lower");
+  await expect(page.locator("#trust-3-cost")).toHaveText("warms the room a lot \u00b7 \u2193 should be lower");
 
   await page.click("#game-run");
   await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 20000 });
@@ -110,7 +110,7 @@ test("S04 level 2 races on the switching house with its own fixed speed", async 
   const s = await story(page);
   expect(s.game.level).toBe("changing");
   expect(s.game.lmsStepSize).toBe(s.house.lmsStepSize);
-  await expect(page.locator("#scores .note").nth(2)).toContainText(String(s.house.lmsStepSize));
+  await expect(page.locator("#scores .note").nth(2)).toContainText("one speed for every sensor");
 });
 
 test("S05 IDBD's trust and speeds stay hidden until the visitor asks", async ({ page }) => {
@@ -121,7 +121,7 @@ test("S05 IDBD's trust and speeds stay hidden until the visitor asks", async ({ 
   await expect(page.locator("#reveal")).toHaveAttribute("aria-expanded", "true");
   const speeds = await page.$$eval("#learned .item .faint", (nodes) => nodes.map((n) => n.textContent));
   const game = (await story(page)).game;
-  expect(speeds).toEqual(game.stepSizes.map((a) => `speed ${a.toFixed(3)}`));
+  speeds.forEach((text, s) => expect(text).toContain(`(speed ${game.stepSizes[s].toFixed(3)})`));
 });
 
 test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => {
