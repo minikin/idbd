@@ -9,7 +9,7 @@ const WARMUP = 5000;
 const TICK_MS = 100;
 /** One round is 600 readings, a minute at 10 readings a second. Scores cover the round. */
 const ROUND = 600;
-const SMOOTH = 40;
+const SMOOTH = 100;
 const CHART = ROUND;
 /** Readings before a leader is named, so one lucky guess does not win. */
 const MIN_SCORED = 50;
@@ -21,10 +21,10 @@ const START_SPEED = 0.05;
 const NOISE_FLOOR = 0.5;
 
 const LEVEL_NOTES = {
-  still:
-    "Nothing changes in this house. Set every slider right and you will be off by about 0.50 \u00b0C, the noise alone.",
   changing:
-    "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. You will lose this one, and so will the fixed speed. Keeping up is what IDBD is for.",
+    "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. Keeping up with that is what IDBD is for. Try to beat it.",
+  still:
+    "Nothing changes in this house, so one well-chosen fixed speed is enough, and it usually edges out IDBD here. Set every slider right and you can beat both.",
 };
 
 const LEARNED_NOTES = {
@@ -37,13 +37,13 @@ const LEARNED_NOTES = {
 /** The verdict at the end of a round, by level and winner. */
 const VERDICTS = {
   still: {
-    you: "You win. You found how much each sensor matters, and in a calm house that never changes. Now try Level 2, where it does.",
-    idbd: "IDBD wins this round, narrowly. In a calm house the fixed speed usually edges ahead. Try Level 2 to see where IDBD pulls away.",
-    lms: "The fixed speed wins. That is expected: in a calm house one well-chosen speed is enough, and IDBD pays a little for staying ready to change. Now try Level 2.",
+    you: "You win. You found how much each sensor matters, and in a calm house that never changes.",
+    idbd: "IDBD wins this round, narrowly. In a calm house the fixed speed usually edges ahead.",
+    lms: "The fixed speed wins. That is expected: in a calm house one well-chosen speed is enough, and IDBD pays a little for staying ready to change.",
   },
   changing: {
     you: "You beat both learners while the house kept changing. That is rare.",
-    idbd: "IDBD wins. It kept up by learning fast only about the sun, the oven and the front door.",
+    idbd: "IDBD wins. It kept up by learning fast only about the sun, the oven and the front door. Now try Level 2, a calm house, where that edge does not help.",
     lms: "The fixed speed won this round. Over many rounds of this house IDBD comes out ahead: closer in all 10 of our simulated runs.",
   },
 };
@@ -72,14 +72,29 @@ function paintRail(input) {
   input.style.setProperty("--hi", `${Math.max(50, at)}%`);
 }
 
+/**
+ * Accuracy from 0 to 1. 1 is the best any guess can do, missing only by the noise. 0 is
+ * no better than always guessing "no change", measured on the same readings.
+ */
+function accuracy(squaredMisses, squaredTargets) {
+  if (!squaredMisses.length) return null;
+  const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
+  const floor = NOISE_FLOOR ** 2;
+  const nothing = mean(squaredTargets);
+  if (nothing <= floor) return null;
+  return Math.max(0, Math.min(1, (nothing - mean(squaredMisses)) / (nothing - floor)));
+}
+
 export function createGame(wasm, house, nodes) {
-  let level = "still";
+  let level = "changing";
   let race = null;
   let running = false;
   let timer = null;
   let trustValues = house.sensors.map(() => 0);
   let scored = 0;
   let squared = { you: [], idbd: [], lms: [] };
+  let targets = [];
+  let recentTargets = [];
   let recent = { you: [], idbd: [], lms: [] };
   let series = { you: [], idbd: [], lms: [] };
   let changes = [];
@@ -139,16 +154,18 @@ export function createGame(wasm, house, nodes) {
     who.append(swatch, player.name);
     const prefix = document.createElement("span");
     prefix.className = "prefix";
-    prefix.textContent = "typically off by";
+    prefix.textContent = "accuracy";
     const value = document.createElement("span");
     value.className = "value";
+    const degrees = document.createElement("span");
+    degrees.className = "degrees";
     const caption = document.createElement("span");
     caption.className = "note";
     const lead = document.createElement("span");
     lead.className = "lead";
-    root.append(who, prefix, value, caption, lead);
+    root.append(who, prefix, value, degrees, caption, lead);
     nodes.scores.append(root);
-    return { ...player, root, value, captionNode: caption, lead };
+    return { ...player, root, value, degrees, captionNode: caption, lead };
   });
 
   const learned = house.sensors.map((name, sensor) => {
@@ -180,19 +197,14 @@ export function createGame(wasm, house, nodes) {
   floorLabel.setAttribute("class", "chart-label");
   floorLabel.setAttribute("x", "596");
   floorLabel.setAttribute("text-anchor", "end");
-  floorLabel.textContent = "noise alone";
-  const youOff = document.createElementNS(SVG, "text");
-  youOff.setAttribute("class", "chart-label you-label");
-  youOff.setAttribute("x", "596");
-  youOff.setAttribute("y", "14");
-  youOff.setAttribute("text-anchor", "end");
-  const ticks = [0.5, 1, 1.5, 2].map((value) => {
+  floorLabel.textContent = "as good as possible";
+  const ticks = [0, 0.5, 1].map((value) => {
     const text = document.createElementNS(SVG, "text");
     text.setAttribute("class", "chart-label");
     text.setAttribute("x", "2");
     return { text, value };
   });
-  nodes.chart.append(floorLabel, youOff, ...ticks.map((t) => t.text));
+  nodes.chart.append(floorLabel, ...ticks.map((t) => t.text));
 
   function newRace() {
     if (race) race.free();
@@ -228,6 +240,8 @@ export function createGame(wasm, house, nodes) {
     }
     scored = 0;
     squared = { you: [], idbd: [], lms: [] };
+    targets = [];
+    recentTargets = [];
     recent = { you: [], idbd: [], lms: [] };
     series = { you: [], idbd: [], lms: [] };
     changes = [];
@@ -264,10 +278,12 @@ export function createGame(wasm, house, nodes) {
     let you = 0;
     for (let s = 0; s < x.length; s += 1) you += trustValues[s] * x[s];
     const misses = { you: (y - you) ** 2, idbd: (y - race.idbdPrediction()) ** 2, lms: (y - race.lmsPrediction()) ** 2 };
+    targets.push(y * y);
+    keep(recentTargets, y * y, SMOOTH);
     for (const key of Object.keys(misses)) {
       squared[key].push(misses[key]);
       keep(recent[key], misses[key], SMOOTH);
-      keep(series[key], typical(recent[key]), CHART);
+      keep(series[key], accuracy(recent[key], recentTargets) ?? 0, CHART);
     }
     keep(changes, race.switched().length > 0, CHART);
     scored += 1;
@@ -285,19 +301,29 @@ export function createGame(wasm, house, nodes) {
     timer = null;
     const errors = scores();
     const order = Object.keys(errors).sort((a, b) => errors[a] - errors[b]);
-    const [first, second] = order;
-    const names = { you: "You", idbd: "IDBD", lms: "The fixed speed" };
-    const closer = Math.round((1 - errors[first] / errors[second]) * 100);
+    const [first] = order;
+    const names = { you: "You", idbd: "IDBD", lms: "Fixed speed" };
+    const acc = accuracies();
+    const table = order.map((key) => `${names[key]} ${Math.round((acc[key] ?? 0) * 100)}%`).join(", ");
     const switches = changes.filter(Boolean).length;
     const changed = level === "changing" ? ` What matters changed ${switches} times this round.` : "";
-    nodes.verdict.textContent =
-      `${VERDICTS[level][first]} ${names[first]} ended ${closer}% closer than ${names[second].toLowerCase()}.${changed}`;
+    nodes.verdict.textContent = `${VERDICTS[level][first]} Accuracy: ${table}.${changed}`;
     nodes.verdict.hidden = false;
     render();
   }
 
+  /** Typical miss in degrees, per player. */
   function scores() {
     return { you: typical(squared.you), idbd: typical(squared.idbd), lms: typical(squared.lms) };
+  }
+
+  /** Accuracy over the round, per player. Higher is better. */
+  function accuracies() {
+    return {
+      you: accuracy(squared.you, targets),
+      idbd: accuracy(squared.idbd, targets),
+      lms: accuracy(squared.lms, targets),
+    };
   }
 
   function costs() {
@@ -329,9 +355,12 @@ export function createGame(wasm, house, nodes) {
     const errors = scores();
     const leader =
       scored >= MIN_SCORED ? Object.keys(errors).reduce((a, b) => (errors[a] <= errors[b] ? a : b)) : null;
+    const acc = accuracies();
     for (const player of players) {
       const value = errors[player.key];
-      player.value.textContent = value === null ? "--" : `${value.toFixed(2)} \u00b0C`;
+      const share = acc[player.key];
+      player.value.textContent = share === null ? "--" : `${Math.round(share * 100)}%`;
+      player.degrees.textContent = value === null ? "" : `usually off by ${value.toFixed(2)} \u00b0C`;
       player.root.className = leader === player.key ? `score lead-${player.key}` : "score";
       player.captionNode.textContent = player.caption();
       const lead = finished ? "winner" : "in the lead";
@@ -344,38 +373,23 @@ export function createGame(wasm, house, nodes) {
   }
 
   function renderChart() {
-    // The axis follows the two learners. A visitor far off the scale is drawn up to the
-    // top and marked, not allowed to flatten everyone else.
-    const learners = [...series.idbd, ...series.lms];
-    const peak = Math.max(0.8, learners.length ? Math.max(...learners) : 0) * 1.25;
-    const toY = (v) => (178 - (Math.min(v, peak) / peak) * 170).toFixed(1);
-    // The first 40 units are a gutter for the degree labels. The x axis grows with the
-    // round until it reaches its full length, so the lines fill the frame from the start.
+    // Accuracy over the last few readings, 0 to 100 percent. The first 40 units are a
+    // gutter for the axis labels. The x axis grows with the round until it reaches its
+    // full length, so the lines fill the frame from the start.
+    const toY = (v) => (176 - v * 166).toFixed(1);
     const span = Math.max(series.idbd.length, 60) - 1;
     const xAt = (i) => (40 + (i * 560) / span).toFixed(1);
     const line = (key) => series[key].map((v, i) => `${xAt(i)},${toY(v)}`).join(" ");
-    let path = "";
-    let drawing = false;
-    series.you.forEach((v, i) => {
-      if (v > peak) {
-        drawing = false;
-        return;
-      }
-      path += `${drawing ? "L" : "M"}${xAt(i)} ${toY(v)}`;
-      drawing = true;
-    });
-    nodes.you.setAttribute("d", path);
+    nodes.you.setAttribute("d", series.you.length ? `M${line("you").replaceAll(" ", "L")}` : "");
     nodes.idbd.setAttribute("points", line("idbd"));
     nodes.lms.setAttribute("points", line("lms"));
     nodes.changes.setAttribute("d", changes.map((c, i) => (c ? `M${xAt(i)} 0V180` : "")).join(""));
-    const y = toY(NOISE_FLOOR);
+    const y = toY(1);
     for (const [key, value] of Object.entries({ x1: 40, x2: 600, y1: y, y2: y })) floor.setAttribute(key, value);
-    floorLabel.setAttribute("y", String(Number(y) - 4));
-    const offChart = series.you.length > 0 && series.you.at(-1) > peak;
-    youOff.textContent = offChart ? "you: off the chart \u2191" : "";
+    floorLabel.setAttribute("y", String(Number(y) + 12));
     ticks.forEach(({ text, value }) => {
       text.setAttribute("y", String(Number(toY(value)) + 4));
-      text.textContent = value <= peak ? `${value.toFixed(1)}\u00b0` : "";
+      text.textContent = `${Math.round(value * 100)}%`;
     });
   }
 
@@ -425,6 +439,7 @@ export function createGame(wasm, house, nodes) {
         running,
         scored,
         scores: scores(),
+        accuracy: accuracies(),
         trust: [...trustValues],
         costs: costs().map((c) => c.cost),
         revealed: !nodes.learnedWrap.hidden,

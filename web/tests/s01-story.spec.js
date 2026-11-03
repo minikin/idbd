@@ -72,8 +72,10 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-reading")).toHaveText("0");
 });
 
-test("S03 level 1 rewards matching the truth, and Reset clears everything", async ({ page }) => {
+test("S03 the calm house rewards matching the truth, and Reset clears everything", async ({ page }) => {
   await openStory(page);
+  await expect(page.locator(".level[data-level='changing']")).toHaveAttribute("aria-pressed", "true");
+  await page.click(".level[data-level='still']");
   await expect(page.locator(".level[data-level='still']")).toHaveAttribute("aria-pressed", "true");
   const fresh = (await story(page)).game;
   expect(fresh.level).toBe("still");
@@ -105,8 +107,9 @@ test("S03 level 1 rewards matching the truth, and Reset clears everything", asyn
   expect(reset.revealed).toBe(false);
 });
 
-test("S04 level 2 races on the switching house with its own fixed speed", async ({ page }) => {
+test("S04 level 1 races on the switching house with its own fixed speed", async ({ page }) => {
   await openStory(page);
+  await page.click(".level[data-level='still']");
   await page.click(".level[data-level='changing']");
   await expect(page.locator(".level[data-level='changing']")).toHaveAttribute("aria-pressed", "true");
   const s = await story(page);
@@ -178,7 +181,10 @@ test("S08 a round ends after 600 readings with a winner and a reason", async ({ 
   expect(game.finished).toBe(true);
   expect(game.scored).toBe(600);
   await expect(page.locator("#verdict")).toBeVisible();
-  await expect(page.locator("#verdict")).toContainText("closer than");
+  await expect(page.locator("#verdict")).toContainText("Accuracy: ");
+  const accuracy = (await story(page)).game.accuracy;
+  for (const value of Object.values(accuracy)) expect(value).toBeGreaterThanOrEqual(0);
+  await expect(page.locator("#scores .value").nth(1)).toHaveText(`${Math.round(accuracy.idbd * 100)}%`);
   await expect(page.locator("#game-run")).toHaveText("Play again");
   await expect(page.locator("#scores .lead", { hasText: "winner" })).toHaveCount(1);
 });

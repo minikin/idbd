@@ -316,18 +316,18 @@
           <ol>
           <li><strong>You guess too.</strong> Every reading, your guess is each sensor's value times your slider, added up.</li>
           <li><strong>A slider says what a sensor does.</strong> +1.0 means "when this sensor goes up by 1, the room warms by 1 &deg;C". 0 means "ignore it". Below 0 means it cools the room.</li>
-          <li><strong>Closest wins.</strong> A round is 600 readings, one minute. Each score is how far off that player's guesses are, typically, over the round so far. Random noise keeps even a perfect player about 0.50 &deg;C off.</li>
+          <li><strong>Highest accuracy wins.</strong> 100% is as close as anyone can get: the readings are noisy, so even a perfect guess is still about 0.5 &deg;C off. 0% is no better than always guessing "the temperature won't change". A round is 600 readings, one minute.</li>
           </ol>
         </div>
 
         <div class="levels" role="group" aria-label="Level">
-          <button type="button" class="level" data-level="still" aria-pressed="true">
-            <span class="strong">Level 1: a calm house</span>
-            <span class="muted small">Nothing changes. Match the truth and you can win.</span>
+          <button type="button" class="level" data-level="changing" aria-pressed="true">
+            <span class="strong">Level 1: a busy house</span>
+            <span class="muted small">What matters changes about every two seconds. This is what IDBD is for.</span>
           </button>
-          <button type="button" class="level" data-level="changing" aria-pressed="false">
-            <span class="strong">Level 2: a busy house</span>
-            <span class="muted small">What matters changes about every two seconds.</span>
+          <button type="button" class="level" data-level="still" aria-pressed="false">
+            <span class="strong">Level 2: a calm house</span>
+            <span class="muted small">Nothing changes. One fixed speed is enough here, and you can win.</span>
           </button>
         </div>
 
@@ -347,8 +347,8 @@
           <div class="game-main">
             <div class="scores" id="scores" aria-live="polite" aria-atomic="true"></div>
             <div class="card">
-              <div class="card-head"><span>How far off each player is right now, in &deg;C (last 40 readings)</span><span class="mono" id="game-count">reading 0</span></div>
-              <svg viewBox="0 0 600 180" class="race-chart" id="game-chart" role="img" aria-label="Typical miss in degrees over the last 600 readings for you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
+              <div class="card-head"><span>Accuracy over the last 100 readings</span><span class="mono" id="game-count">reading 0</span></div>
+              <svg viewBox="0 0 600 180" class="race-chart" id="game-chart" role="img" aria-label="Accuracy over the round for you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
                 <line x1="0" y1="179" x2="600" y2="179" class="zero"></line>
                 <path id="game-changes" class="changes" d=""></path>
                 <polyline id="game-lms" class="line-lms" points=""></polyline>
@@ -360,7 +360,7 @@
                 <span><span class="swatch swatch-idbd"></span>IDBD</span>
                 <span><span class="swatch swatch-lms"></span>fixed speed</span>
                 <span><span class="swatch swatch-change"></span>the house changed</span>
-                <span class="faint">lower is better</span>
+                <span class="faint">higher is better</span>
               </div>
             </div>
           </div>
