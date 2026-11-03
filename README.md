@@ -109,8 +109,8 @@ lists the generator, seeds, grids and sign-flip timing.
 
 ## IDBD Explorer
 
-The demo walks through one IDBD update, then runs IDBD and LMS side by side on a shared stream,
-with Sutton's task as the default and clearly labeled extensions. Every learning value it shows
+The demo walks through one IDBD update, then runs IDBD, LMS and untuned Autostep side by side on
+a shared stream, with Sutton's task as the default and clearly labeled extensions. Every learning value it shows
 comes from the Rust crate compiled to WebAssembly.
 
 ```sh

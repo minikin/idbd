@@ -123,6 +123,7 @@ export function createExperiment(wasm) {
   fillLegend(nodes.errorLegend, [
     { label: "IDBD rolling MSE", color: "var(--idbd)", shape: "line" },
     { label: "LMS rolling MSE", color: "var(--lms)", shape: "line" },
+    { label: "Autostep rolling MSE, untuned (AUTO)", color: "var(--autostep)", shape: "dashed" },
     { label: "relevance shift", color: "var(--truth)", shape: "diamond" },
   ]);
   fillLegend(nodes.eventsLegend, [
@@ -317,20 +318,27 @@ export function createExperiment(wasm) {
       relevant: coefficients.map((value) => value !== 0),
       idbdWeights: Array.from(explorer.idbdWeights()),
       lmsWeights: Array.from(explorer.lmsWeights()),
+      autostepWeights: Array.from(explorer.autostepWeights()),
+      autostepAlphas: Array.from(explorer.autostepStepSizes()),
+      autostepConfig: JSON.parse(explorer.autostepConfigJson()),
       alphas: Array.from(explorer.idbdStepSizes()),
       traces: Array.from(explorer.idbdTraces()),
       target: explorer.target(),
       idbdPrediction: explorer.idbdPrediction() ?? null,
       idbdError: explorer.idbdError() ?? null,
       lmsError: explorer.lmsError() ?? null,
+      autostepError: explorer.autostepError() ?? null,
       idbdRollingMse: explorer.idbdRollingMse() ?? null,
       lmsRollingMse: explorer.lmsRollingMse() ?? null,
+      autostepRollingMse: explorer.autostepRollingMse() ?? null,
       idbdMse: explorer.idbdMeanSquaredError(),
       lmsMse: explorer.lmsMeanSquaredError(),
+      autostepMse: explorer.autostepMeanSquaredError(),
       historyLength: explorer.historyLength(),
       samples,
       idbdRollingSeries: Array.from(explorer.historyIdbdRollingMse(MAX_POINTS)),
       lmsRollingSeries: Array.from(explorer.historyLmsRollingMse(MAX_POINTS)),
+      autostepRollingSeries: Array.from(explorer.historyAutostepRollingMse(MAX_POINTS)),
       alphaSeries,
       events: JSON.parse(explorer.eventsJson()),
       requestedChanges: Array.from(explorer.requestedChanges()),
@@ -387,6 +395,12 @@ export function createExperiment(wasm) {
         `fixed-step LMS, ${featureCount} inputs, alpha ${fmt(state.lmsStepSize, 4)}`,
       ],
       ["lms note", LMS_NOTE, "wide-pair"],
+      [
+        "autostep",
+        `${featureCount} inputs, alpha0 ${fmtAlpha(state.autostepConfig.initialStepSize)}, ` +
+          `mu ${fmt(state.autostepConfig.metaStepSize, 4)}, tau ${fmtCount(state.autostepConfig.timeScale)}: ` +
+          `the paper's defaults, not tuned to this task`,
+      ],
       ["rolling window", `${rollingWindow} samples`],
       ["data", "synthetic, generated in the browser"],
     ]);
@@ -530,7 +544,9 @@ export function createExperiment(wasm) {
       ["true coefficient (known simulator information)", fmtSigned(state.coefficients[selected], 3)],
       ["idbd weight", fmtSigned(state.idbdWeights[selected], 5)],
       ["lms weight", fmtSigned(state.lmsWeights[selected], 5)],
+      ["autostep weight", fmtSigned(state.autostepWeights[selected], 5)],
       ["idbd alpha (size of the learning adjustment)", fmtAlpha(state.alphas[selected])],
+      ["autostep alpha", fmtAlpha(state.autostepAlphas[selected])],
       ["idbd trace h", fmtSigned(state.traces[selected], 5)],
       ["last beta change", coordinate ? fmtSigned(coordinate.betaChange, 6) : "no sample yet"],
       ["last weight change", coordinate ? fmtSigned(coordinate.weightChange, 6) : "no sample yet"],
@@ -561,12 +577,15 @@ export function createExperiment(wasm) {
       ["retained for charts", `${fmtCount(state.historyLength)} of ${fmtCount(wasm.historyCapacity())}`],
       [`idbd rolling mse (last ${rollingWindow})`, fmtMse(state.idbdRollingMse)],
       [`lms rolling mse (last ${rollingWindow})`, fmtMse(state.lmsRollingMse)],
+      [`autostep rolling mse (last ${rollingWindow})`, fmtMse(state.autostepRollingMse)],
       ["idbd mse, all samples", fmtMse(state.idbdMse)],
       ["lms mse, all samples", fmtMse(state.lmsMse)],
+      ["autostep mse, all samples", fmtMse(state.autostepMse)],
       [`target of sample ${fmtCount(state.sample)}`, fmtSigned(state.target, 5)],
       ["idbd prediction before learning", fmtSigned(state.idbdPrediction, 5)],
       ["idbd pre-update error", fmtSigned(state.idbdError, 5)],
       ["lms pre-update error", fmtSigned(state.lmsError, 5)],
+      ["autostep pre-update error", fmtSigned(state.autostepError, 5)],
     ]);
   }
 
@@ -582,6 +601,8 @@ export function createExperiment(wasm) {
           el("td", { text: fmtSigned(state.lmsWeights[index], 5) }),
           el("td", { text: fmtAlpha(state.alphas[index]) }),
           el("td", { text: fmtSigned(state.traces[index], 5) }),
+          el("td", { text: fmtSigned(state.autostepWeights[index], 5) }),
+          el("td", { text: fmtAlpha(state.autostepAlphas[index]) }),
         ]),
       );
     }
@@ -619,8 +640,9 @@ export function createExperiment(wasm) {
       samples: state.samples,
       idbd: state.idbdRollingSeries,
       lms: state.lmsRollingSeries,
+      autostep: state.autostepRollingSeries,
       events: state.events,
-      label: `Rolling mean squared error over the last ${rollingWindow} samples for IDBD and the LMS baseline`,
+      label: `Rolling mean squared error over the last ${rollingWindow} samples for IDBD, the LMS baseline and untuned Autostep`,
     });
     renderAlphaChart(nodes.alphaChart, {
       samples: state.samples,
@@ -666,6 +688,11 @@ export function createExperiment(wasm) {
           bounds: "none",
         },
         lms: { numFeatures: featureCount, stepSize: state.lmsStepSize, selection: LMS_NOTE },
+        autostep: {
+          numFeatures: featureCount,
+          ...state.autostepConfig,
+          selection: "the paper's defaults, not tuned to this task",
+        },
         requestedChanges: state.requestedChanges,
       },
       samples: {
@@ -680,10 +707,14 @@ export function createExperiment(wasm) {
       metrics: {
         idbdRollingMse: state.idbdRollingMse,
         lmsRollingMse: state.lmsRollingMse,
+        autostepRollingMse: state.autostepRollingMse,
         idbdMeanSquaredError: state.idbdMse,
         lmsMeanSquaredError: state.lmsMse,
+        autostepMeanSquaredError: state.autostepMse,
         idbdWeights: state.idbdWeights,
         lmsWeights: state.lmsWeights,
+        autostepWeights: state.autostepWeights,
+        autostepStepSizes: state.autostepAlphas,
         idbdStepSizes: state.alphas,
         trueCoefficients: state.coefficients,
       },

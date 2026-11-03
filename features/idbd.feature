@@ -566,6 +566,14 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And labels or shapes distinguish IDBD, LMS and true coefficients
       And a text/table view exposes the selected feature and current metrics
 
+    Scenario: D16 Show untuned Autostep on the same stream
+      Given the live experiment
+      When it advances
+      Then Autostep learns from the same features and target as IDBD and LMS
+      And its configuration is labeled as the paper's defaults, not tuned to the task
+      And its rolling MSE is drawn with a distinct color and dash pattern, and listed with its weights and step sizes
+      And if any of the three learners rejects a sample, none of them learns from it
+
     Scenario: D15 Pass automated WCAG checks in every supported browser
       Given the page at rest, after a run with a world change, and in the dark color scheme
       When axe-core checks the WCAG 2.2 A and AA rules in Chromium, Firefox and WebKit

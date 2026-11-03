@@ -82,6 +82,7 @@ zero-input coordinates, bitwise snapshot round trips and betas within their boun
 | D09 | Test | `web/tests/d09-responsive.spec.js` at 390 and 1440 pixels |
 | D10 | Test | `web/tests/d10-keyboard.spec.js` |
 | D15 | Test | `web/tests/d15-accessibility.spec.js` runs axe-core 4.14 with the WCAG 2.0, 2.1 and 2.2 A and AA tags in Chromium, Firefox and WebKit. Its first run found secondary text at 4.07:1 contrast and an event list that keyboard users could not scroll. Both are fixed. |
+| D16 | Test | `web/tests/d16-autostep.spec.js` checks the labeled configuration, the dashed series, the inspector values and the export against the Rust state. In `crates/idbd-lab`, `d07_autostep_is_scored_on_the_same_stream` replays the stream into a separate Autostep learner and compares bit for bit, and `d08_an_autostep_failure_leaves_every_learner_at_the_last_sample` covers all-or-nothing learning. |
 | D11 | Test | `web/tests/d11-bounded-playback.spec.js` plays 100,000 samples at 20,000 samples per second, then checks that Pause takes effect within a second and holds, that 2,000 samples are retained for charts and that the all-sample metrics are finite. `d11_history_is_bounded_and_totals_cover_every_sample` covers the lab side. |
 | D12 | Test | `web/tests/d12-presets.spec.js` |
 | D13 | Test | `web/tests/d13-export.spec.js` |
