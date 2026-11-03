@@ -1,0 +1,14 @@
+{
+  "name": "idbd-explorer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static browser demo for the idbd Rust crate, tested with Playwright",
+  "scripts": {
+    "serve": "node serve.mjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

@@ -1,0 +1,5 @@
+[profile.default]
+# A test that runs longer than 30 seconds is stuck. Terminating it turns a mutant that
+# causes an endless loop into a failing test.
+slow-timeout = { period = "10s", terminate-after = 3 }
+fail-fast = true

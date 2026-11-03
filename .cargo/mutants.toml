@@ -1,0 +1,23 @@
+# cargo-mutants configuration. Every exclusion states why it is not tested.
+
+# nextest fails fast and kills a test that hangs (see .config/nextest.toml), so a
+# mutant that makes an iterator or loop endless counts as caught, not as a timeout.
+test_tool = "nextest"
+
+exclude_globs = [
+  # The experiment binaries are exercised by full runs in scripts/coverage.sh, and their
+  # outputs are committed under docs/results, where a changed number shows in review.
+  # Unit tests do not run them, so every mutant there would be reported as missed.
+  "crates/idbd-lab/src/bin/**",
+]
+
+exclude_re = [
+  # Reads the real process arguments. Parsing is tested through `cli::parse`.
+  "cli\\.rs.*replace arguments ->",
+  # ORs disjoint bit ranges (exponent bits 52..=61, mantissa bits 0..=51), so `|` and
+  # `^` produce identical bits for every input.
+  "replace \\| with \\^ in Rng::uniform",
+  # `abs > 0.0` versus `abs >= 0.0` only differs at zero, where both paths print "0.000"
+  # after trailing zeros are trimmed to three decimals.
+  "report\\.rs.*replace > with >= in magnitude",
+]
