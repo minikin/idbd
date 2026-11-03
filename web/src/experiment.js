@@ -36,6 +36,10 @@ export function createExperiment(wasm) {
     changeWorld: document.getElementById("change-world"),
     reset: document.getElementById("reset"),
     export: document.getElementById("export"),
+    replay: document.getElementById("replay"),
+    loadRunButton: document.getElementById("load-run-button"),
+    loadRun: document.getElementById("load-run"),
+    replayNote: document.getElementById("replay-note"),
     speed: document.getElementById("speed"),
     preset: document.getElementById("preset"),
     presetDescription: document.getElementById("preset-description"),
@@ -88,6 +92,10 @@ export function createExperiment(wasm) {
   let lastRender = 0;
   let state = null;
   let rows = [];
+  // A replay repeats a recorded run: the same settings, the recorded "Change the world"
+  // samples, and a pause at the recorded sample count. Null for an ordinary run.
+  let replay = null;
+  let loadError = null;
 
   /* ---------- setup ---------- */
 
@@ -150,20 +158,45 @@ export function createExperiment(wasm) {
 
   /* ---------- session lifecycle ---------- */
 
-  function build() {
+  function build(plan = null) {
     stop();
-    if (explorer) {
-      explorer.free();
-    }
-    explorer = new wasm.Explorer(
+    const next = new wasm.Explorer(
       settings.preset,
       settings.seed,
       settings.initialStepSize,
       settings.theta,
       settings.lmsStepSize,
     );
+    try {
+      for (const sample of plan ? plan.changes : []) {
+        next.scheduleChange(sample);
+      }
+    } catch (error) {
+      next.free();
+      throw error;
+    }
+    if (explorer) {
+      explorer.free();
+    }
+    explorer = next;
+    replay = plan ? { ...plan, reached: false } : null;
+    loadError = null;
     backlog = 0;
+    if (!endReplayIfReached()) {
+      render();
+    }
+  }
+
+  /** Pauses a replay at its recorded sample count. Returns true if it paused. */
+  function endReplayIfReached() {
+    if (!replay || replay.reached || explorer.completed() < replay.stopAt) {
+      return false;
+    }
+    replay = { ...replay, reached: true };
+    backlog = 0;
+    stop();
     render();
+    return true;
   }
 
   function describePreset() {
@@ -216,6 +249,9 @@ export function createExperiment(wasm) {
     // The sample schedule follows wall-clock time, not the frame rate.
     backlog = Math.min(backlog + (elapsed / 1000) * speed, speed);
     let due = Math.floor(backlog);
+    if (replay && !replay.reached) {
+      due = Math.min(due, replay.stopAt - explorer.completed());
+    }
     const started = performance.now();
     let ok = true;
     while (due > 0 && ok && performance.now() - started < TICK_BUDGET_MS) {
@@ -225,6 +261,9 @@ export function createExperiment(wasm) {
         due -= batch;
         backlog -= batch;
       }
+    }
+    if (endReplayIfReached()) {
+      return;
     }
     if (now - lastRender >= RENDER_INTERVAL_MS) {
       lastRender = now;
@@ -294,6 +333,9 @@ export function createExperiment(wasm) {
       lmsRollingSeries: Array.from(explorer.historyLmsRollingMse(MAX_POINTS)),
       alphaSeries,
       events: JSON.parse(explorer.eventsJson()),
+      requestedChanges: Array.from(explorer.requestedChanges()),
+      scheduledChanges: Array.from(explorer.scheduledChanges()),
+      replay,
       changePending: explorer.changePending(),
       coordinate: explorer.completed() > 0 ? JSON.parse(explorer.coordinateJson(selected)) : null,
       failure: failed
@@ -323,6 +365,7 @@ export function createExperiment(wasm) {
     renderTable();
     renderEvents();
     renderPlaybackState();
+    renderReplayNote();
     draw();
   }
 
@@ -364,6 +407,26 @@ export function createExperiment(wasm) {
     for (const button of [nodes.run, nodes.step, nodes.changeWorld]) {
       button.disabled = failed;
     }
+    nodes.replay.disabled = state.sample === 0;
+  }
+
+  function renderReplayNote() {
+    let text = null;
+    if (loadError) {
+      text = `Could not load the run: ${loadError}.`;
+    } else if (replay) {
+      const changes = replay.changes.length;
+      const what = `${replay.source}, ${fmtCount(changes)} recorded world ${changes === 1 ? "change" : "changes"}`;
+      text = replay.reached
+        ? `Replay of ${what}. Paused at sample ${fmtCount(replay.stopAt)}, the recorded sample count. Run continues past it.`
+        : `Replay of ${what}. Playback pauses at sample ${fmtCount(replay.stopAt)}, at any speed.`;
+      if (!replay.sameBuild) {
+        text += " The file comes from a different build, so the results can differ.";
+      }
+    }
+    nodes.replayNote.hidden = text === null;
+    nodes.replayNote.classList.toggle("error", loadError !== null);
+    nodes.replayNote.textContent = text ?? "";
   }
 
   function renderPlaybackState() {
@@ -603,6 +666,7 @@ export function createExperiment(wasm) {
           bounds: "none",
         },
         lms: { numFeatures: featureCount, stepSize: state.lmsStepSize, selection: LMS_NOTE },
+        requestedChanges: state.requestedChanges,
       },
       samples: {
         completed: state.sample,
@@ -641,6 +705,103 @@ export function createExperiment(wasm) {
     URL.revokeObjectURL(url);
   }
 
+  /* ---------- replay (D06) ---------- */
+
+  /** The plan that repeats the current run up to its completed sample. */
+  function replayCurrentRun() {
+    return {
+      source: "this run",
+      stopAt: state.sample,
+      changes: state.requestedChanges,
+      sameBuild: true,
+    };
+  }
+
+  /** Reads an exported run. Throws an Error whose message says what is wrong. */
+  function parseRun(text, name) {
+    let run;
+    try {
+      run = JSON.parse(text);
+    } catch {
+      throw new Error("the file is not JSON");
+    }
+    if (run?.kind !== "idbd-explorer-run" || run.formatVersion !== 1) {
+      throw new Error("the file is not an IDBD Explorer run export");
+    }
+    const recorded = run.settings ?? {};
+    if (!presets.some((preset) => preset.id === recorded.preset)) {
+      throw new Error(`the task "${recorded.preset}" is not available`);
+    }
+    const positive = (value) => Number.isFinite(value) && value > 0;
+    const loaded = {
+      preset: recorded.preset,
+      seed: recorded.seed,
+      initialStepSize: recorded.idbd?.initialStepSize,
+      theta: recorded.idbd?.theta,
+      lmsStepSize: recorded.lms?.stepSize,
+    };
+    if (!Number.isSafeInteger(loaded.seed) || loaded.seed < 0) {
+      throw new Error("the seed is not a whole number of 0 or more");
+    }
+    if (!positive(loaded.initialStepSize) || !positive(loaded.lmsStepSize)) {
+      throw new Error("a step size is not a positive number");
+    }
+    if (!Number.isFinite(loaded.theta) || loaded.theta < 0) {
+      throw new Error("theta is not a number of 0 or more");
+    }
+    const stopAt = run.samples?.completed;
+    if (!Number.isSafeInteger(stopAt) || stopAt < 0) {
+      throw new Error("the completed sample count is missing");
+    }
+    const changes = recorded.requestedChanges;
+    const valid =
+      Array.isArray(changes) &&
+      changes.every(
+        (sample, index) =>
+          Number.isSafeInteger(sample) &&
+          sample >= 1 &&
+          sample <= stopAt &&
+          (index === 0 || sample > changes[index - 1]),
+      );
+    if (!valid) {
+      throw new Error("the recorded world changes are not increasing sample indices within the run");
+    }
+    return {
+      settings: loaded,
+      plan: {
+        source: name,
+        stopAt,
+        changes,
+        sameBuild:
+          run.build?.rustCoreVersion === wasm.coreVersion() &&
+          run.build?.generator === wasm.generatorId(),
+      },
+    };
+  }
+
+  function showSettings() {
+    nodes.preset.value = settings.preset;
+    nodes.seed.value = String(settings.seed);
+    nodes.alpha0.value = String(settings.initialStepSize);
+    nodes.theta.value = String(settings.theta);
+    nodes.lmsStep.value = String(settings.lmsStepSize);
+    describePreset();
+  }
+
+  async function loadRunFile(file) {
+    const previous = settings;
+    try {
+      const { settings: loaded, plan } = parseRun(await file.text(), file.name);
+      settings = loaded;
+      build(plan);
+    } catch (error) {
+      settings = previous;
+      loadError = error instanceof Error ? error.message : String(error);
+      renderReplayNote();
+    }
+    showSettings();
+  }
+
   /* ---------- controls ---------- */
 
   nodes.run.addEventListener("click", start);
@@ -650,7 +811,7 @@ export function createExperiment(wasm) {
   });
   nodes.step.addEventListener("click", () => {
     stop();
-    if (advance(1)) {
+    if (advance(1) && !endReplayIfReached()) {
       render();
     }
   });
@@ -662,6 +823,19 @@ export function createExperiment(wasm) {
     build();
   });
   nodes.export.addEventListener("click", downloadRun);
+  nodes.replay.addEventListener("click", () => {
+    build(replayCurrentRun());
+  });
+  nodes.loadRunButton.addEventListener("click", () => {
+    nodes.loadRun.click();
+  });
+  nodes.loadRun.addEventListener("change", () => {
+    const [file] = nodes.loadRun.files;
+    nodes.loadRun.value = "";
+    if (file) {
+      loadRunFile(file);
+    }
+  });
   nodes.speed.addEventListener("change", () => {
     speed = Number(nodes.speed.value);
     backlog = 0;
@@ -674,11 +848,7 @@ export function createExperiment(wasm) {
   });
   nodes.apply.addEventListener("click", () => {
     settings = readSettings();
-    nodes.seed.value = String(settings.seed);
-    nodes.alpha0.value = String(settings.initialStepSize);
-    nodes.theta.value = String(settings.theta);
-    nodes.lmsStep.value = String(settings.lmsStepSize);
-    describePreset();
+    showSettings();
     build();
   });
 

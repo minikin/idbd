@@ -1,13 +1,13 @@
 //! A paired IDBD and LMS experiment that advances one shared sample at a time.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::fmt;
 
 use idbd::{Config, Idbd, Update};
 
 use crate::lms::{Lms, LmsError};
 use crate::trace::{CoordinateChange, traced_update};
-use crate::world::{Event, NUM_FEATURES, Preset, World};
+use crate::world::{Event, NUM_FEATURES, Origin, Preset, World};
 
 /// Number of recent pre-update errors in each rolling mean squared error.
 pub const ROLLING_WINDOW: usize = 100;
@@ -17,6 +17,11 @@ pub const HISTORY_CAPACITY: usize = 2_000;
 
 /// Number of recent world events kept for the timeline.
 pub const EVENT_CAPACITY: usize = 512;
+
+/// Largest number of requested changes that can wait for a later sample.
+///
+/// A replayed schedule comes from a file the user loads, so its length is not trusted.
+pub const SCHEDULE_CAPACITY: usize = 10_000;
 
 /// Initial settings of a run. Changing any of them starts a new run.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -175,6 +180,8 @@ pub struct Session {
     alpha_history: VecDeque<[f64; NUM_FEATURES]>,
     events: VecDeque<TimedEvent>,
     event_buffer: Vec<Event>,
+    schedule: BTreeSet<u64>,
+    requested: Vec<u64>,
     totals: Totals,
     failure: Option<Failure>,
 }
@@ -195,6 +202,34 @@ impl fmt::Display for SettingsError {
 }
 
 impl std::error::Error for SettingsError {}
+
+/// A requested change that [`Session::schedule_change`] cannot accept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScheduleError {
+    /// The sample is already completed, so a change cannot apply before it.
+    NotInFuture {
+        /// The requested sample.
+        sample: u64,
+        /// The last completed sample.
+        completed: u64,
+    },
+    /// [`SCHEDULE_CAPACITY`] changes already wait.
+    Full,
+}
+
+impl fmt::Display for ScheduleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotInFuture { sample, completed } => write!(
+                f,
+                "a change cannot apply before sample {sample} because sample {completed} is already completed"
+            ),
+            Self::Full => write!(f, "at most {SCHEDULE_CAPACITY} changes can wait"),
+        }
+    }
+}
+
+impl std::error::Error for ScheduleError {}
 
 impl Session {
     /// Starts a run at sample 0.
@@ -229,6 +264,8 @@ impl Session {
             alpha_history: VecDeque::with_capacity(HISTORY_CAPACITY),
             events: VecDeque::with_capacity(EVENT_CAPACITY),
             event_buffer: Vec::with_capacity(4),
+            schedule: BTreeSet::new(),
+            requested: Vec::new(),
             totals: Totals::default(),
             failure: None,
         })
@@ -244,6 +281,11 @@ impl Session {
     pub fn step(&mut self) -> Result<(), Failure> {
         if let Some(failure) = self.failure {
             return Err(failure);
+        }
+        let next = self.world.generated() + 1;
+        if self.schedule.first() == Some(&next) {
+            self.schedule.pop_first();
+            self.world.request_relevance_shift();
         }
         let target = self
             .world
@@ -327,6 +369,15 @@ impl Session {
         }
         self.alpha_history.push_back(alphas);
         for &event in &self.event_buffer {
+            if matches!(
+                event,
+                Event::RelevanceShift {
+                    origin: Origin::Requested,
+                    ..
+                }
+            ) {
+                self.requested.push(sample);
+            }
             if self.events.len() == EVENT_CAPACITY {
                 self.events.pop_front();
             }
@@ -342,8 +393,47 @@ impl Session {
     }
 
     /// Returns `true` if a requested change waits for the next sample.
+    ///
+    /// Changes scheduled for later samples through [`Session::schedule_change`] do not
+    /// count until that sample is attempted.
     pub fn change_pending(&self) -> bool {
         self.world.shift_pending()
+    }
+
+    /// Schedules the same change as [`Session::change_the_world`] to apply before
+    /// `sample`.
+    ///
+    /// Replaying the samples from [`Session::requested_changes`] on a new session with
+    /// the same settings repeats the run. Scheduling one sample twice still produces one
+    /// change.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScheduleError::NotInFuture`] if `sample` is already completed, and
+    /// [`ScheduleError::Full`] if [`SCHEDULE_CAPACITY`] other changes already wait.
+    pub fn schedule_change(&mut self, sample: u64) -> Result<(), ScheduleError> {
+        let completed = self.completed();
+        if sample <= completed {
+            return Err(ScheduleError::NotInFuture { sample, completed });
+        }
+        if self.schedule.len() >= SCHEDULE_CAPACITY && !self.schedule.contains(&sample) {
+            return Err(ScheduleError::Full);
+        }
+        self.schedule.insert(sample);
+        Ok(())
+    }
+
+    /// Returns the samples that scheduled changes still wait for, in order.
+    pub fn scheduled_changes(&self) -> impl ExactSizeIterator<Item = u64> + '_ {
+        self.schedule.iter().copied()
+    }
+
+    /// Returns every sample that a requested change applied before, in order.
+    ///
+    /// Unlike [`Session::events`], this record is complete. It grows by at most one
+    /// entry per completed sample.
+    pub fn requested_changes(&self) -> &[u64] {
+        &self.requested
     }
 
     /// Returns the run settings.
@@ -439,7 +529,7 @@ impl Session {
 #[expect(clippy::float_cmp, reason = "tests assert exact, deterministic values")]
 mod tests {
     use super::*;
-    use crate::world::{GROUP_SIZE, Origin};
+    use crate::world::GROUP_SIZE;
 
     fn settings(preset: Preset, seed: u64) -> Settings {
         Settings {
@@ -624,6 +714,92 @@ mod tests {
         }
         let total: f64 = squared.iter().sum();
         assert!((session.totals().idbd_squared_error - total).abs() < 1e-9 * total);
+    }
+
+    #[test]
+    fn d06_a_replayed_schedule_repeats_the_run() {
+        let mut original = Session::new(settings(Preset::Sutton1992, 6)).expect("valid");
+        original.run(150).expect("run");
+        original.change_the_world();
+        original.change_the_world();
+        original.run(400).expect("run");
+        original.change_the_world();
+        original.run(450).expect("run");
+        assert_eq!(original.requested_changes(), &[151, 551]);
+
+        let mut replay = Session::new(settings(Preset::Sutton1992, 6)).expect("valid");
+        for &sample in original.requested_changes() {
+            replay.schedule_change(sample).expect("future sample");
+        }
+        assert_eq!(replay.scheduled_changes().collect::<Vec<_>>(), [151, 551]);
+        assert!(
+            !replay.change_pending(),
+            "a later change is not pending yet"
+        );
+        replay.run(1000).expect("run");
+
+        assert_eq!(state_bits(&replay), state_bits(&original));
+        assert_eq!(replay.requested_changes(), original.requested_changes());
+        assert_eq!(replay.scheduled_changes().len(), 0);
+        let events = |s: &Session| s.events().copied().collect::<Vec<_>>();
+        assert_eq!(events(&replay), events(&original));
+    }
+
+    #[test]
+    fn d06_a_change_scheduled_for_the_next_sample_applies_to_it() {
+        let mut session = Session::new(settings(Preset::Stationary, 2)).expect("valid");
+        session.run(10).expect("run");
+        session.schedule_change(11).expect("next sample");
+        session.schedule_change(11).expect("a repeat merges");
+        session.step().expect("step");
+        assert_eq!(session.requested_changes(), &[11]);
+        assert_eq!(session.events().len(), 1);
+    }
+
+    #[test]
+    fn d06_a_change_cannot_be_scheduled_for_a_completed_sample() {
+        let mut session = Session::new(settings(Preset::Stationary, 2)).expect("valid");
+        assert_eq!(
+            session.schedule_change(0),
+            Err(ScheduleError::NotInFuture {
+                sample: 0,
+                completed: 0
+            })
+        );
+        session.run(10).expect("run");
+        let err = session.schedule_change(10).expect_err("completed");
+        assert_eq!(
+            err,
+            ScheduleError::NotInFuture {
+                sample: 10,
+                completed: 10
+            }
+        );
+        assert_eq!(
+            err.to_string(),
+            "a change cannot apply before sample 10 because sample 10 is already completed"
+        );
+        assert_eq!(session.scheduled_changes().len(), 0);
+    }
+
+    #[test]
+    fn d06_the_schedule_is_bounded() {
+        let mut session = Session::new(settings(Preset::Stationary, 2)).expect("valid");
+        let last = u64::try_from(SCHEDULE_CAPACITY).expect("fits");
+        for sample in 1..=last {
+            session.schedule_change(sample).expect("below capacity");
+        }
+        assert_eq!(session.schedule_change(last + 1), Err(ScheduleError::Full));
+        assert_eq!(
+            session.schedule_change(last),
+            Ok(()),
+            "a repeat still merges"
+        );
+        assert_eq!(
+            ScheduleError::Full.to_string(),
+            "at most 10000 changes can wait"
+        );
+        assert_eq!(session.scheduled_changes().len(), SCHEDULE_CAPACITY);
     }
 
     #[test]

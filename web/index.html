@@ -137,6 +137,9 @@
             <button type="button" id="change-world" class="button">Change the world</button>
             <button type="button" id="reset" class="button">Reset</button>
             <button type="button" id="export" class="button">Export run</button>
+            <button type="button" id="replay" class="button">Replay to this sample</button>
+            <button type="button" id="load-run-button" class="button">Load run</button>
+            <input type="file" id="load-run" accept=".json,application/json" aria-label="Run export file" hidden />
           </div>
           <div class="field">
             <label for="speed">Playback speed</label>
@@ -144,6 +147,8 @@
           </div>
           <p class="playback-state" id="playback-state" role="status">Paused</p>
         </div>
+
+        <p class="notice replay" id="replay-note" role="status" hidden></p>
 
         <div class="settings-grid">
           <div class="field wide">

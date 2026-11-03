@@ -1224,22 +1224,22 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Failure::fmt",
-      "line": 73,
+      "line": 78,
       "cyclomatic": 3.0,
       "coverage": 80.0,
       "crap": 3.072,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 75,
-          "end": 75
+          "start": 80,
+          "end": 80
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Failure::learner",
-      "line": 64,
+      "line": 69,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1248,7 +1248,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Rolling::mean",
-      "line": 113,
+      "line": 118,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1257,7 +1257,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Rolling::new",
-      "line": 99,
+      "line": 104,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1266,7 +1266,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Rolling::push",
-      "line": 105,
+      "line": 110,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1274,8 +1274,17 @@
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
+      "function": "ScheduleError::fmt",
+      "line": 221,
+      "cyclomatic": 3.0,
+      "coverage": 100.0,
+      "crap": 3.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::alpha_history",
-      "line": 428,
+      "line": 518,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1284,7 +1293,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::change_pending",
-      "line": 345,
+      "line": 399,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1293,7 +1302,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::change_the_world",
-      "line": 340,
+      "line": 391,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1302,7 +1311,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::changes",
-      "line": 401,
+      "line": 491,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1311,7 +1320,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::coefficients",
-      "line": 385,
+      "line": 475,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1320,22 +1329,22 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::commit",
-      "line": 299,
-      "cyclomatic": 5.0,
-      "coverage": 97.22222222222221,
-      "crap": 5.000535836762689,
+      "line": 341,
+      "cyclomatic": 6.0,
+      "coverage": 97.5609756097561,
+      "crap": 6.0005223371686425,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 331,
-          "end": 331
+          "start": 382,
+          "end": 382
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::completed",
-      "line": 355,
+      "line": 445,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1344,7 +1353,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::events",
-      "line": 433,
+      "line": 523,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1353,7 +1362,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::fail",
-      "line": 293,
+      "line": 335,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1362,7 +1371,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::failure",
-      "line": 360,
+      "line": 450,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1371,7 +1380,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::features",
-      "line": 375,
+      "line": 465,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1380,7 +1389,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::history",
-      "line": 423,
+      "line": 513,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1389,7 +1398,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::idbd",
-      "line": 365,
+      "line": 455,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1398,7 +1407,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::idbd_rolling_mse",
-      "line": 407,
+      "line": 497,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1407,7 +1416,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::last_idbd_update",
-      "line": 390,
+      "line": 480,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1416,7 +1425,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::last_lms_error",
-      "line": 396,
+      "line": 486,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1425,7 +1434,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::lms",
-      "line": 370,
+      "line": 460,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1434,7 +1443,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::lms_rolling_mse",
-      "line": 413,
+      "line": 503,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1443,7 +1452,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::new",
-      "line": 205,
+      "line": 240,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1451,8 +1460,17 @@
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
+      "function": "Session::requested_changes",
+      "line": 435,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::run",
-      "line": 284,
+      "line": 326,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -1460,8 +1478,26 @@
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
+      "function": "Session::schedule_change",
+      "line": 414,
+      "cyclomatic": 4.0,
+      "coverage": 100.0,
+      "crap": 4.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/session.rs",
+      "function": "Session::scheduled_changes",
+      "line": 427,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::settings",
-      "line": 350,
+      "line": 440,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1470,16 +1506,16 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::step",
-      "line": 244,
-      "cyclomatic": 6.0,
+      "line": 281,
+      "cyclomatic": 7.0,
       "coverage": 100.0,
-      "crap": 6.0,
+      "crap": 7.0,
       "crate": "idbd-lab"
     },
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::target",
-      "line": 380,
+      "line": 470,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1488,7 +1524,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "Session::totals",
-      "line": 418,
+      "line": 508,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1497,7 +1533,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "SettingsError::fmt",
-      "line": 190,
+      "line": 197,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1506,7 +1542,7 @@
     {
       "file": "crates/idbd-lab/src/session.rs",
       "function": "count_as_f64",
-      "line": 122,
+      "line": 127,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,

@@ -275,6 +275,15 @@ main,
   margin-bottom: var(--step-5);
 }
 
+.notice.replay {
+  margin-bottom: var(--step-5);
+  border-left-color: var(--ink-3);
+}
+
+.notice.replay.error {
+  border-left-color: var(--warn);
+}
+
 .notice strong {
   font-weight: 600;
 }

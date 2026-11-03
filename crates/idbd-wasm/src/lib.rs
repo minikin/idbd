@@ -37,13 +37,21 @@ fn count_to_f64(count: u64) -> f64 {
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
     clippy::as_conversions,
-    reason = "checked to be a whole number in 0..=2^53-1 on the line above"
+    reason = "the condition checks for a whole number in 0..=2^53-1 before the cast"
 )]
+fn whole_number(value: f64) -> Option<u64> {
+    (value.is_finite() && (0.0..=MAX_SAFE_INTEGER).contains(&value) && value.fract() == 0.0)
+        .then_some(value as u64)
+}
+
 fn seed_from_number(seed: f64) -> Result<u64, String> {
-    if !seed.is_finite() || !(0.0..=MAX_SAFE_INTEGER).contains(&seed) || seed.fract() != 0.0 {
-        return Err("seed must be a whole number between 0 and 2^53 - 1".to_owned());
-    }
-    Ok(seed as u64)
+    whole_number(seed)
+        .ok_or_else(|| "seed must be a whole number between 0 and 2^53 - 1".to_owned())
+}
+
+fn sample_from_number(sample: f64) -> Result<u64, String> {
+    whole_number(sample)
+        .ok_or_else(|| "a sample index must be a whole number between 0 and 2^53 - 1".to_owned())
 }
 
 /// Carries a Rust message across the boundary as a JavaScript `Error`.
@@ -386,6 +394,13 @@ impl Explorer {
         }
     }
 
+    fn schedule(&mut self, sample: f64) -> Result<(), String> {
+        let sample = sample_from_number(sample)?;
+        self.session
+            .schedule_change(sample)
+            .map_err(|e| e.to_string())
+    }
+
     fn coordinate(&self, feature: usize) -> Result<String, String> {
         self.session
             .changes()
@@ -464,6 +479,38 @@ impl Explorer {
     #[wasm_bindgen(js_name = changeTheWorld)]
     pub fn change_the_world(&mut self) {
         self.session.change_the_world();
+    }
+
+    /// Schedules the change that "Change the world" makes to apply before `sample`.
+    ///
+    /// Replaying [`Explorer::requested_changes`] on a new explorer with the same
+    /// settings repeats the run.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `sample` is not a whole number, is already completed, or if
+    /// too many changes already wait.
+    #[wasm_bindgen(js_name = scheduleChange)]
+    pub fn schedule_change(&mut self, sample: f64) -> Result<(), JsError> {
+        self.schedule(sample).map_err(|message| js(&message))
+    }
+
+    /// Returns every sample that a requested change applied before, in order.
+    #[must_use]
+    #[wasm_bindgen(js_name = requestedChanges)]
+    pub fn requested_changes(&self) -> Vec<f64> {
+        self.session
+            .requested_changes()
+            .iter()
+            .map(|&sample| count_to_f64(sample))
+            .collect()
+    }
+
+    /// Returns the samples that scheduled changes still wait for, in order.
+    #[must_use]
+    #[wasm_bindgen(js_name = scheduledChanges)]
+    pub fn scheduled_changes(&self) -> Vec<f64> {
+        self.session.scheduled_changes().map(count_to_f64).collect()
     }
 
     /// Returns `true` while a requested change waits for the next sample.
@@ -903,6 +950,30 @@ mod tests {
         for bad in [-1.0, 0.5, f64::NAN, f64::INFINITY, 1e300] {
             assert!(seed_from_number(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn d06_a_schedule_replays_through_the_adapter() {
+        let mut original =
+            Explorer::create("sutton1992", 3.0, 0.05, 0.01, 0.03).expect("valid settings");
+        original.advance(20).expect("run");
+        original.change_the_world();
+        original.advance(30).expect("run");
+        assert_eq!(original.requested_changes(), [21.0]);
+
+        let mut replay =
+            Explorer::create("sutton1992", 3.0, 0.05, 0.01, 0.03).expect("valid settings");
+        replay.schedule(21.0).expect("future sample");
+        assert_eq!(replay.scheduled_changes(), [21.0]);
+        replay.advance(50).expect("run");
+        assert_eq!(replay.idbd_weights(), original.idbd_weights());
+        assert_eq!(replay.requested_changes(), original.requested_changes());
+        assert!(replay.scheduled_changes().is_empty());
+
+        let past = replay.schedule(50.0).expect_err("completed sample");
+        assert!(past.contains("already completed"), "{past}");
+        let fraction = replay.schedule(60.5).expect_err("not a whole number");
+        assert!(fraction.starts_with("a sample index must be"), "{fraction}");
     }
 
     #[test]
