@@ -1,0 +1,32 @@
+[package]
+name = "idbd-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+idbd = { path = "../crates/idbd" }
+libfuzzer-sys = "0.4"
+
+# A separate workspace keeps the nightly-only fuzz build out of the main workspace,
+# its lints and its dependency graph.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "update"
+path = "fuzz_targets/update.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "from_state"
+path = "fuzz_targets/from_state.rs"
+test = false
+doc = false
+bench = false

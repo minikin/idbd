@@ -1,0 +1,47 @@
+name: Fuzz
+
+on:
+  pull_request:
+    paths:
+      - "crates/idbd/src/**"
+      - "fuzz/**"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [update, from_state]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: fuzz
+      - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2
+        with:
+          tool: cargo-fuzz
+      # One minute on pull requests, ten on the weekly run.
+      - name: Run
+        working-directory: fuzz
+        run: |
+          seconds=60
+          if [ "${{ github.event_name }}" != "pull_request" ]; then seconds=600; fi
+          cargo fuzz run ${{ matrix.target }} -- -max_total_time="$seconds" -rss_limit_mb=4096
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/
