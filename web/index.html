@@ -250,7 +250,7 @@
             <div class="legend" id="events-legend"></div>
             <div class="chart timeline" id="event-timeline"></div>
             <p class="note" id="event-summary"></p>
-            <ul class="event-list" id="event-list"></ul>
+            <ul class="event-list" id="event-list" tabindex="0" aria-label="Recent world events, newest first"></ul>
           </div>
 
           <div class="panel" id="inspector-panel">
@@ -283,7 +283,7 @@
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
             <dl class="pairs" id="metrics-pairs"></dl>
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Per-input state table">
               <table class="data-table" id="state-table">
                 <caption class="visually-hidden">
                   Per-input state after the last completed sample

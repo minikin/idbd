@@ -22,7 +22,7 @@ web-serve: web-build
 # Install the browser test dependencies once.
 web-setup:
     cd web && npm install
-    cd web && npx playwright install chromium
+    cd web && npx playwright install chromium firefox webkit
 
 # Run the browser tests against a freshly built module.
 web-test: web-build

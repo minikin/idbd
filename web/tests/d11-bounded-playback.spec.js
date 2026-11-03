@@ -14,10 +14,27 @@ test("D11 playback of 100,000 samples stays bounded and responsive", async ({ pa
     { timeout: 100000, polling: 250 },
   );
 
+  // The input delay a visitor feels: from the click event's creation to the end of the
+  // Pause handler, measured in the page. Playwright's own round trips to a busy page are
+  // not part of it.
+  await page.evaluate(() => {
+    document.getElementById("pause").addEventListener("click", (event) => {
+      queueMicrotask(() => {
+        window.pauseLatency = performance.now() - event.timeStamp;
+        window.runningAfterPause = window.idbdExplorer.isRunning();
+      });
+    });
+  });
   const clicked = Date.now();
   await page.click("#pause");
   await page.waitForFunction(() => window.idbdExplorer.isRunning() === false);
-  expect(Date.now() - clicked).toBeLessThan(1000);
+  const latency = await page.evaluate(() => window.pauseLatency);
+  expect(await page.evaluate(() => window.runningAfterPause)).toBe(false);
+  console.log(`pause input delay ${latency.toFixed(1)} ms`);
+  expect(latency).toBeGreaterThanOrEqual(0);
+  expect(latency).toBeLessThan(250);
+  // A hang guard for the whole round trip, which includes Playwright's overhead.
+  expect(Date.now() - clicked).toBeLessThan(5000);
 
   const paused = await page.evaluate(() => window.idbdExplorer.experiment());
   await page.waitForTimeout(400);
