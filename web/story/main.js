@@ -61,7 +61,8 @@ async function mountRenderer(house) {
         view.update(state);
       },
     };
-  } catch {
+  } catch (error) {
+    console.warn("The 3D house is unavailable, so the page draws it in 2D.", error);
     return { kind: "2d", update: update2d };
   }
 }

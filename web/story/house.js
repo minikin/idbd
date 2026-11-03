@@ -9,7 +9,7 @@ export const SENSOR_POSITIONS = [
   [0, 3.8, 1.25], // front door
   [5.2, 0, 2.9], // wi-fi signal
   [0, 4.9, 1.9], // doorbell battery
-  [0, 2.2, 2.9], // clock
+  [0.7, 0.7, 1.75], // water heater, in the boiler room in the back corner
 ];
 
 /** Sensors labelled in the 2D drawing, with label anchor offsets. */
@@ -19,7 +19,7 @@ const LABELS = new Map([
   [2, { dx: 80, dy: 40 }],
   [3, { dx: 30, dy: -40, muted: true }],
   [4, { dx: 10, dy: 100, muted: true }],
-  [5, { dx: -40, dy: -40, muted: true, end: true }],
+  [5, { dx: -50, dy: -30, muted: true, end: true }],
 ]);
 
 /**

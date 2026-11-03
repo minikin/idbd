@@ -22,16 +22,16 @@ const COLORS = {
  * is anchored there: 0 for its left edge, 0.5 for its middle, 1 for its right edge.
  */
 const LABEL_OFFSETS = [
-  [-16, -30, 1],
+  [18, 30, 0],
   [16, 10, 0],
   [10, 30, 0],
   [16, -26, 0],
-  [-16, 0, 1],
-  [14, -22, 0],
+  [0, -32, 0.5],
+  [6, 56, 0],
 ];
 
 /** Each sensor's own blink period in seconds, so they never pulse in step. */
-const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 1.0];
+const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 2.6];
 
 /**
  * The 3D room is larger than the 8 x 6 floor of the shared sensor layout, so the devices
@@ -162,15 +162,30 @@ export function mountHouse3d(container, names) {
   hinge.add(box([0.05, 2.5, 1.6], [0, 1.25, 0.8], COLORS.door, 0.2));
   scene.add(hinge);
 
-  const face = new THREE.Mesh(new THREE.CircleGeometry(0.32, 32), new THREE.MeshBasicMaterial({ color: 0x2b2e34 }));
-  face.rotation.y = Math.PI / 2;
-  face.position.set(0.03, 2.75, 2.2 * SZ - 0.45);
-  scene.add(face);
-  const hand = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.26), new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
-  hand.geometry.translate(0, 0.13, 0);
-  hand.rotation.y = Math.PI / 2;
-  hand.position.set(0.04, 2.75, 2.2 * SZ - 0.45);
-  scene.add(hand);
+  // The water heater stands in a closed boiler room in the back corner: a tank behind two
+  // glass partitions, so it heats water, not this room.
+  const tank = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.42, 1.6, 32),
+    new THREE.MeshStandardMaterial({ color: 0x3a3f46, roughness: 0.5, metalness: 0.3 }),
+  );
+  tank.position.set(0.7 * SX, 0.8, 0.7 * SZ);
+  scene.add(tank);
+  const pilot = sprite(glow, 0x6ea8ff, 0.5);
+  pilot.position.set(0.7 * SX + 0.3, 0.18, 0.7 * SZ + 0.3);
+  pilot.scale.set(0.35, 0.35, 1);
+  scene.add(pilot);
+  const glass = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05, depthWrite: false });
+  const partitionX = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.4), glass);
+  partitionX.position.set(2.0, 1.2, 1.0);
+  partitionX.rotation.y = Math.PI / 2;
+  const partitionZ = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.4), glass);
+  partitionZ.position.set(1.0, 1.2, 2.0);
+  const closet = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2.0, 2.4, 2.0)),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14 }),
+  );
+  closet.position.set(1.0, 1.2, 1.0);
+  scene.add(partitionX, partitionZ, closet);
 
   // Wi-fi rings keep pulsing outward: the signal wiggles whether or not it matters.
   const wifiAt = toScene(SENSOR_POSITIONS[3]);
@@ -282,7 +297,7 @@ export function mountHouse3d(container, names) {
     pane.material.opacity = 0.08 + 0.2 * state.sun;
     heat.material.opacity = (0.1 + 0.45 * state.oven) * (0.85 + 0.15 * Math.sin(t * 9));
     hinge.rotation.y = 1.05 * state.door;
-    hand.rotation.x = -Math.floor(t) * ((Math.PI * 2) / 60);
+    pilot.material.opacity = 0.35 + 0.2 * Math.sin(t * 7) * Math.sin(t * 2.3);
 
     waves.forEach((wave, k) => {
       const phase = (t / 1.6 + k / 3) % 1;
@@ -293,6 +308,7 @@ export function mountHouse3d(container, names) {
 
     const width = container.clientWidth;
     const height = container.clientHeight;
+    const placed = [];
     sensors.forEach((sensor, i) => {
       sensor.flash = lerp(sensor.flash, 0, dt * 3);
       const pulse = 0.5 + 0.5 * Math.sin((t / PERIODS[i]) * Math.PI * 2 + sensor.phase);
@@ -313,8 +329,21 @@ export function mountHouse3d(container, names) {
       const h = sensor.label.offsetHeight;
       const left = Math.max(4, Math.min(width - w - 4, x - anchor * w));
       const top = Math.max(4, Math.min(height - h - 4, y - h / 2));
-      sensor.label.style.transform = `translate(${left}px, ${top}px)`;
+      placed.push({ label: sensor.label, left, top, w, h });
     });
+    // Labels that would overlap are pushed down, top to bottom, until none touch.
+    placed.sort((a, b) => a.top - b.top);
+    placed.forEach((box, i) => {
+      for (const other of placed.slice(0, i)) {
+        const overlaps =
+          box.left < other.left + other.w + 4 &&
+          other.left < box.left + box.w + 4 &&
+          box.top < other.top + other.h + 4;
+        if (overlaps) box.top = other.top + other.h + 4;
+      }
+      box.label.style.transform = `translate(${box.left}px, ${Math.min(box.top, height - box.h - 4)}px)`;
+    });
+    placed.length = 0;
     renderer.render(scene, camera);
   }
   frame = requestAnimationFrame(draw);
