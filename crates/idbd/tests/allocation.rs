@@ -142,3 +142,35 @@ fn a08_autostep_updates_do_not_allocate() {
     black_box(sink);
     assert_eq!(allocations, 0, "Autostep allocated on the learning path");
 }
+
+#[test]
+fn a08_autostep_clone_from_reuses_buffers() {
+    let config = autostep::Config::new(0.05).expect("valid config");
+    let mut source = Autostep::new(16, config).expect("valid learner");
+    let mut scratch = source.clone();
+    let features: Vec<f64> = (0_u32..16).map(|i| f64::from(i).cos()).collect();
+    let allocations = count_allocations(|| {
+        for t in 0..500_u32 {
+            source.update(&features, f64::from(t % 7)).expect("finite");
+            scratch.clone_from(&source);
+        }
+    });
+    assert_eq!(allocations, 0, "clone_from allocated");
+    assert_eq!(scratch.snapshot(), source.snapshot());
+}
+
+#[test]
+fn c23_idbd_clone_from_reuses_buffers() {
+    let config = Config::new(0.05, 0.01).expect("valid config");
+    let mut source = Idbd::new(16, config).expect("valid learner");
+    let mut scratch = source.clone();
+    let features: Vec<f64> = (0_u32..16).map(|i| f64::from(i).sin()).collect();
+    let allocations = count_allocations(|| {
+        for t in 0..500_u32 {
+            source.update(&features, f64::from(t % 5)).expect("finite");
+            scratch.clone_from(&source);
+        }
+    });
+    assert_eq!(allocations, 0, "clone_from allocated");
+    assert_eq!(scratch.snapshot(), source.snapshot());
+}

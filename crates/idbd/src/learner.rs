@@ -34,6 +34,10 @@ use crate::state::{State, StateError};
 /// betas and traces bit-for-bit unchanged. Prediction, update and inspection do not
 /// allocate.
 ///
+/// [`Clone::clone_from`] reuses the destination's buffers when it has the same number
+/// of features, so a caller can keep a scratch copy and refresh it on every sample
+/// without allocating.
+///
 /// # Examples
 ///
 /// ```
@@ -48,7 +52,6 @@ use crate::state::{State, StateError};
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Clone)]
 pub struct Idbd {
     config: Config,
     committed: Vectors,
@@ -58,11 +61,47 @@ pub struct Idbd {
 }
 
 /// Per-feature weights, log step sizes and traces.
-#[derive(Clone)]
 struct Vectors {
     weights: Vec<f64>,
     betas: Vec<f64>,
     traces: Vec<f64>,
+}
+
+// Hand-written so that `clone_from` forwards to `Vec::clone_from`, which reuses the
+// existing allocation. The derived impl would allocate fresh vectors every time.
+impl Clone for Vectors {
+    fn clone(&self) -> Self {
+        Self {
+            weights: self.weights.clone(),
+            betas: self.betas.clone(),
+            traces: self.traces.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.weights.clone_from(&source.weights);
+        self.betas.clone_from(&source.betas);
+        self.traces.clone_from(&source.traces);
+    }
+}
+
+impl Clone for Idbd {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config,
+            committed: self.committed.clone(),
+            candidate: self.candidate.clone(),
+        }
+    }
+
+    // The candidate buffer holds no state between updates, so only its length matters.
+    fn clone_from(&mut self, source: &Self) {
+        self.config = source.config;
+        self.committed.clone_from(&source.committed);
+        if self.candidate.weights.len() != source.candidate.weights.len() {
+            self.candidate.clone_from(&source.candidate);
+        }
+    }
 }
 
 impl Vectors {

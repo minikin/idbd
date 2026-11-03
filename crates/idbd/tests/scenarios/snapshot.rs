@@ -166,3 +166,18 @@ fn c22_invalid_configuration_cannot_enter_a_snapshot() {
         "invalid initial step size"
     );
 }
+
+#[test]
+fn c21_clone_from_copies_a_learner_of_any_size() {
+    let mut source = Idbd::new(3, safety_config(0.2, 0.05)).expect("valid");
+    source.update(&[1.0, -0.5, 2.0], 0.7).expect("finite");
+    let mut target = Idbd::new(5, config(0.1, 0.01)).expect("valid");
+    target.clone_from(&source);
+    assert_same_state(&target.snapshot(), &source.snapshot());
+    let a = source.update(&[0.3, 0.1, -1.0], 0.2).expect("finite");
+    let b = target
+        .update(&[0.3, 0.1, -1.0], 0.2)
+        .expect("the candidate buffer was resized");
+    assert_eq!(a, b);
+    assert_same_state(&target.snapshot(), &source.snapshot());
+}
