@@ -18,7 +18,7 @@ pub const SENSORS: [&str; NUM_SENSORS] = [
     "front door",
     "wi-fi signal",
     "doorbell battery",
-    "clock",
+    "water heater",
 ];
 
 /// Number of sensors that move the temperature.

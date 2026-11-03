@@ -37,7 +37,7 @@ IDBD at the selected theta = 0.015, after 30000 samples of task `house`, one run
 | front door | yes | 0.1169 | 0.1007 to 0.137 |
 | wi-fi signal | no | 0.01168 | 0.011 to 0.01251 |
 | doorbell battery | no | 0.01161 | 0.0111 to 0.01214 |
-| clock | no | 0.01195 | 0.01132 to 0.01314 |
+| water heater | no | 0.01195 | 0.01132 to 0.01314 |
 
 ## Reading these results
 
