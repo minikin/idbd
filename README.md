@@ -89,8 +89,10 @@ On these tasks untuned Autostep beat tuned LMS on two of three nonstationary tas
 tuned IDBD on all of them. At mu = 1, 19 of 20 tuning runs stopped when a step size underflowed
 to zero. [Method, mu sweep and step sizes](docs/results/autostep/README.md).
 
-**Performance.** On an Apple M4 Max, one update with 20 features takes about 97 ns and costs
-about 5 ns per feature up to 10,000 features. [Method and full table](docs/benchmarks.md).
+**Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
+about 5 ns per feature up to 10,000 features. One `exp` call per input accounts for an estimated
+85 to 97% of that, so SIMD has little to gain. An Autostep update costs about 2.4 to 2.7 times an
+IDBD update. [Method and full table](docs/benchmarks.md).
 
 ## Reproducing the results
 

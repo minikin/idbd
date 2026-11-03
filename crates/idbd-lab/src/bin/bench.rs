@@ -1,17 +1,23 @@
-//! Scenario C24: measured cost of `Idbd::predict` and `Idbd::update`.
+//! Scenario C24: measured cost of `predict` and `update` for `Idbd` and `Autostep`.
 //!
-//! Times the two core operations separately for three input sizes and both bounds
-//! settings, and records the machine, compiler and method beside the numbers.
+//! Times the core operations separately for three input sizes, both IDBD bounds settings
+//! and Autostep, plus one `f64::exp` call per input as a reference for the part of an
+//! update that no reordering can remove. Records the machine, compiler and method
+//! beside the numbers.
 
 use std::hint::black_box;
 use std::process::{Command, ExitCode};
 use std::time::Instant;
 
+use idbd::autostep::{self, Autostep};
 use idbd::{Bounds, Config, Idbd};
 use idbd_lab::cli::{Invocation, arguments, parse};
 use idbd_lab::report::{provenance, write};
 use idbd_lab::rng::Rng;
 use idbd_lab::stats::{median, percentile};
+
+/// Untimed passes over the first configuration before any row is recorded.
+const WARM_UP_PASSES: usize = 5;
 
 /// Input sizes measured, as the scenario requires.
 const SIZES: [usize; 3] = [20, 1_000, 10_000];
@@ -39,6 +45,8 @@ const DEFAULT_OUT: &str = "docs";
 enum Operation {
     Predict,
     Update,
+    /// One `f64::exp` per input, the transcendental call both learners make per input.
+    Exp,
 }
 
 impl Operation {
@@ -46,7 +54,61 @@ impl Operation {
         match self {
             Self::Predict => "predict",
             Self::Update => "update",
+            Self::Exp => "exp only",
         }
+    }
+}
+
+/// The learner a row measures.
+#[derive(Debug, Clone, Copy)]
+enum Variant {
+    Idbd(&'static str, Bounds),
+    Autostep,
+}
+
+impl Variant {
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Idbd(name, _) => name,
+            Self::Autostep => "Autostep",
+        }
+    }
+
+    fn build(self, features: usize) -> Result<Learner, String> {
+        match self {
+            Self::Idbd(_, bounds) => Config::new(INITIAL_STEP_SIZE, META_STEP_SIZE)
+                .and_then(|c| c.with_bounds(bounds))
+                .and_then(|c| Idbd::new(features, c))
+                .map(Learner::Idbd)
+                .map_err(|e| e.to_string()),
+            Self::Autostep => autostep::Config::new(INITIAL_STEP_SIZE)
+                .and_then(|c| Autostep::new(features, c))
+                .map(Learner::Autostep)
+                .map_err(|e| e.to_string()),
+        }
+    }
+}
+
+enum Learner {
+    Idbd(Idbd),
+    Autostep(Autostep),
+}
+
+impl Learner {
+    fn predict(&self, x: &[f64]) -> Result<f64, String> {
+        match self {
+            Self::Idbd(l) => l.predict(x),
+            Self::Autostep(l) => l.predict(x),
+        }
+        .map_err(|e| e.to_string())
+    }
+
+    fn update(&mut self, x: &[f64], target: f64) -> Result<f64, String> {
+        match self {
+            Self::Idbd(l) => l.update(x, target).map(|r| r.error),
+            Self::Autostep(l) => l.update(x, target).map(|r| r.error),
+        }
+        .map_err(|e| e.to_string())
     }
 }
 
@@ -54,7 +116,7 @@ impl Operation {
 #[derive(Debug)]
 struct Measurement {
     features: usize,
-    bounds: &'static str,
+    learner: &'static str,
     operation: Operation,
     batch: usize,
     nanos: Vec<f64>,
@@ -131,37 +193,65 @@ fn run() -> Result<(), String> {
     }
     eprintln!("{}", provenance());
 
+    // The first configuration measured otherwise runs while the CPU clock is still
+    // rising, which made the first row of the table slower and noisier than the same
+    // work measured later.
+    let warm = Fixture::new(SIZES[0], pool_size(SIZES[0]));
+    for _ in 0..WARM_UP_PASSES {
+        time(
+            Operation::Update,
+            SIZES[0],
+            Variant::Idbd("warm-up", Bounds::none()),
+            &warm,
+            batch_size(SIZES[0], pool_size(SIZES[0])),
+        )?;
+    }
+
     let mut measurements = Vec::new();
     for features in SIZES {
         let pool = pool_size(features);
         let batch = batch_size(features, pool);
         let fixture = Fixture::new(features, pool);
         eprintln!("{features} features: pool {pool}, batch {batch}, {SAMPLES} timed batches");
-        for (bounds_name, bounds) in [
-            ("none", Bounds::none()),
-            ("sutton safety", Bounds::sutton_safety()),
-        ] {
-            let config = Config::new(INITIAL_STEP_SIZE, META_STEP_SIZE)
-                .and_then(|c| c.with_bounds(bounds))
-                .map_err(|e| e.to_string())?;
-            for operation in [Operation::Predict, Operation::Update] {
-                let nanos = time(operation, features, config, &fixture, batch)?;
-                let measurement = Measurement {
-                    features,
-                    bounds: bounds_name,
-                    operation,
-                    batch,
-                    nanos,
-                };
-                eprintln!(
-                    "  {:<7} bounds {bounds_name:<13} median {} ns/call",
-                    operation.name(),
-                    measurement
-                        .median()
-                        .map_or_else(|| "-".to_owned(), format_nanos)
-                );
-                measurements.push(measurement);
-            }
+        let rows = [
+            (
+                Variant::Idbd("IDBD, no bounds", Bounds::none()),
+                Operation::Predict,
+            ),
+            (
+                Variant::Idbd("IDBD, no bounds", Bounds::none()),
+                Operation::Update,
+            ),
+            (
+                Variant::Idbd("IDBD, Sutton safety", Bounds::sutton_safety()),
+                Operation::Predict,
+            ),
+            (
+                Variant::Idbd("IDBD, Sutton safety", Bounds::sutton_safety()),
+                Operation::Update,
+            ),
+            (Variant::Autostep, Operation::Predict),
+            (Variant::Autostep, Operation::Update),
+            (Variant::Idbd("reference", Bounds::none()), Operation::Exp),
+        ];
+        for (variant, operation) in rows {
+            let nanos = time(operation, features, variant, &fixture, batch)?;
+            let measurement = Measurement {
+                features,
+                learner: variant.name(),
+                operation,
+                batch,
+                nanos,
+            };
+            eprintln!(
+                "  {:<8} {:<20} median {} ns/call",
+                operation.name(),
+                variant.name(),
+                measurement
+                    .median()
+                    .map_or_else(|| "-".to_owned(), format_nanos)
+            );
+            measurements.push(measurement);
         }
     }
 
@@ -190,13 +280,13 @@ fn batch_size(features: usize, pool: usize) -> usize {
 fn time(
     operation: Operation,
     features: usize,
-    config: Config,
+    variant: Variant,
     fixture: &Fixture,
     batch: usize,
 ) -> Result<Vec<f64>, String> {
     let mut nanos = Vec::with_capacity(SAMPLES);
     for round in 0..WARMUP_BATCHES + SAMPLES {
-        let mut learner = Idbd::new(features, config).map_err(|e| e.to_string())?;
+        let mut learner = variant.build(features)?;
         if operation == Operation::Predict {
             prime(&mut learner, fixture, batch)?;
         }
@@ -204,14 +294,19 @@ fn time(
         match operation {
             Operation::Predict => {
                 for x in fixture.features.iter().take(batch) {
-                    let prediction = learner.predict(black_box(x));
-                    black_box(prediction.map_err(|e| e.to_string())?);
+                    black_box(learner.predict(black_box(x))?);
                 }
             }
             Operation::Update => {
                 for (x, &target) in fixture.features.iter().zip(&fixture.targets).take(batch) {
-                    let report = learner.update(black_box(x), black_box(target));
-                    black_box(report.map_err(|e| e.to_string())?);
+                    black_box(learner.update(black_box(x), black_box(target))?);
+                }
+            }
+            Operation::Exp => {
+                for x in fixture.features.iter().take(batch) {
+                    for &value in black_box(x) {
+                        black_box(value.exp());
+                    }
                 }
             }
         }
@@ -225,14 +320,14 @@ fn time(
 }
 
 /// Learns a few examples so the measured predictions run against nonzero weights.
-fn prime(learner: &mut Idbd, fixture: &Fixture, batch: usize) -> Result<(), String> {
+fn prime(learner: &mut Learner, fixture: &Fixture, batch: usize) -> Result<(), String> {
     for (x, &target) in fixture
         .features
         .iter()
         .zip(&fixture.targets)
         .take(batch.min(64))
     {
-        learner.update(x, target).map_err(|e| e.to_string())?;
+        learner.update(x, target)?;
     }
     Ok(())
 }
@@ -278,6 +373,7 @@ fn document(measurements: &[Measurement], environment: &Environment) -> String {
         header(environment),
         method_section(),
         results_section(measurements),
+        exp_share_section(measurements),
         scope_section(),
     ]
     .concat()
@@ -311,7 +407,12 @@ fn method_section() -> String {
         "## Method\n\n\
          Timing uses `std::time::Instant` and `std::hint::black_box`, with no benchmark \
          framework.\n\n\
-         One configuration is one input size, one bounds setting and one operation. It runs \
+         Five untimed passes over the first configuration run before any row is recorded, so \
+         the first rows are not measured while the CPU clock is still rising. One \
+         configuration is one input size, one learner and one operation. Both learners \
+         start every input at the same step size, and Autostep uses its defaults (mu 0.01, \
+         tau 10,000). The `exp only` row calls `f64::exp` once per input of each example \
+         and nothing else. It runs \
          {WARMUP_BATCHES} untimed batches and then {SAMPLES} timed batches. A batch calls the \
          operation once per example over a preallocated pool, and the batch's elapsed time \
          divided by its call count is one sample. The tables report the median of those samples \
@@ -333,7 +434,7 @@ fn method_section() -> String {
 fn results_section(measurements: &[Measurement]) -> String {
     let mut rows = vec![
         "## Results\n\n\
-         | features | bounds | operation | median ns/call | p10 | p90 | ns per feature | \
+         | features | learner | operation | median ns/call | p10 | p90 | ns per feature | \
          calls per batch |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
             .to_owned(),
     ];
@@ -345,7 +446,7 @@ fn results_section(measurements: &[Measurement]) -> String {
         rows.push(format!(
             "| {} | {} | {} | {} | {low} | {high} | {} | {} |\n",
             measurement.features,
-            measurement.bounds,
+            measurement.learner,
             measurement.operation.name(),
             measurement
                 .median()
@@ -361,6 +462,44 @@ fn results_section(measurements: &[Measurement]) -> String {
          confidence interval for the operation.\n\n"
             .to_owned(),
     );
+    rows.concat()
+}
+
+/// How much of an unbounded IDBD update one `exp` per input accounts for, per size.
+fn exp_share_section(measurements: &[Measurement]) -> String {
+    let find = |features: usize, learner: &str, operation: Operation| {
+        measurements
+            .iter()
+            .find(|m| m.features == features && m.learner == learner && m.operation == operation)
+            .and_then(Measurement::median)
+    };
+    let mut rows = vec![
+        "## Where an update's time goes\n\n\
+         Both learners call `exp` at most once per input on every update. The share below is \
+         the `exp only` median divided by the median of the unbounded IDBD update at the same \
+         size. The timings overlap inside the CPU, so the share is an estimate, not an exact \
+         split. A high share leaves little room for rewriting the remaining arithmetic, for \
+         example with SIMD.\n\n\
+         | features | exp only, ns/call | IDBD update, ns/call | exp share | Autostep update / IDBD update |\n\
+         | --- | --- | --- | --- | --- |\n"
+            .to_owned(),
+    ];
+    for features in SIZES {
+        let exp = find(features, "reference", Operation::Exp);
+        let idbd = find(features, "IDBD, no bounds", Operation::Update);
+        let autostep = find(features, "Autostep", Operation::Update);
+        let (Some(exp), Some(idbd), Some(autostep)) = (exp, idbd, autostep) else {
+            continue;
+        };
+        rows.push(format!(
+            "| {features} | {} | {} | {:.0}% | {:.2} |\n",
+            format_nanos(exp),
+            format_nanos(idbd),
+            100.0 * exp / idbd,
+            autostep / idbd,
+        ));
+    }
+    rows.push("\n".to_owned());
     rows.concat()
 }
 

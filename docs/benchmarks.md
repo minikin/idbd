@@ -19,7 +19,7 @@ idbd-lab 0.1.0, generator xoshiro256** seeded by SplitMix64, Box-Muller normals 
 
 Timing uses `std::time::Instant` and `std::hint::black_box`, with no benchmark framework.
 
-One configuration is one input size, one bounds setting and one operation. It runs 3 untimed batches and then 101 timed batches. A batch calls the operation once per example over a preallocated pool, and the batch's elapsed time divided by its call count is one sample. The tables report the median of those samples and the 10th and 90th percentiles.
+Five untimed passes over the first configuration run before any row is recorded, so the first rows are not measured while the CPU clock is still rising. One configuration is one input size, one learner and one operation. Both learners start every input at the same step size, and Autostep uses its defaults (mu 0.01, tau 10,000). The `exp only` row calls `f64::exp` once per input of each example and nothing else. It runs 3 untimed batches and then 101 timed batches. A batch calls the operation once per example over a preallocated pool, and the batch's elapsed time divided by its call count is one sample. The tables report the median of those samples and the 10th and 90th percentiles.
 
 Every batch starts from a freshly constructed learner, so an update batch always begins at zero weights and traces. A batch never reuses an example, which keeps the learner from fitting the pool exactly and driving its residuals into the subnormal range, where arithmetic can take a different amount of time.
 
@@ -29,22 +29,41 @@ Construction, fixture generation and priming are outside every timed region. All
 
 ## Results
 
-| features | bounds | operation | median ns/call | p10 | p90 | ns per feature | calls per batch |
+| features | learner | operation | median ns/call | p10 | p90 | ns per feature | calls per batch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 20 | none | predict | 9.41 | 9.39 | 9.75 | 0.470 | 4096 |
-| 20 | none | update | 96.98 | 95.67 | 98.07 | 4.849 | 4096 |
-| 20 | sutton safety | predict | 8.65 | 8.63 | 8.66 | 0.432 | 4096 |
-| 20 | sutton safety | update | 102.4 | 102.3 | 103.8 | 5.118 | 4096 |
-| 1000 | none | predict | 833.9 | 832.4 | 845.5 | 0.834 | 2000 |
-| 1000 | none | update | 4739.0 | 4711.7 | 4772.1 | 4.739 | 2000 |
-| 1000 | sutton safety | predict | 837.9 | 832.7 | 850.2 | 0.838 | 2000 |
-| 1000 | sutton safety | update | 5100.4 | 5069.9 | 5139.4 | 5.100 | 2000 |
-| 10000 | none | predict | 8366.2 | 8291.5 | 8586.2 | 0.837 | 200 |
-| 10000 | none | update | 52261 | 51975 | 54748 | 5.226 | 200 |
-| 10000 | sutton safety | predict | 8422.5 | 8407.7 | 8457.3 | 0.842 | 200 |
-| 10000 | sutton safety | update | 55661 | 55501 | 55826 | 5.566 | 200 |
+| 20 | IDBD, no bounds | predict | 8.67 | 7.94 | 8.72 | 0.433 | 4096 |
+| 20 | IDBD, no bounds | update | 94.26 | 93.32 | 97.35 | 4.713 | 4096 |
+| 20 | IDBD, Sutton safety | predict | 9.41 | 8.68 | 9.56 | 0.470 | 4096 |
+| 20 | IDBD, Sutton safety | update | 97.34 | 96.15 | 104.0 | 4.867 | 4096 |
+| 20 | Autostep | predict | 8.68 | 8.67 | 8.73 | 0.434 | 4096 |
+| 20 | Autostep | update | 223.8 | 222.4 | 228.4 | 11.192 | 4096 |
+| 20 | reference | exp only | 84.04 | 73.93 | 87.97 | 4.202 | 4096 |
+| 1000 | IDBD, no bounds | predict | 745.6 | 735.3 | 760.3 | 0.746 | 2000 |
+| 1000 | IDBD, no bounds | update | 4520.3 | 4467.7 | 4559.0 | 4.520 | 2000 |
+| 1000 | IDBD, Sutton safety | predict | 744.0 | 732.8 | 756.5 | 0.744 | 2000 |
+| 1000 | IDBD, Sutton safety | update | 4766.8 | 4695.9 | 4803.0 | 4.767 | 2000 |
+| 1000 | Autostep | predict | 739.8 | 729.6 | 754.2 | 0.740 | 2000 |
+| 1000 | Autostep | update | 12159 | 11953 | 12445 | 12.159 | 2000 |
+| 1000 | reference | exp only | 4383.5 | 4230.0 | 4464.3 | 4.383 | 2000 |
+| 10000 | IDBD, no bounds | predict | 7637.9 | 7444.2 | 7776.5 | 0.764 | 200 |
+| 10000 | IDBD, no bounds | update | 51505 | 50291 | 52679 | 5.151 | 200 |
+| 10000 | IDBD, Sutton safety | predict | 7965.6 | 7607.1 | 8394.0 | 0.797 | 200 |
+| 10000 | IDBD, Sutton safety | update | 53003 | 52461 | 54447 | 5.300 | 200 |
+| 10000 | Autostep | predict | 7830.6 | 7653.3 | 8083.3 | 0.783 | 200 |
+| 10000 | Autostep | update | 122184 | 120469 | 124916 | 12.218 | 200 |
+| 10000 | reference | exp only | 43755 | 42559 | 44168 | 4.376 | 200 |
 
 The spread is batch-to-batch variation on a machine running other work, not a confidence interval for the operation.
+
+## Where an update's time goes
+
+Both learners call `exp` at most once per input on every update. The share below is the `exp only` median divided by the median of the unbounded IDBD update at the same size. The timings overlap inside the CPU, so the share is an estimate, not an exact split. A high share leaves little room for rewriting the remaining arithmetic, for example with SIMD.
+
+| features | exp only, ns/call | IDBD update, ns/call | exp share | Autostep update / IDBD update |
+| --- | --- | --- | --- | --- |
+| 20 | 84.04 | 94.26 | 89% | 2.37 |
+| 1000 | 4383.5 | 4520.3 | 97% | 2.69 |
+| 10000 | 43755 | 51505 | 85% | 2.37 |
 
 ## What is not in these numbers
 
