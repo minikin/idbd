@@ -42,6 +42,7 @@ Rust test names start with the scenario ID. Core tests live in `crates/idbd/test
 | C22 | Test | `c22_reject_an_invalid_snapshot`. The "invalid configuration" row cannot be built: `State::config` is a `Config`, which validates on construction. `c22_invalid_configuration_cannot_enter_a_snapshot` records this. |
 | C23 | Test | `c23_avoid_per_example_heap_allocation_in_the_core` in `tests/allocation.rs`, with a counting global allocator, in debug and release builds |
 | C24 | Recorded | [`docs/benchmarks.md`](benchmarks.md), produced by `cargo run --release -p idbd-lab --bin bench` |
+| C25 | Test | `crates/idbd/tests/serde.rs`, run with `--all-features` in CI: bit-exact round trip and identical later reports, field names, omitted bounds, constructor errors for invalid configuration and bounds, unknown fields, and an invalid checkpoint that deserializes as `State` but not as `Idbd`. |
 
 Beyond the scenarios, `properties.rs` runs proptest properties: agreement with a separate
 transcription of the paper's equations, unchanged state after every injected fault, unchanged

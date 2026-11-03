@@ -308,6 +308,16 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
         | beta whose exponential is zero          |
         | beta whose exponential is infinite      |
 
+    @serde
+    Scenario: C25 Save and restore a learner through serde
+      Given the "serde" feature is enabled and a learner trained on a deterministic prefix
+      When I serialize the learner and deserialize it as a learner
+      Then its configuration, weights, betas and traces agree bit for bit
+      And both learners give the same reports for the same remaining examples
+      When the serialized form has an invalid configuration, invalid bounds, an unknown field or a state that from_state rejects
+      Then deserializing a learner returns the matching error
+      And deserializing only a State accepts it unvalidated
+
   @v0_1 @core @performance
   Rule: The ordinary learning path has predictable resource use
 

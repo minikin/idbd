@@ -11,7 +11,7 @@ out=target/coverage
 mkdir -p "$out"
 
 cargo llvm-cov clean --workspace
-cargo llvm-cov --no-report -p idbd -p idbd-lab
+cargo llvm-cov --no-report -p idbd -p idbd-lab --all-features
 for bin in sutton1992-exp1 evaluate sutton1992-exp2; do
   cargo llvm-cov run --no-report -p idbd-lab --bin "$bin" -- --out "$out/$bin"
 done

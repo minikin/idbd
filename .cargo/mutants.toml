@@ -4,6 +4,10 @@
 # mutant that makes an iterator or loop endless counts as caught, not as a timeout.
 test_tool = "nextest"
 
+# Optional features such as `serde` have their own tests, which only build with the
+# feature enabled.
+all_features = true
+
 exclude_globs = [
   # The experiment binaries are exercised by full runs in scripts/coverage.sh, and their
   # outputs are committed under docs/results, where a changed number shows in review.

@@ -64,6 +64,14 @@
 //!   configuration, weights, betas and traces.
 //! - The crate has no dependencies and no `unsafe` code. It requires `std`.
 //!
+//! # Features
+//!
+//! - `serde`: implements `Serialize` and `Deserialize` for [`Config`], [`Bounds`],
+//!   [`State`] and [`Idbd`]. Deserializing a `Config` or `Bounds` runs the same checks as
+//!   their constructors, and deserializing an `Idbd` runs [`Idbd::from_state`]. A
+//!   deserialized `State` is unvalidated, as with [`State::new`]. Off by default, so the
+//!   default build has no dependencies.
+//!
 //! # Limitations
 //!
 //! - **Input and target scaling.** The trace decay `1 - alpha_i * x_i^2` assumes inputs
@@ -91,6 +99,8 @@
 
 mod config;
 mod learner;
+#[cfg(feature = "serde")]
+mod serialization;
 mod state;
 
 pub use config::{BoundKind, Bounds, Config, ConfigError};
