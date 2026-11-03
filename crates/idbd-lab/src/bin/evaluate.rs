@@ -8,30 +8,16 @@ use std::process::ExitCode;
 use idbd::Bounds;
 use idbd_lab::cli::{Invocation, arguments, parse};
 use idbd_lab::csv::{Csv, number};
+use idbd_lab::evaluation::{
+    EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
+    WARMUP, tune_and_evaluate,
+};
 use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
 use idbd_lab::stats::Summary;
-use idbd_lab::sweep::{Family, Point, Protocol, best, measure, paired_difference};
+use idbd_lab::sweep::{Family, Point, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, RELEVANCE_SHIFT_PERIOD, SIGN_FLIP_PERIOD};
 
-/// Fixed LMS step sizes offered to the tuning procedure.
-const LMS_GRID: [f64; 11] = [
-    0.001, 0.002, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10,
-];
-
-/// IDBD meta step sizes offered to the tuning procedure.
-const IDBD_GRID: [f64; 9] = [0.0, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.010, 0.015];
-
-/// Seeds used only to select a parameter. No evaluation seed appears here.
-const TUNING_SEEDS: [u64; 5] = [1001, 1002, 1003, 1004, 1005];
-
-/// Seeds used only to report results. Every learner sees these same streams.
-const EVALUATION_SEEDS: [u64; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-/// Starting step size of every IDBD input.
-const INITIAL_STEP_SIZE: f64 = 0.05;
-
-const WARMUP: u64 = 20_000;
-const MEASURED: u64 = 10_000;
+const INITIAL_STEP_SIZE: f64 = IDBD_INITIAL_STEP_SIZE;
 
 const DEFAULT_OUT: &str = "docs/results/evaluation";
 
@@ -81,12 +67,7 @@ fn run() -> Result<(), String> {
 
     eprintln!("{}", provenance());
     let mut results = Vec::new();
-    for preset in [
-        Preset::Sutton1992,
-        Preset::Stationary,
-        Preset::Drifting,
-        Preset::ChangingRelevance,
-    ] {
+    for preset in TASKS {
         results.push(evaluate(preset)?);
     }
 
@@ -111,45 +92,23 @@ fn families() -> [(Family, &'static [f64]); 2] {
 }
 
 fn evaluate(preset: Preset) -> Result<TaskResult, String> {
-    let protocol = Protocol {
-        preset,
-        warmup: WARMUP,
-        measured: MEASURED,
-    };
     let mut tuning = Vec::new();
     let mut selected = Vec::new();
     let mut evaluation = Vec::new();
-
     for (family, grid) in families() {
         eprintln!("tuning {} on {}", family.learner_id(), preset.id());
-        let mut points = Vec::with_capacity(grid.len());
-        for &value in grid {
-            points.push(measure(family, &protocol, value, &TUNING_SEEDS)?);
-        }
-        let Some(chosen) = best(&points) else {
-            return Err(format!(
-                "no {} grid value completed every tuning seed on {}",
-                family.learner_id(),
-                preset.id()
-            ));
-        };
-        let value = chosen.value;
+        let tuned = tune_and_evaluate(family, grid, preset)?;
         eprintln!(
-            "  selected {} {} (tuning MSE {})",
+            "  selected {} {}, evaluation MSE {} over {} seeds, {} failed",
             family.parameter(),
-            parameter(value),
-            plus_minus(chosen.summary())
+            parameter(tuned.selected),
+            plus_minus(tuned.evaluation.summary()),
+            tuned.evaluation.summary().map_or(0, Summary::count),
+            tuned.evaluation.failures()
         );
-        let measured = measure(family, &protocol, value, &EVALUATION_SEEDS)?;
-        eprintln!(
-            "  evaluation MSE {} over {} seeds, {} failed",
-            plus_minus(measured.summary()),
-            measured.summary().map_or(0, Summary::count),
-            measured.failures()
-        );
-        tuning.push((family, points));
-        selected.push((family, value));
-        evaluation.push((family, measured));
+        tuning.push((family, tuned.tuning));
+        selected.push((family, tuned.selected));
+        evaluation.push((family, tuned.evaluation));
     }
     Ok(TaskResult {
         preset,

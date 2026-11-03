@@ -65,6 +65,7 @@ zero-input coordinates, bitwise snapshot round trips and betas within their boun
 | E01 | Recorded | [Evaluation results](results/evaluation/README.md), `--bin evaluate` |
 | E02 | Recorded | [Experiment 2 results](results/sutton1992-experiment2/README.md), `--bin sutton1992-exp2`, including the Figure 5 sweep and the theta 0.01 run labeled as adapted |
 | E03 | Test | [`crates/idbd/examples/latency.rs`](../crates/idbd/examples/latency.rs), run in CI with `cargo run -p idbd --example latency`. Synthetic latency data, labeled as such. It predicts before learning, reports mean absolute error in milliseconds per 500 samples, skips an invalid sample, and resumes from a text checkpoint that holds the full learner state and the stream position. The run fails if the resumed learner differs bit for bit. |
+| E05 | Recorded | [Autostep results](results/autostep/README.md), produced by `cargo run --release -p idbd-lab --bin autostep-eval`, which reuses the E01 protocol from `idbd_lab::evaluation`. Its LMS and IDBD rows equal E01. The binary runs under coverage in `scripts/coverage.sh`. |
 
 ## Demo (IDBD Explorer)
 

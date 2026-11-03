@@ -7,6 +7,7 @@
 pub mod alphas;
 pub mod cli;
 pub mod csv;
+pub mod evaluation;
 pub mod experiment;
 pub mod lms;
 pub mod plot;

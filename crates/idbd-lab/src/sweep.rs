@@ -3,6 +3,7 @@
 //! A sweep never averages away a failure. Each grid value keeps its per-seed results,
 //! and [`best`] refuses to select a value whose runs did not all complete.
 
+use idbd::autostep;
 use idbd::{Bounds, Config};
 
 use crate::experiment::{LearnerSpec, RunSpec, run};
@@ -22,6 +23,13 @@ pub enum Family {
         /// Optional beta bounds. Paper reproductions use [`Bounds::none`].
         bounds: Bounds,
     },
+    /// Autostep. The swept value is the meta step size mu.
+    Autostep {
+        /// Starting step size of every input.
+        initial_step_size: f64,
+        /// Time scale of the normalizers, tau.
+        time_scale: f64,
+    },
 }
 
 impl Family {
@@ -30,6 +38,7 @@ impl Family {
         match self {
             Self::Lms => "lms",
             Self::Idbd { .. } => "idbd",
+            Self::Autostep { .. } => "autostep",
         }
     }
 
@@ -38,6 +47,7 @@ impl Family {
         match self {
             Self::Lms => "alpha",
             Self::Idbd { .. } => "theta",
+            Self::Autostep { .. } => "mu",
         }
     }
 
@@ -60,6 +70,14 @@ impl Family {
                     .map_err(|e| e.to_string())?;
                 Ok(LearnerSpec::Idbd(config))
             }
+            Self::Autostep {
+                initial_step_size,
+                time_scale,
+            } => autostep::Config::new(initial_step_size)
+                .and_then(|c| c.with_meta_step_size(value))
+                .and_then(|c| c.with_time_scale(time_scale))
+                .map(LearnerSpec::Autostep)
+                .map_err(|e| e.to_string()),
         }
     }
 }
@@ -289,6 +307,25 @@ mod tests {
         ));
         assert!(Family::Lms.learner(0.0).is_err(), "alpha must be positive");
         assert!(idbd.learner(-1.0).is_err(), "theta must be nonnegative");
+
+        let autostep = Family::Autostep {
+            initial_step_size: 0.005,
+            time_scale: 100.0,
+        };
+        assert_eq!(autostep.learner_id(), "autostep");
+        assert_eq!(autostep.parameter(), "mu");
+        let Ok(LearnerSpec::Autostep(config)) = autostep.learner(0.03) else {
+            panic!("mu 0.03 builds an Autostep learner");
+        };
+        assert_eq!(config.meta_step_size().to_bits(), 0.03_f64.to_bits());
+        assert_eq!(config.time_scale().to_bits(), 100.0_f64.to_bits());
+        assert_eq!(config.initial_step_size().to_bits(), 0.005_f64.to_bits());
+        assert!(autostep.learner(-0.1).is_err(), "mu must be nonnegative");
+        let bad_tau = Family::Autostep {
+            initial_step_size: 0.005,
+            time_scale: 0.5,
+        };
+        assert!(bad_tau.learner(0.01).is_err(), "tau must be at least 1");
     }
 
     #[test]

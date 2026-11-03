@@ -75,6 +75,20 @@ These are noise-free synthetic tasks where a few inputs matter and the relations
 They do not show that IDBD beats a tuned LMS in general. [Method and per-seed
 results](docs/results/evaluation/README.md).
 
+**Autostep (new tasks, same protocol).** Autostep (Mahmood et al., 2012) at the paper's
+default mu = 0.01, with no tuning, against the tuned learners above:
+
+| Task | Autostep, default mu | Autostep, mu tuned |
+| --- | --- | --- |
+| Sutton 1992 task | 2.267 +/- 0.016 | 2.052 +/- 0.027 (mu 0.1) |
+| Drifting coefficients (extension) | 0.185 +/- 0.004 | 0.132 +/- 0.003 (mu 0.1) |
+| Changing relevance (extension) | 4.022 +/- 0.028 | 3.448 +/- 0.032 (mu 0.03) |
+| Stationary | below 1e-30 | below 1e-32 |
+
+On these tasks untuned Autostep beat tuned LMS on two of three nonstationary tasks and trailed
+tuned IDBD on all of them. At mu = 1, 19 of 20 tuning runs stopped when a step size underflowed
+to zero. [Method, mu sweep and step sizes](docs/results/autostep/README.md).
+
 **Performance.** On an Apple M4 Max, one update with 20 features takes about 97 ns and costs
 about 5 ns per feature up to 10,000 features. [Method and full table](docs/benchmarks.md).
 
