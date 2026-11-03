@@ -184,24 +184,30 @@ mod tests {
     #[test]
     fn seed_7_reproduces_its_recorded_readings_and_switches() {
         // Recorded from this implementation. A change here changes every published house
-        // result, so it must be deliberate.
+        // result, so it must be deliberate. Targets go through ln and cos in the
+        // Box-Muller step, whose last bit differs between platform math libraries, so they
+        // are compared to 1e-12. Switch times come from integer arithmetic and are exact.
         let mut house = House::new(7);
         let mut x = [0.0; NUM_SENSORS];
         let mut switched = Vec::new();
         let mut targets = Vec::new();
         let mut log = Vec::new();
         for _ in 0..200 {
-            targets.push(house.next_sample(&mut x, &mut switched).to_bits());
+            targets.push(house.next_sample(&mut x, &mut switched));
             log.extend(switched.iter().map(|&s| (house.generated(), s)));
         }
-        assert_eq!(
-            targets[..3],
-            [
-                13_830_281_868_836_244_833,
-                13_820_455_362_515_906_439,
-                4_610_336_207_472_215_403
-            ]
-        );
+        let recorded = [
+            13_830_281_868_836_244_833_u64,
+            13_820_455_362_515_906_439,
+            4_610_336_207_472_215_403,
+        ]
+        .map(f64::from_bits);
+        for (got, want) in targets.iter().zip(recorded) {
+            assert!(
+                (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+                "{got} vs {want}"
+            );
+        }
         assert_eq!(log[..3], [(42, 2), (49, 2), (83, 1)]);
     }
 
