@@ -717,6 +717,50 @@ main,
   margin-bottom: var(--step-5);
 }
 
+.run-details {
+  margin-bottom: var(--step-5);
+}
+
+.run-details > summary {
+  display: none;
+}
+
+.run-details .run-header {
+  margin-bottom: 0;
+}
+
+.idle-note {
+  display: none;
+}
+
+/* Phones: fold the run definition and, before the first sample, show one line per panel
+   in place of empty charts, zero bars and a table of zeros. */
+@media (max-width: 700px) {
+  .run-details > summary {
+    display: list-item;
+    cursor: pointer;
+    min-height: 44px;
+    padding: var(--step-3) var(--step-4);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+    font-size: 0.875rem;
+    color: var(--ink-2);
+  }
+
+  .run-details[open] > summary {
+    margin-bottom: var(--step-3);
+  }
+
+  #experiment[data-idle="true"] .idle-note {
+    display: block;
+  }
+
+  #experiment[data-idle="true"] .panel :is(.legend, .chart, .weight-list, .pairs, .chart-readout, .event-list, .scroll-hint, .table-scroll, #event-summary, #inspector-meaning, #error-panel > .note:last-child) {
+    display: none;
+  }
+}
+
 .run-header .wide-pair {
   grid-column: span 2;
 }

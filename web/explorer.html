@@ -220,7 +220,10 @@
           </div>
         </div>
 
-        <dl class="run-header" id="run-header" aria-label="Run definition"></dl>
+        <details class="run-details" id="run-details" open>
+          <summary>Run definition: task, seed, settings and versions</summary>
+          <dl class="run-header" id="run-header" aria-label="Run definition"></dl>
+        </details>
 
         <div class="notice failure" id="failure" role="alert" hidden></div>
 
@@ -235,6 +238,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <div class="legend" id="weights-legend"></div>
             <div
               class="weight-list"
@@ -252,6 +256,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <div class="legend" id="error-legend"></div>
             <div class="chart" id="error-chart" aria-label="Prediction error chart. Arrow keys read past values."></div>
             <p class="chart-readout mono" id="error-readout" aria-live="polite" hidden></p>
@@ -274,6 +279,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <div class="legend" id="alpha-legend"></div>
             <div class="chart" id="alpha-chart" aria-label="Step size chart. Arrow keys read past values."></div>
             <p class="chart-readout mono" id="alpha-readout" aria-live="polite" hidden></p>
@@ -289,6 +295,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <div class="legend" id="events-legend"></div>
             <div class="chart timeline" id="event-timeline"></div>
             <p class="note" id="event-summary"></p>
@@ -308,6 +315,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <dl class="pairs" id="inspector-pairs"></dl>
             <p class="note" id="inspector-meaning"></p>
             <div class="chart sparkline" id="inspector-alpha"></div>
@@ -324,6 +332,7 @@
               </div>
               <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
+            <p class="idle-note note">Fills in after the first sample. Choose Step or Run.</p>
             <dl class="pairs metrics" id="metrics-pairs"></dl>
             <p class="scroll-hint note" aria-hidden="true">Scroll the table sideways for every column &rarr;</p>
             <div class="table-scroll" tabindex="0" role="region" aria-label="Per-input state table">

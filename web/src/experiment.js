@@ -34,6 +34,9 @@ const BATCH = 256;
 /** Milliseconds of work one playback tick may do before it yields. */
 const TICK_BUDGET_MS = 8;
 
+/** The width below which the page uses its phone layout. Matches styles.css. */
+const PHONE = "(max-width: 700px)";
+
 /** World events listed under the timeline, newest first. */
 const EVENTS_LISTED = 12;
 
@@ -84,6 +87,8 @@ export function createExperiment(wasm) {
     inspectorAlpha: document.getElementById("inspector-alpha"),
     metricsPairs: document.getElementById("metrics-pairs"),
     stateTable: document.querySelector("#state-table tbody"),
+    section: document.getElementById("experiment"),
+    runDetails: document.getElementById("run-details"),
   };
 
   const presets = JSON.parse(wasm.presetsJson());
@@ -156,6 +161,12 @@ export function createExperiment(wasm) {
     `Focus the chart and use the arrow keys to read past values.`;
   inspection.attach(nodes.errorChart, nodes.errorReadout);
   inspection.attach(nodes.alphaChart, nodes.alphaReadout);
+
+  // The run definition is twelve pairs of reference detail. On a phone it starts folded
+  // so the controls and charts come first.
+  if (window.matchMedia(PHONE).matches) {
+    nodes.runDetails.open = false;
+  }
 
   buildWeightRows();
   describePreset();
@@ -410,6 +421,7 @@ export function createExperiment(wasm) {
   function render() {
     const widths = measureWidths();
     state = readState();
+    nodes.section.dataset.idle = String(state.sample === 0);
     for (const badge of nodes.badges) {
       badge.textContent = `sample ${fmtCount(state.sample)}`;
       badge.dataset.sample = String(state.sample);
