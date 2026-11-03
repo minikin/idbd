@@ -12,15 +12,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;1,6..72,300&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body data-app-ready="false">
     <a class="skip-link" href="#experiment">Skip to the experiment</a>
 
+    <header class="site-header">
+      <div class="header-row">
+        <a class="wordmark" href="./index.html">
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <circle cx="11" cy="11" r="3" fill="var(--idbd)"></circle>
+            <circle cx="11" cy="11" r="7" fill="none" stroke="var(--idbd)" stroke-opacity=".45"></circle>
+            <circle cx="11" cy="11" r="10.5" fill="none" stroke="var(--ink)" stroke-opacity=".15"></circle>
+          </svg>
+          idbd
+        </a>
+        <nav aria-label="Main" class="nav">
+          <a href="./index.html">Story</a>
+          <a class="wide-only" href="#guided">One update</a>
+          <a class="wide-only" href="#experiment">Experiment</a>
+          <a href="./explorer.html" aria-current="page">Advanced</a>
+          <a class="wide-only" href="https://github.com/minikin/idbd">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
     <header class="masthead">
-      <p class="eyebrow">Sutton 1992 &middot; incremental delta-bar-delta</p>
+      <p class="eyebrow">Advanced &middot; Sutton 1992, incremental delta-bar-delta</p>
       <h1>IDBD Explorer</h1>
       <p class="lede">
         IDBD is the LMS rule with a separate learning rate for every input, and it adapts
@@ -28,14 +48,32 @@
         way get larger steps, and inputs whose corrections cancel out get smaller ones.
       </p>
       <nav class="masthead-links" aria-label="References">
-        <a href="./index.html">The story version, for everyone</a>
-        <a href="https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf">The paper (AAAI-92, PDF)</a>
-        <a href="https://github.com/minikin/idbd">Source code</a>
+        <a href="https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf">The paper (AAAI-92, PDF) &nearr;</a>
         <a
           href="https://github.com/minikin/idbd/blob/main/docs/results/sutton1992-experiment1/README.md"
-          >Experiment 1 results</a
+          >Experiment 1 results &nearr;</a
         >
       </nav>
+
+      <section class="glossary" aria-labelledby="glossary-title">
+        <div class="glossary-head">
+          <h2 id="glossary-title" class="panel-title">The story's words, in the paper's terms</h2>
+          <p class="note">
+            The story's house has 6 sensors. This page runs the paper's task instead: 20
+            inputs, of which 5 matter.
+          </p>
+        </div>
+        <dl class="glossary-list">
+          <div><dt>sensor</dt><dd>input <span class="mono">x0</span> to <span class="mono">x19</span></dd></div>
+          <div><dt>reading</dt><dd>sample: one set of inputs and the target</dd></div>
+          <div><dt>trust</dt><dd>weight <span class="mono">w</span></dd></div>
+          <div><dt>speed</dt><dd>step size <span class="mono">alpha</span>, kept as <span class="mono">beta = log alpha</span></dd></div>
+          <div><dt>tuning the speeds</dt><dd>meta step size <span class="mono">theta</span></dd></div>
+          <div><dt>miss</dt><dd>error: target minus prediction, before learning</dd></div>
+          <div><dt>accuracy</dt><dd>rolling mean squared error (MSE), lower is better</dd></div>
+          <div><dt>fixed speed (LMS)</dt><dd>LMS with one step size for every input</dd></div>
+        </dl>
+      </section>
       <dl class="build-info" id="build-info" aria-label="Build information"></dl>
       <p class="notice" id="load-error" role="alert" hidden></p>
     </header>
@@ -113,7 +151,7 @@
             </h3>
             <ol class="ladder" id="guided-ladder"></ol>
             <div class="button-row">
-              <button type="button" id="guided-continue" class="button primary">
+              <button type="button" id="guided-continue" class="button">
                 Continue to the full experiment
               </button>
             </div>
