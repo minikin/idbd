@@ -19,6 +19,16 @@ env:
   RUSTDOCFLAGS: -D warnings
 
 jobs:
+  commits:
+    name: Conventional Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: scripts/check-commits.sh "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+
   lint:
     name: Format and Clippy
     runs-on: ubuntu-latest
