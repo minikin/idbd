@@ -79,7 +79,10 @@ step sizes.
 - **Optional bounds.** `Bounds::sutton_safety()` applies the beta floor of -10 and the per-step
   limit of 2 that the paper suggests as precautions. They do not guarantee convergence and are
   off by default. The paper's experiments ran without them.
-- **No dependencies, no `unsafe`.** MSRV 1.85.
+- **No dependencies, no `unsafe`.** MSRV 1.85. The optional `serde` feature adds `Serialize`
+  and `Deserialize` for `Config`, `Bounds`, `State` and `Idbd`. Deserializing an `Idbd` runs the
+  same checks as `from_state`. For bit-exact JSON checkpoints, enable `serde_json`'s
+  `float_roundtrip` feature.
 
 ## When to use it
 

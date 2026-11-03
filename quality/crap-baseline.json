@@ -2401,6 +2401,96 @@
       "crate": "idbd"
     },
     {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Bounds::deserialize",
+      "line": 84,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Bounds::serialize",
+      "line": 78,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "BoundsRepr::from",
+      "line": 52,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "BoundsRepr::validate",
+      "line": 62,
+      "cyclomatic": 7.0,
+      "coverage": 100.0,
+      "crap": 7.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Config::deserialize",
+      "line": 103,
+      "cyclomatic": 3.0,
+      "coverage": 100.0,
+      "crap": 3.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Config::serialize",
+      "line": 92,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Idbd::deserialize",
+      "line": 152,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "Idbd::serialize",
+      "line": 138,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "State::deserialize",
+      "line": 125,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/serialization.rs",
+      "function": "State::serialize",
+      "line": 113,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
       "file": "crates/idbd/src/state.rs",
       "function": "State::new",
       "line": 48,
@@ -2429,9 +2519,9 @@
     }
   ],
   "diagnostics": {
-    "analyzed_files": 21,
-    "lcov_files": 21,
-    "matched_files": 21,
+    "analyzed_files": 22,
+    "lcov_files": 22,
+    "matched_files": 22,
     "source_only": {
       "count": 0,
       "examples": []

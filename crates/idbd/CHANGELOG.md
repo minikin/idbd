@@ -14,6 +14,8 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 - `Config` and `Bounds`, validated at construction. `Bounds::sutton_safety()` provides the
   optional beta floor of -10 and per-step limit of 2.
 - Typed errors: `ConfigError`, `Error` with the failed `Stage` and coordinate, and `StateError`.
+- Optional `serde` feature: `Serialize` and `Deserialize` for `Config`, `Bounds`, `State` and
+  `Idbd`. Deserialization validates `Config`, `Bounds` and `Idbd` like their constructors.
 
 ### Numerical and evaluation limitations
 
