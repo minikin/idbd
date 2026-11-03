@@ -12,6 +12,7 @@ pub mod experiment;
 pub mod house;
 pub mod lms;
 pub mod plot;
+pub mod race;
 pub mod report;
 pub mod rng;
 pub mod session;
