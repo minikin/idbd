@@ -1,5 +1,6 @@
 //! Single learning runs on a seeded task, measured by pre-update squared error.
 
+use idbd::autostep::{self, Autostep};
 use idbd::{Config, Idbd};
 
 use crate::lms::Lms;
@@ -10,6 +11,8 @@ use crate::world::{NUM_FEATURES, Preset, World};
 pub enum LearnerSpec {
     /// IDBD with the given configuration.
     Idbd(Config),
+    /// Autostep with the given configuration.
+    Autostep(autostep::Config),
     /// Fixed-step LMS with the given step size.
     Lms {
         /// The shared step size.
@@ -45,13 +48,40 @@ pub struct RunResult {
 
 enum Learner {
     Idbd(Idbd),
+    Autostep(Autostep),
     Lms(Lms),
 }
 
 impl Learner {
+    fn new(spec: LearnerSpec) -> Result<Self, String> {
+        match spec {
+            LearnerSpec::Idbd(config) => Idbd::new(NUM_FEATURES, config)
+                .map(Self::Idbd)
+                .map_err(|e| e.to_string()),
+            LearnerSpec::Autostep(config) => Autostep::new(NUM_FEATURES, config)
+                .map(Self::Autostep)
+                .map_err(|e| e.to_string()),
+            LearnerSpec::Lms { step_size } => Lms::new(NUM_FEATURES, step_size)
+                .map(Self::Lms)
+                .map_err(|e| e.to_string()),
+        }
+    }
+
+    fn final_step_sizes(&self) -> Vec<f64> {
+        match self {
+            Self::Idbd(l) => l.step_sizes().collect(),
+            Self::Autostep(l) => l.step_sizes().to_vec(),
+            Self::Lms(_) => Vec::new(),
+        }
+    }
+
     fn update(&mut self, x: &[f64], target: f64) -> Result<f64, String> {
         match self {
             Self::Idbd(l) => l
+                .update(x, target)
+                .map(|r| r.error)
+                .map_err(|e| e.to_string()),
+            Self::Autostep(l) => l
                 .update(x, target)
                 .map(|r| r.error)
                 .map_err(|e| e.to_string()),
@@ -70,14 +100,7 @@ impl Learner {
 /// Returns a message if the learner configuration is invalid. Numerical failures
 /// during the run are reported in [`RunResult::failure`].
 pub fn run(spec: &RunSpec) -> Result<RunResult, String> {
-    let mut learner = match spec.learner {
-        LearnerSpec::Idbd(config) => {
-            Learner::Idbd(Idbd::new(NUM_FEATURES, config).map_err(|e| e.to_string())?)
-        }
-        LearnerSpec::Lms { step_size } => {
-            Learner::Lms(Lms::new(NUM_FEATURES, step_size).map_err(|e| e.to_string())?)
-        }
-    };
+    let mut learner = Learner::new(spec.learner)?;
     let mut world = World::new(spec.preset, spec.seed);
     let mut x = [0.0; NUM_FEATURES];
     let mut events = Vec::new();
@@ -94,10 +117,7 @@ pub fn run(spec: &RunSpec) -> Result<RunResult, String> {
             }
         }
     }
-    let final_step_sizes = match &learner {
-        Learner::Idbd(l) => l.step_sizes().collect(),
-        Learner::Lms(_) => Vec::new(),
-    };
+    let final_step_sizes = learner.final_step_sizes();
     // A squared error above 1.3e154 overflows the sum while the weights stay finite, so
     // the run completes every sample with no measurable mean. That is a failure of the
     // measurement, not a missing value: recording it as `None` alone would hide the
@@ -156,6 +176,24 @@ mod tests {
         assert!(lms.mse.is_some_and(f64::is_finite), "{lms:?}");
         assert_eq!(idbd.final_step_sizes.len(), NUM_FEATURES);
         assert!(lms.final_step_sizes.is_empty());
+    }
+
+    #[test]
+    fn autostep_reports_its_error_and_final_step_sizes() {
+        let config = idbd::autostep::Config::new(0.005).expect("valid");
+        let result = run(&spec(LearnerSpec::Autostep(config))).expect("valid");
+        assert!(
+            result.mse.is_some_and(|m| m.is_finite() && m > 0.0),
+            "{result:?}"
+        );
+        assert_eq!(result.final_step_sizes.len(), NUM_FEATURES);
+        assert!(
+            result
+                .final_step_sizes
+                .iter()
+                .any(|a| a.to_bits() != 0.005_f64.to_bits()),
+            "step sizes adapt"
+        );
     }
 
     #[test]

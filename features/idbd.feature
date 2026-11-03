@@ -421,6 +421,14 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And an optional fixed-rate sweep for relevant inputs is compared with Figure 5
       And a run with theta 0.01 is labeled as an adapted demonstration
 
+    Scenario: E05 Evaluate Autostep against tuned baselines
+      Given the E01 tasks, seeds and protocol
+      When Autostep runs with mu tuned on the tuning seeds and, separately, at the paper's default mu without tuning
+      Then its evaluation MSE is reported beside tuned LMS and tuned IDBD, with paired differences by seed
+      And the MSE at every mu on the grid is reported for every task
+      And every failed run is reported with its sample and stage, never replaced by a value
+      And the report claims no general ordering of the learners
+
     Scenario: E03 Integrate the crate in a practical streaming example
       Given a documented example of latency prediction under a deployment change
       And its data is explicitly identified as synthetic or measured
