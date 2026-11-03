@@ -1,65 +1,113 @@
 // The hero house in three.js. Loaded only when WebGL works and the visitor has not asked
-// for reduced motion. Sensor glows are additive sprites, so no post-processing is needed.
+// for reduced motion. Each sensor is a small device whose light follows its live reading.
+// IDBD's attention is an amber ring sized by the learned step size. The room acts out the
+// three relevant sensors' current state: sunbeam, oven heat and the front door.
 
 import * as THREE from "three";
-import { SENSOR_POSITIONS, TRUSTED, glowRadius, trust } from "./house.js";
+import { SENSOR_COLORS, SENSOR_POSITIONS, glowRadius, trust } from "./house.js";
 
 const COLORS = {
-  floor: 0x101113,
-  wall: 0x16181b,
-  wallSide: 0x131417,
-  block: 0x23262a,
-  door: 0x1a1c20,
+  floor: 0x121316,
+  wall: 0x191b1f,
+  wallSide: 0x15171a,
+  block: 0x24272c,
+  door: 0x2a2d33,
   idbd: 0xffb547,
-  ignored: 0x62676f,
+  heat: 0xff7a45,
+  sun: 0xffe08a,
 };
+
+/**
+ * Where each label sits relative to its device, in CSS pixels, and which edge of the label
+ * is anchored there: 0 for its left edge, 0.5 for its middle, 1 for its right edge.
+ */
+const LABEL_OFFSETS = [
+  [-16, -30, 1],
+  [16, 10, 0],
+  [10, 30, 0],
+  [16, -26, 0],
+  [-16, 0, 1],
+  [14, -22, 0],
+];
+
+/** Each sensor's own blink period in seconds, so they never pulse in step. */
+const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 1.0];
 
 /** House coordinates (x, y, z up) to three.js coordinates (x, y up, z). */
 function toScene([x, y, z]) {
   return new THREE.Vector3(x, z, y);
 }
 
-function glowTexture() {
+function radialTexture(ring) {
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const context = canvas.getContext("2d");
-  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.25, "rgba(255,255,255,0.55)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, size, size);
+  const c = size / 2;
+  if (ring) {
+    context.strokeStyle = "rgba(255,255,255,1)";
+    context.lineWidth = 5;
+    context.beginPath();
+    context.arc(c, c, c - 6, 0, Math.PI * 2);
+    context.stroke();
+  } else {
+    const gradient = context.createRadialGradient(c, c, 0, c, c, c);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.3, "rgba(255,255,255,0.5)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+  }
   return new THREE.CanvasTexture(canvas);
+}
+
+/** An additive sprite drawn over the walls, so a glow is never cut by a surface. */
+function sprite(texture, color, opacity) {
+  const node = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: texture,
+      color,
+      transparent: true,
+      opacity,
+      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  node.renderOrder = 10;
+  return node;
 }
 
 function box(size, position, color, edges) {
   const geometry = new THREE.BoxGeometry(...size);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, roughness: 0.9 }));
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
   mesh.position.set(...position);
-  const lines = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: edges }),
+  mesh.add(
+    new THREE.LineSegments(
+      new THREE.EdgesGeometry(geometry),
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: edges }),
+    ),
   );
-  mesh.add(lines);
   return mesh;
 }
 
+const lerp = (a, b, t) => a + (b - a) * t;
+
 /**
- * Mounts the scene in `container`. Throws if WebGL is unavailable, so the caller can keep
- * the 2D drawing.
+ * Mounts the scene in `container` with one HTML label per sensor. Throws if WebGL is
+ * unavailable, so the caller can keep the 2D drawing.
  */
-export function mountHouse3d(container) {
+export function mountHouse3d(container, names) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.append(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, 2.4));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.8);
-  sun.position.set(6, 10, 8);
-  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xffffff, 2.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  key.position.set(6, 10, 8);
+  scene.add(key);
 
   scene.add(box([8, 0.1, 6], [4, -0.05, 3], COLORS.floor, 0.1));
   scene.add(box([8, 3.5, 0.1], [4, 1.75, -0.05], COLORS.wall, 0.1));
@@ -67,51 +115,129 @@ export function mountHouse3d(container) {
   scene.add(box([1.4, 1.1, 1.2], [7.1, 0.55, 0.8], COLORS.block, 0.08));
   scene.add(box([2.4, 0.8, 1.2], [2.2, 0.4, 5.0], COLORS.block, 0.08));
   scene.add(box([1.4, 0.9, 1.2], [4.9, 0.45, 3.0], COLORS.block, 0.08));
-  scene.add(box([0.04, 2.5, 1.6], [0.03, 1.25, 3.8], COLORS.door, 0.16));
-  const windowPane = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 1.5),
-    new THREE.MeshBasicMaterial({ color: COLORS.idbd, transparent: true, opacity: 0.12 }),
-  );
-  windowPane.position.set(3, 1.95, 0.02);
-  scene.add(windowPane);
 
-  const texture = glowTexture();
-  const sensors = SENSOR_POSITIONS.map((position) => {
-    const point = toScene(position);
-    const dot = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 12, 12),
-      new THREE.MeshBasicMaterial({ color: COLORS.ignored }),
-    );
-    dot.position.copy(point);
-    const glow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: texture,
-        color: COLORS.ignored,
-        transparent: true,
-        opacity: 0.2,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    );
-    glow.position.copy(point);
-    scene.add(dot, glow);
-    return { dot, glow };
+  const glow = radialTexture(false);
+  const ringTexture = radialTexture(true);
+
+  // The window and the patch of sunlight it throws on the floor.
+  const pane = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 1.5),
+    new THREE.MeshBasicMaterial({ color: COLORS.sun, transparent: true, opacity: 0.2 }),
+  );
+  pane.position.set(3, 1.95, 0.02);
+  scene.add(pane);
+  const beam = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.4, 2.6),
+    new THREE.MeshBasicMaterial({
+      map: glow,
+      color: COLORS.sun,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  beam.rotation.x = -Math.PI / 2;
+  beam.position.set(3.4, 0.02, 1.7);
+  scene.add(beam);
+
+  const heat = sprite(glow, COLORS.heat, 0.4);
+  heat.position.set(7.1, 1.35, 0.8);
+  heat.scale.set(1.8, 1.8, 1);
+  scene.add(heat);
+
+  // The front door swings on a hinge at its back edge.
+  const hinge = new THREE.Group();
+  hinge.position.set(0.04, 0, 3.0);
+  hinge.add(box([0.05, 2.5, 1.6], [0, 1.25, 0.8], COLORS.door, 0.2));
+  scene.add(hinge);
+
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.32, 32), new THREE.MeshBasicMaterial({ color: 0x2b2e34 }));
+  face.rotation.y = Math.PI / 2;
+  face.position.set(0.03, 2.75, 1.75);
+  scene.add(face);
+  const hand = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.26), new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
+  hand.geometry.translate(0, 0.13, 0);
+  hand.rotation.y = Math.PI / 2;
+  hand.position.set(0.04, 2.75, 1.75);
+  scene.add(hand);
+
+  // Wi-fi rings keep pulsing outward: the signal wiggles whether or not it matters.
+  const wifiAt = toScene(SENSOR_POSITIONS[3]);
+  const waves = [0, 1, 2].map(() => {
+    const wave = sprite(ringTexture, new THREE.Color(SENSOR_COLORS[3]), 0);
+    wave.position.copy(wifiAt);
+    scene.add(wave);
+    return wave;
   });
 
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  const target = new THREE.Vector3(4, 1.2, 3);
-  const base = new THREE.Vector3(4 + 14, 1.4 + 11.5, 3 + 14);
+  const layer = document.createElement("div");
+  layer.className = "house-labels";
+  layer.setAttribute("aria-hidden", "true");
+  container.append(layer);
 
+  const sensors = SENSOR_POSITIONS.map((position, i) => {
+    const point = toScene(position);
+    const color = new THREE.Color(SENSOR_COLORS[i]);
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.22, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0x30343b, roughness: 0.6 }),
+    );
+    body.position.copy(point);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), new THREE.MeshBasicMaterial({ color }));
+    led.position.copy(point);
+    const halo = sprite(glow, color, 0.5);
+    halo.position.copy(point);
+    const ring = sprite(ringTexture, new THREE.Color(COLORS.idbd), 0);
+    ring.position.copy(point);
+    scene.add(body, led, halo, ring);
+
+    const label = document.createElement("span");
+    label.className = "house-label";
+    const dot = document.createElement("i");
+    dot.style.background = SENSOR_COLORS[i];
+    label.append(dot, names[i]);
+    layer.append(label);
+
+    return { point, led, halo, ring, label, flash: 0, attention: 0.5, size: 1, phase: i * 1.3 };
+  });
+
+  const state = { strong: [1, 1, 1], door: 0, sun: 1, oven: 1 };
+
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const target = new THREE.Vector3(4, 1.5, 3);
+  const base = new THREE.Vector3(4 + 14, 1.5 + 11.5, 3 + 14);
+  const corners = [];
+  for (const x of [0, 8]) for (const y of [0, 3.5]) for (const z of [0, 6]) corners.push(new THREE.Vector3(x, y, z));
+
+  /** Fits the whole house in the frame, with a margin for the camera's sway. */
   function resize() {
     const width = container.clientWidth || 1;
     const height = container.clientHeight || 1;
     renderer.setSize(width, height, false);
+    camera.position.copy(base);
+    camera.lookAt(target);
+    camera.updateMatrixWorld();
+    let [minX, maxX, minY, maxY] = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const corner of corners) {
+      const p = corner.clone().applyMatrix4(camera.matrixWorldInverse);
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    }
+    const margin = 1.1;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    let halfW = ((maxX - minX) / 2) * margin;
+    let halfH = ((maxY - minY) / 2) * margin;
     const aspect = width / height;
-    const half = 4.0;
-    camera.left = -half * aspect;
-    camera.right = half * aspect;
-    camera.top = half;
-    camera.bottom = -half;
+    if (halfW / halfH > aspect) halfH = halfW / aspect;
+    else halfW = halfH * aspect;
+    camera.left = cx - halfW;
+    camera.right = cx + halfW;
+    camera.top = cy + halfH;
+    camera.bottom = cy - halfH;
     camera.updateProjectionMatrix();
   }
   const resizer = new ResizeObserver(resize);
@@ -124,32 +250,75 @@ export function mountHouse3d(container) {
   });
   watcher.observe(container);
 
+  const screen = new THREE.Vector3();
   let frame = null;
+  let last = performance.now();
   function draw(now) {
     frame = requestAnimationFrame(draw);
-    if (!visible || document.hidden) {
-      return;
-    }
-    const sway = Math.sin(now / 4000) * 0.9;
+    if (!visible || document.hidden) return;
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    const t = now / 1000;
+    const ease = 1 - Math.exp(-dt * 4);
+
+    const sway = Math.sin(t / 5) * 0.6;
     camera.position.set(base.x + sway, base.y, base.z - sway);
     camera.lookAt(target);
+
+    state.sun = lerp(state.sun, state.strong[0], ease);
+    state.oven = lerp(state.oven, state.strong[1], ease);
+    state.door = lerp(state.door, state.strong[2], ease);
+    beam.material.opacity = 0.08 + 0.5 * state.sun;
+    pane.material.opacity = 0.08 + 0.2 * state.sun;
+    heat.material.opacity = (0.1 + 0.45 * state.oven) * (0.85 + 0.15 * Math.sin(t * 9));
+    hinge.rotation.y = 1.05 * state.door;
+    hand.rotation.x = -Math.floor(t) * ((Math.PI * 2) / 60);
+
+    waves.forEach((wave, k) => {
+      const phase = (t / 1.6 + k / 3) % 1;
+      const size = 0.3 + phase * 1.4;
+      wave.scale.set(size, size, 1);
+      wave.material.opacity = 0.5 * (1 - phase);
+    });
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    sensors.forEach((sensor, i) => {
+      sensor.flash = lerp(sensor.flash, 0, dt * 3);
+      const pulse = 0.5 + 0.5 * Math.sin((t / PERIODS[i]) * Math.PI * 2 + sensor.phase);
+      const light = Math.min(1, 0.25 + 0.35 * pulse + sensor.flash);
+      sensor.halo.material.opacity = 0.25 + 0.55 * light;
+      const haloSize = 0.5 + 0.5 * light;
+      sensor.halo.scale.set(haloSize, haloSize, 1);
+      sensor.led.scale.setScalar(0.8 + 0.5 * light);
+      sensor.ring.material.opacity = lerp(sensor.ring.material.opacity, 0.15 + 0.75 * sensor.attention, ease);
+      const ringSize = lerp(sensor.ring.scale.x, sensor.size, ease);
+      sensor.ring.scale.set(ringSize, ringSize, 1);
+
+      screen.copy(sensor.point).project(camera);
+      const [dx, dy, anchor] = LABEL_OFFSETS[i];
+      const x = ((screen.x + 1) / 2) * width + dx;
+      const y = ((1 - screen.y) / 2) * height + dy;
+      const w = sensor.label.offsetWidth;
+      const h = sensor.label.offsetHeight;
+      const left = Math.max(4, Math.min(width - w - 4, x - anchor * w));
+      const top = Math.max(4, Math.min(height - h - 4, y - h / 2));
+      sensor.label.style.transform = `translate(${left}px, ${top}px)`;
+    });
     renderer.render(scene, camera);
   }
   frame = requestAnimationFrame(draw);
 
   return {
-    /** Sets every glow from IDBD's step sizes. */
-    update(alphas) {
+    /** Takes IDBD's step sizes, the latest readings and which relevant sensors are strong. */
+    update({ alphas, features, strong }) {
       const t = trust(alphas);
-      sensors.forEach(({ dot, glow }, i) => {
-        const trusted = t[i] > TRUSTED;
-        const color = trusted ? COLORS.idbd : COLORS.ignored;
-        dot.material.color.setHex(color);
-        glow.material.color.setHex(color);
-        glow.material.opacity = trusted ? 0.55 + 0.35 * t[i] : 0.22;
-        const size = (glowRadius(alphas[i]) / 37) * 2.4;
-        glow.scale.set(size, size, 1);
+      sensors.forEach((sensor, i) => {
+        sensor.attention = t[i];
+        sensor.size = (glowRadius(alphas[i]) / 37) * 1.6;
+        sensor.flash = Math.min(1, Math.abs(features[i]) / 2.5);
       });
+      state.strong = strong.map(Number);
     },
     dispose() {
       cancelAnimationFrame(frame);
@@ -157,6 +326,7 @@ export function mountHouse3d(container) {
       watcher.disconnect();
       renderer.dispose();
       renderer.domElement.remove();
+      layer.remove();
     },
   };
 }

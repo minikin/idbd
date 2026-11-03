@@ -130,7 +130,7 @@ test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => 
   expect((await story(page)).renderer).toBe("2d");
   await expect(page.locator("#house-3d")).toBeHidden();
   await expect(page.locator("#house-2d")).toBeVisible();
-  expect(await page.locator("#house-2d-sensors circle").count()).toBe(12);
+  expect(await page.locator("#house-2d-sensors circle").count()).toBe(18);
 });
 
 test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {

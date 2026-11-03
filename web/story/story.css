@@ -1367,3 +1367,79 @@ h3 {
   margin-top: 16px;
   max-width: 60em;
 }
+
+/* ---------- sensors in the house ---------- */
+
+.sensor-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+
+.house-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.house-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(8 9 10 / 0.72);
+  border: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.house-label i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+@media (max-width: 640px) {
+  .house-label {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+}
+
+.house-2d .attention {
+  fill: none;
+  stroke: var(--idbd);
+  stroke-width: 2;
+  transition: r 600ms var(--ease);
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.house-2d .led-glow {
+  animation: blink 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .house-2d .led-glow {
+    animation: none;
+    opacity: 0.6;
+  }
+}

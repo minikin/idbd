@@ -16,11 +16,17 @@ export const SENSOR_POSITIONS = [
 const LABELS = new Map([
   [0, { dx: 44, dy: -80 }],
   [1, { dx: 82, dy: -22 }],
-  [2, { dx: -108, dy: -64, end: true }],
+  [2, { dx: 80, dy: 40 }],
   [3, { dx: 30, dy: -40, muted: true }],
-  [4, { dx: -60, dy: 50, muted: true, end: true }],
+  [4, { dx: 10, dy: 100, muted: true }],
   [5, { dx: -40, dy: -40, muted: true, end: true }],
 ]);
+
+/**
+ * Each sensor's own color, used for its device in the house, its slider and its card.
+ * None of them is IDBD's amber, the fixed learner's blue or the visitor's violet.
+ */
+export const SENSOR_COLORS = ["#fde68a", "#f87171", "#34d399", "#22d3ee", "#f472b6", "#cbd5e1"];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -36,9 +42,6 @@ export function project([x, y, z]) {
 export function glowRadius(alpha) {
   return Math.max(6, Math.min(40, 95 * Math.sqrt(Math.max(alpha, 0))));
 }
-
-/** Trust above which a sensor is drawn in IDBD's color. */
-export const TRUSTED = 0.3;
 
 /**
  * How strongly a sensor reads as trusted, from 0 to 1, relative to the fastest and the
@@ -59,13 +62,18 @@ function el(name, attributes = {}) {
   return node;
 }
 
-/** Draws the sensors into the 2D house and returns an updater for the glows. */
+/**
+ * Draws the sensors into the 2D house and returns an updater. Each device blinks in its
+ * own color at its own period through CSS. IDBD's attention is an amber ring.
+ */
 export function createHouse2d(group, names) {
   const sensors = SENSOR_POSITIONS.map((position, index) => {
     const [cx, cy] = project(position);
-    const glow = el("circle", { cx, cy, r: 16, class: "glow", filter: "url(#blur)" });
-    const dot = el("circle", { cx, cy, r: 3 });
-    group.append(glow, dot);
+    const ring = el("circle", { cx, cy, r: 16, class: "attention" });
+    const glow = el("circle", { cx, cy, r: 9, class: "led-glow", fill: SENSOR_COLORS[index], filter: "url(#blur)" });
+    const dot = el("circle", { cx, cy, r: 4, class: "led", fill: SENSOR_COLORS[index] });
+    glow.style.animationDuration = `${[3.1, 1.7, 2.3, 0.9, 2.9, 1.0][index]}s`;
+    group.append(ring, glow, dot);
     const label = LABELS.get(index);
     if (label) {
       const x = cx + label.dx;
@@ -78,21 +86,19 @@ export function createHouse2d(group, names) {
         y,
         class: "label",
         "text-anchor": label.end ? "end" : "start",
-        fill: label.muted ? "var(--ink-3)" : "var(--ink)",
+        fill: "var(--ink)",
       });
       text.textContent = names[index];
       group.append(text);
     }
-    return { glow, dot };
+    return { ring };
   });
 
-  return function update(alphas) {
+  return function update({ alphas }) {
     const t = trust(alphas);
-    sensors.forEach(({ glow, dot }, i) => {
-      glow.setAttribute("r", glowRadius(alphas[i]).toFixed(1));
-      glow.setAttribute("fill", t[i] > TRUSTED ? "var(--idbd)" : "var(--ignored)");
-      glow.setAttribute("opacity", (t[i] > TRUSTED ? 0.35 + 0.25 * t[i] : 0.14).toFixed(2));
-      dot.setAttribute("fill", t[i] > TRUSTED ? "var(--idbd)" : "var(--ignored)");
+    sensors.forEach(({ ring }, i) => {
+      ring.setAttribute("r", glowRadius(alphas[i]).toFixed(1));
+      ring.setAttribute("stroke-opacity", (0.2 + 0.7 * t[i]).toFixed(2));
     });
   };
 }

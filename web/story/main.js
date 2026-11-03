@@ -3,7 +3,7 @@
 // readings, chapter 3's faders, chapter 4's lanes and the game.
 
 import init, * as wasm from "../pkg/idbd_wasm.js";
-import { createHouse2d } from "./house.js";
+import { SENSOR_COLORS, createHouse2d } from "./house.js";
 import { createGame } from "./game.js";
 import { createSlowMotion } from "./slow.js";
 
@@ -45,7 +45,7 @@ async function mountRenderer(house) {
   }
   try {
     const { mountHouse3d } = await import("./house3d.js");
-    const view = mountHouse3d($("house-3d"));
+    const view = mountHouse3d($("house-3d"), house.sensors);
     $("house-3d").hidden = false;
     $("house-3d").setAttribute("role", "img");
     $("house-3d").setAttribute(
@@ -56,9 +56,9 @@ async function mountRenderer(house) {
     $("house-2d").setAttribute("aria-hidden", "true");
     return {
       kind: "3d",
-      update(alphas) {
-        update2d(alphas);
-        view.update(alphas);
+      update(state) {
+        update2d(state);
+        view.update(state);
       },
     };
   } catch {
@@ -80,7 +80,10 @@ function startHero(house, renderer) {
     const head = document.createElement("div");
     head.className = "name";
     const label = document.createElement("span");
-    label.textContent = name;
+    const dot = document.createElement("i");
+    dot.className = "sensor-dot";
+    dot.style.background = SENSOR_COLORS[house.sensors.indexOf(name)];
+    label.append(dot, name);
     const unknown = document.createElement("span");
     unknown.className = "unknown";
     unknown.setAttribute("aria-hidden", "true");
@@ -95,7 +98,11 @@ function startHero(house, renderer) {
   });
 
   function draw() {
-    renderer.update(Array.from(race.idbdStepSizes()));
+    renderer.update({
+      alphas: Array.from(race.idbdStepSizes()),
+      features: Array.from(race.features()),
+      strong: Array.from(race.strong()),
+    });
     $("live-count").textContent = `reading ${race.completed().toLocaleString("en-US")}`;
     $("live-actual").setAttribute("points", points(actual, 240, 56, 4));
     $("live-idbd").setAttribute("points", points(guess, 240, 56, 4));

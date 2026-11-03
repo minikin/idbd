@@ -1,3 +1,5 @@
+import { SENSOR_COLORS } from "./house.js";
+
 // "Play against it": the visitor's trust sliders against IDBD and a tuned fixed-step
 // learner, both computed by the crate's HouseRace on the same readings. Level 1 is the
 // still house, level 2 the switching house.
@@ -60,7 +62,10 @@ export function createGame(wasm, house, nodes) {
     row.className = "slider-row";
     const label = document.createElement("label");
     label.htmlFor = id;
-    label.textContent = name;
+    const dot = document.createElement("i");
+    dot.className = "sensor-dot";
+    dot.style.background = SENSOR_COLORS[sensor];
+    label.append(dot, name);
     const input = document.createElement("input");
     Object.assign(input, { id, type: "range", min: "-1.5", max: "1.5", step: "0.1", value: "0" });
     const output = document.createElement("output");
