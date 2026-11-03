@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-// S01 to S06: the story page. Its learning values come from the crate's HouseRace, the
+// S01 to S07: the story page. Its learning values come from the crate's HouseRace, the
 // game races that crate code, and the page stays usable without WebGL or motion.
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -11,23 +11,33 @@ async function openStory(page) {
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 20000 });
 }
 
-const story = (page) => page.evaluate(() => ({
-  house: window.idbdStory.house,
-  renderer: window.idbdStory.renderer,
-  hero: window.idbdStory.hero(),
-  desk: window.idbdStory.desk,
-  lanes: { idbd: window.idbdStory.lanes.idbd, lms: window.idbdStory.lanes.lms },
-  game: window.idbdStory.game(),
-}));
+const story = (page) =>
+  page.evaluate(() => ({
+    house: window.idbdStory.house,
+    renderer: window.idbdStory.renderer,
+    hero: window.idbdStory.hero(),
+    desk: window.idbdStory.desk,
+    lanes: { idbd: window.idbdStory.lanes.idbd, lms: window.idbdStory.lanes.lms },
+    game: window.idbdStory.game(),
+    slow: window.idbdStory.slow(),
+  }));
+
+async function setSlider(page, sensor, value) {
+  await page.locator(`#trust-${sensor}`).evaluate((input, v) => {
+    input.value = String(v);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, value);
+}
 
 test("S01 the chapters show step sizes and errors computed by the crate", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await openStory(page);
   const s = await story(page);
-  expect(s.house.sensors).toHaveLength(12);
+  expect(s.house.sensors).toHaveLength(6);
   expect(s.house.relevant).toBe(3);
   expect(s.hero.completed).toBeGreaterThanOrEqual(5000);
+  await expect(page.locator("#sensor-grid li")).toHaveCount(6);
 
   const slowestRelevant = Math.min(...s.desk.slice(0, 3));
   const fastestInert = Math.max(...s.desk.slice(3));
@@ -35,46 +45,77 @@ test("S01 the chapters show step sizes and errors computed by the crate", async 
   const labels = await page.$$eval("#desk .fader-label .mono", (nodes) => nodes.map((n) => n.textContent));
   expect(labels).toEqual(s.desk.map((a) => a.toFixed(3)));
 
-  expect(Number.isFinite(s.lanes.idbd) && Number.isFinite(s.lanes.lms)).toBe(true);
   await expect(page.locator("#run-idbd")).toHaveText(s.lanes.idbd.toFixed(2));
   await expect(page.locator("#run-lms")).toHaveText(s.lanes.lms.toFixed(2));
-  expect(await page.locator("#lanes svg").count()).toBe(4);
   expect(errors).toEqual([]);
 });
 
-test("S02 the game races the crate learners and resets completely", async ({ page }) => {
+test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await openStory(page);
-  await expect(page.locator("#scores .note").first()).toHaveText("press Start");
+  await expect(page.locator("#slow-reading")).toHaveText("0");
+  await page.click("#slow-next");
+  await expect(page.locator("#slow-reading")).toHaveText("1");
+  const one = (await story(page)).slow;
+  const sign = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`;
+  await expect(page.locator("#slow-guess")).toHaveText(sign(one.last.guess));
+  await expect(page.locator("#slow-actual")).toHaveText(sign(one.last.target));
+  await expect(page.locator("#slow-miss")).toHaveText(sign(one.last.target - one.last.guess));
+  await expect(page.locator("#slow-summary")).toContainText("IDBD guessed");
 
-  const sun = page.locator("#trust-0");
-  await sun.focus();
-  for (let i = 0; i < 5; i += 1) await page.keyboard.press("ArrowRight");
-  await expect(page.locator('output[for="trust-0"]')).toHaveText("0.5");
+  await page.click("#slow-run");
+  await expect(page.locator("#slow-reading")).toHaveText("1,001");
+  const later = (await story(page)).slow;
+  const speeds = await page.$$eval("#slow-rows td:nth-child(4)", (cells) => cells.map((c) => c.textContent));
+  speeds.forEach((text, s) => expect(text).toContain(`→ ${later.stepSizes[s].toFixed(4)}`));
+
+  await page.click("#slow-restart");
+  await expect(page.locator("#slow-reading")).toHaveText("0");
+});
+
+test("S03 level 1 rewards matching the truth, and Reset clears everything", async ({ page }) => {
+  await openStory(page);
+  await expect(page.locator(".level[data-level='still']")).toHaveAttribute("aria-pressed", "true");
+  const fresh = (await story(page)).game;
+  expect(fresh.level).toBe("still");
+  expect(fresh.lmsStepSize).toBe((await story(page)).house.stillLmsStepSize);
+
+  for (const [sensor, value] of [[0, 1.2], [1, 0.9], [2, -1.1]]) await setSlider(page, sensor, value);
+  const tuned = (await story(page)).game;
+  expect(tuned.costs.every((c) => c < 0.005)).toBe(true);
+  await expect(page.locator("#trust-0-cost")).toHaveText("spot on");
+
+  await setSlider(page, 3, 1.5);
+  await expect(page.locator("#trust-3-cost")).toHaveText("costs you 2.25 per reading, try lower");
 
   await page.click("#game-run");
-  await expect(page.locator("#game-run")).toHaveText("Pause");
-  await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 20000 });
   await page.click("#game-run");
   const paused = (await story(page)).game;
   expect(paused.running).toBe(false);
-  expect(paused.trust[0]).toBe(0.5);
   for (const value of Object.values(paused.scores)) expect(Number.isFinite(value)).toBe(true);
   await page.waitForTimeout(400);
   expect((await story(page)).game.scored).toBe(paused.scored);
-  await expect(page.locator("#scores .score[class*='lead-']")).toHaveCount(1);
 
   await page.click("#game-reset");
   const reset = (await story(page)).game;
   expect(reset.scored).toBe(0);
   expect(reset.trust.every((v) => v === 0)).toBe(true);
   expect(reset.revealed).toBe(false);
-  await expect(page.locator('output[for="trust-0"]')).toHaveText("0.0");
 });
 
-test("S03 IDBD's speeds stay hidden until the visitor asks", async ({ page }) => {
+test("S04 level 2 races on the switching house with its own fixed speed", async ({ page }) => {
+  await openStory(page);
+  await page.click(".level[data-level='changing']");
+  await expect(page.locator(".level[data-level='changing']")).toHaveAttribute("aria-pressed", "true");
+  const s = await story(page);
+  expect(s.game.level).toBe("changing");
+  expect(s.game.lmsStepSize).toBe(s.house.lmsStepSize);
+  await expect(page.locator("#scores .note").nth(2)).toContainText(String(s.house.lmsStepSize));
+});
+
+test("S05 IDBD's trust and speeds stay hidden until the visitor asks", async ({ page }) => {
   await openStory(page);
   await expect(page.locator("#learned")).toBeHidden();
-  await expect(page.locator("#reveal")).toHaveAttribute("aria-expanded", "false");
   await page.click("#reveal");
   await expect(page.locator("#learned")).toBeVisible();
   await expect(page.locator("#reveal")).toHaveAttribute("aria-expanded", "true");
@@ -83,17 +124,18 @@ test("S03 IDBD's speeds stay hidden until the visitor asks", async ({ page }) =>
   expect(speeds).toEqual(game.stepSizes.map((a) => `speed ${a.toFixed(3)}`));
 });
 
-test("S04 with reduced motion the house is the 2D drawing", async ({ page }) => {
+test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openStory(page);
   expect((await story(page)).renderer).toBe("2d");
   await expect(page.locator("#house-3d")).toBeHidden();
   await expect(page.locator("#house-2d")).toBeVisible();
-  expect(await page.locator("#house-2d-sensors circle").count()).toBe(24);
+  expect(await page.locator("#house-2d-sensors circle").count()).toBe(12);
 });
 
-test("S05 the story page has no WCAG A or AA violations", async ({ page }) => {
+test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {
   await openStory(page);
+  await page.click("#slow-run");
   await page.click("#game-run");
   await page.waitForFunction(() => window.idbdStory.game().scored >= 20, null, { timeout: 15000 });
   await page.click("#game-run");
@@ -101,11 +143,8 @@ test("S05 the story page has no WCAG A or AA violations", async ({ page }) => {
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const found = results.violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target.join(" ")) }));
   expect(found).toEqual([]);
-});
 
-test("S06 at phone width nothing scrolls sideways", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openStory(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });

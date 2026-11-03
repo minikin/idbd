@@ -5,6 +5,7 @@
 import init, * as wasm from "../pkg/idbd_wasm.js";
 import { createHouse2d } from "./house.js";
 import { createGame } from "./game.js";
+import { createSlowMotion } from "./slow.js";
 
 const HERO_SEED = 1;
 const HERO_WARMUP = 5000;
@@ -253,13 +254,26 @@ async function main() {
   const hero = startHero(house, renderer);
   const desk = fillDesk(house);
   const lanes = fillLanes(house);
+  const slow = createSlowMotion(wasm, house, {
+    next: $("slow-next"),
+    run: $("slow-run"),
+    restart: $("slow-restart"),
+    reading: $("slow-reading"),
+    guess: $("slow-guess"),
+    actual: $("slow-actual"),
+    miss: $("slow-miss"),
+    summary: $("slow-summary"),
+    rows: $("slow-rows"),
+  });
   const game = createGame(wasm, house, {
+    levels: [...document.querySelectorAll(".level")],
+    levelNote: $("level-note"),
+    chart: $("game-chart"),
     run: $("game-run"),
     reset: $("game-reset"),
     sliders: $("sliders"),
     scores: $("scores"),
     count: $("game-count"),
-    actual: $("game-actual"),
     you: $("game-you"),
     idbd: $("game-idbd"),
     lms: $("game-lms"),
@@ -276,6 +290,7 @@ async function main() {
     desk,
     lanes,
     game: () => game.state(),
+    slow: () => slow.state(),
   };
   document.body.dataset.appReady = "true";
 }

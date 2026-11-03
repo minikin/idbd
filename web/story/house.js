@@ -8,14 +8,8 @@ export const SENSOR_POSITIONS = [
   [7.1, 0.8, 1.1], // oven
   [0, 3.8, 1.25], // front door
   [5.2, 0, 2.9], // wi-fi signal
-  [5.6, 0, 1.0], // router traffic
   [0, 4.9, 1.9], // doorbell battery
-  [4.9, 3.0, 0.9], // phone charge
-  [6.5, 5.4, 0.3], // plant soil
-  [0, 5.4, 1.4], // tv standby
   [0, 2.2, 2.9], // clock
-  [0, 1.0, 1.0], // mailbox
-  [7.2, 0, 2.9], // printer ink
 ];
 
 /** Sensors labelled in the 2D drawing, with label anchor offsets. */
@@ -23,9 +17,9 @@ const LABELS = new Map([
   [0, { dx: 44, dy: -80 }],
   [1, { dx: 82, dy: -22 }],
   [2, { dx: -108, dy: -64, end: true }],
-  [3, { dx: 12, dy: -12, muted: true }],
-  [8, { dx: -40, dy: 36, muted: true, end: true }],
-  [6, { dx: 12, dy: 18, muted: true }],
+  [3, { dx: 30, dy: -40, muted: true }],
+  [4, { dx: -60, dy: 50, muted: true, end: true }],
+  [5, { dx: -40, dy: -40, muted: true, end: true }],
 ]);
 
 const SVG_NS = "http://www.w3.org/2000/svg";

@@ -1120,3 +1120,219 @@ svg path {
   border-top: 1px solid var(--hairline);
   color: var(--ink-3);
 }
+
+/* ---------- what it does ---------- */
+
+h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.loop {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px;
+}
+
+.loop li p {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+.loop .step {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+}
+
+.loop .highlight {
+  border-color: rgb(255 181 71 / 0.45);
+  background: rgb(255 181 71 / 0.05);
+}
+
+.loop .highlight .step {
+  border-color: rgb(255 181 71 / 0.6);
+  color: var(--idbd);
+}
+
+/* ---------- slow motion ---------- */
+
+.slow {
+  gap: 20px;
+}
+
+.slow-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.stat-block {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--raised);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.stat-block .value {
+  font-size: 26px;
+}
+
+.slow-summary {
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 60em;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.slow-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.slow-table th,
+.slow-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.slow-table thead th {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.slow-table tbody th {
+  font-weight: 500;
+}
+
+.slow-table tr.relevant th::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: var(--idbd);
+}
+
+.slow-table td {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.slow-table td.up {
+  color: var(--idbd);
+}
+
+.slow-table td.down {
+  color: var(--ink-2);
+}
+
+.slow-table svg {
+  width: 120px;
+  height: 24px;
+  display: block;
+}
+
+.slow-table polyline {
+  stroke: var(--ink-3);
+  stroke-width: 1.5;
+}
+
+.slow-table tr.relevant polyline {
+  stroke: var(--idbd);
+}
+
+/* ---------- play ---------- */
+
+.how {
+  margin: 0;
+  padding: 20px 20px 20px 40px;
+  gap: 8px;
+}
+
+.how li {
+  color: var(--ink-2);
+  padding-left: 4px;
+}
+
+.how strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 12px;
+}
+
+.level {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 44px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--hairline-2);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms var(--ease);
+}
+
+.level[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--raised);
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+}
+
+.cost {
+  margin: -6px 0 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding-left: calc(min(120px, 30%) + 12px);
+}
+
+.cost.good {
+  color: var(--you);
+}
+
+.score .lead {
+  font-size: 12px;
+  min-height: 1.2em;
+}
+
+.floor-line {
+  stroke: rgb(255 255 255 / 0.25);
+  stroke-dasharray: 1 3;
+}

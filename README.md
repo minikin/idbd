@@ -124,9 +124,10 @@ lists the generator, seeds, grids and sign-flip timing.
 ## Story page
 
 `web/index.html` explains IDBD to people who have never trained a model. A thermostat house
-has twelve sensors, three of which move the room temperature by amounts that keep switching.
-The page shows the speeds IDBD learns for each sensor, the house changing, and a game in which
-the visitor sets trust sliders by hand and races IDBD and a tuned fixed-step learner. Every
+has six sensors, three of which move the room temperature by amounts that keep switching.
+The page explains the guess, check and correct loop in plain words, shows single IDBD updates
+in slow motion, and ends with a game in which the visitor sets trust sliders by hand and races
+IDBD and a tuned fixed-step learner, first in a still house and then in a switching one. Every
 learning value comes from the crate through WebAssembly, on the task measured in scenario E06.
 The house is drawn with three.js (0.170.0, pinned in `web/package.json`), and in 2D when WebGL
 is missing or the visitor prefers reduced motion. After `just web-serve` it is at
