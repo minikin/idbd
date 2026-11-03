@@ -8,8 +8,12 @@ const IDBD = "var(--idbd)";
 const LMS = "var(--lms)";
 const AUTOSTEP = "var(--autostep)";
 
-function frame(container, height, margin) {
-  const width = Math.max(240, Math.floor(container.clientWidth) || 320);
+/**
+ * `measured` is the container width the caller read before its DOM writes. Reading
+ * `clientWidth` after a write forces a synchronous layout.
+ */
+function frame(container, height, margin, measured) {
+  const width = Math.max(240, Math.floor(measured ?? container.clientWidth) || 320);
   const plotWidth = Math.max(40, width - margin.left - margin.right);
   const plotHeight = Math.max(40, height - margin.top - margin.bottom);
   const root = svg("svg", {
@@ -89,8 +93,8 @@ function mseTick(value) {
   return Math.abs(value) >= 0.01 ? value.toFixed(3) : value.toExponential(1);
 }
 
-function emptyState(container, height, message) {
-  const { root, width } = frame(container, height, { top: 0, right: 0, bottom: 0, left: 0 });
+function emptyState(container, height, message, measured) {
+  const { root, width } = frame(container, height, { top: 0, right: 0, bottom: 0, left: 0 }, measured);
   root.setAttribute("aria-label", message);
   root.append(
     svg("text", {
@@ -151,12 +155,12 @@ function hitArea(root, geometry, onMove) {
  * marked and a crosshair tooltip.
  */
 export function renderErrorChart(container, data) {
-  const { samples, idbd, lms, autostep, events, label } = data;
+  const { samples, idbd, lms, autostep, events, label, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 240, "No completed samples yet. Choose Step or Run.");
+    emptyState(container, 240, "No completed samples yet. Choose Step or Run.", measured);
     return;
   }
-  const geometry = frame(container, 240, { top: 18, right: 54, bottom: 30, left: 56 });
+  const geometry = frame(container, 240, { top: 18, right: 54, bottom: 30, left: 56 }, measured);
   const { root, margin, plotWidth, plotHeight } = geometry;
   root.setAttribute("aria-label", label);
 
@@ -291,12 +295,12 @@ export function renderErrorChart(container, data) {
 
 /** Every input's step size against the sample index, on a base-10 log scale. */
 export function renderAlphaChart(container, data) {
-  const { samples, series, relevant, selected, events } = data;
+  const { samples, series, relevant, selected, events, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 352, "No completed samples yet. Choose Step or Run.");
+    emptyState(container, 352, "No completed samples yet. Choose Step or Run.", measured);
     return;
   }
-  const geometry = frame(container, 352, { top: 18, right: 16, bottom: 30, left: 56 });
+  const geometry = frame(container, 352, { top: 18, right: 16, bottom: 30, left: 56 }, measured);
   const { root, margin, plotWidth, plotHeight } = geometry;
   root.setAttribute(
     "aria-label",
@@ -314,7 +318,7 @@ export function renderAlphaChart(container, data) {
     }
   }
   if (!Number.isFinite(low) || !Number.isFinite(high)) {
-    emptyState(container, 352, "No step sizes recorded yet.");
+    emptyState(container, 352, "No step sizes recorded yet.", measured);
     return;
   }
   low = Math.max(low / 1.6, 1e-10);
@@ -418,12 +422,12 @@ export function renderAlphaChart(container, data) {
  * relevance shifts are labeled flags, so a dense run of flips stays readable.
  */
 export function renderTimeline(container, data) {
-  const { samples, events } = data;
+  const { samples, events, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 72, "No samples yet.");
+    emptyState(container, 72, "No samples yet.", measured);
     return;
   }
-  const geometry = frame(container, 72, { top: 14, right: 16, bottom: 22, left: 16 });
+  const geometry = frame(container, 72, { top: 14, right: 16, bottom: 22, left: 16 }, measured);
   const { root, margin, plotWidth, plotHeight } = geometry;
   root.setAttribute("aria-label", "World events over the retained samples");
 
@@ -486,18 +490,18 @@ export function renderTimeline(container, data) {
 
 /** The selected input's step size history, log scale, as a small labeled plot. */
 export function renderSparkline(container, data) {
-  const { samples, values, name } = data;
+  const { samples, values, name, width: measured } = data;
   if (samples.length < 2) {
-    emptyState(container, 90, "No step-size history yet.");
+    emptyState(container, 90, "No step-size history yet.", measured);
     return;
   }
-  const geometry = frame(container, 90, { top: 10, right: 12, bottom: 18, left: 50 });
+  const geometry = frame(container, 90, { top: 10, right: 12, bottom: 18, left: 50 }, measured);
   const { root, margin, plotWidth, plotHeight } = geometry;
   root.setAttribute("aria-label", `Step size alpha of input ${name}, base-10 logarithmic scale`);
 
   const positive = values.filter((value) => Number.isFinite(value) && value > 0);
   if (!positive.length) {
-    emptyState(container, 90, "No step-size history yet.");
+    emptyState(container, 90, "No step-size history yet.", measured);
     return;
   }
   const low = Math.max(Math.min(...positive) / 1.6, 1e-10);
@@ -550,8 +554,8 @@ export function renderSparkline(container, data) {
  * that marks the true coefficient. Zero sits in the middle.
  */
 export function renderWeightRow(container, data) {
-  const { idbd, lms, truth, scale } = data;
-  const width = Math.max(120, Math.floor(container.clientWidth) || 160);
+  const { idbd, lms, truth, scale, width: measured } = data;
+  const width = Math.max(120, Math.floor(measured ?? container.clientWidth) || 160);
   const height = 20;
   const root = svg("svg", {
     width,

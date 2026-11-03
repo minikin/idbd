@@ -359,7 +359,19 @@ export function createExperiment(wasm) {
 
   /* ---------- rendering ---------- */
 
+  /** Every width a render needs, read before the render writes to the DOM. */
+  function measureWidths() {
+    return {
+      weights: rows.length > 0 ? rows[0].bars.clientWidth : undefined,
+      error: nodes.errorChart.clientWidth,
+      alpha: nodes.alphaChart.clientWidth,
+      timeline: nodes.timeline.clientWidth,
+      inspector: nodes.inspectorAlpha.clientWidth,
+    };
+  }
+
   function render() {
+    const widths = measureWidths();
     state = readState();
     for (const badge of nodes.badges) {
       badge.textContent = `sample ${fmtCount(state.sample)}`;
@@ -367,14 +379,14 @@ export function createExperiment(wasm) {
     }
     renderRunHeader();
     renderFailure();
-    renderWeights();
+    renderWeights(widths.weights);
     renderInspector();
     renderMetrics();
     renderTable();
     renderEvents();
     renderPlaybackState();
     renderReplayNote();
-    draw();
+    draw(widths);
   }
 
   function renderRunHeader() {
@@ -516,7 +528,7 @@ export function createExperiment(wasm) {
     render();
   }
 
-  function renderWeights() {
+  function renderWeights(width) {
     const scale = Math.max(
       0.25,
       ...state.idbdWeights.map(Math.abs),
@@ -530,7 +542,7 @@ export function createExperiment(wasm) {
         truth: state.coefficients[index],
         alpha: state.alphas[index],
       };
-      renderWeightRow(rows[index].bars, { ...values, scale });
+      renderWeightRow(rows[index].bars, { ...values, scale, width });
       rows[index].row.setAttribute("aria-label", weightRowLabel(featureName(index), values));
     }
   }
@@ -632,11 +644,12 @@ export function createExperiment(wasm) {
     return `sample ${fmtCount(event.sample)}: relevance moved from inputs ${event.from * 5}-${event.from * 5 + 4} to ${event.to * 5}-${event.to * 5 + 4} (${origin})`;
   }
 
-  function draw() {
+  function draw(widths = measureWidths()) {
     if (!state) {
       return;
     }
     renderErrorChart(nodes.errorChart, {
+      width: widths.error,
       samples: state.samples,
       idbd: state.idbdRollingSeries,
       lms: state.lmsRollingSeries,
@@ -645,14 +658,20 @@ export function createExperiment(wasm) {
       label: `Rolling mean squared error over the last ${rollingWindow} samples for IDBD, the LMS baseline and untuned Autostep`,
     });
     renderAlphaChart(nodes.alphaChart, {
+      width: widths.alpha,
       samples: state.samples,
       series: state.alphaSeries,
       relevant: state.relevant,
       selected,
       events: state.events,
     });
-    renderTimeline(nodes.timeline, { samples: state.samples, events: state.events });
+    renderTimeline(nodes.timeline, {
+      width: widths.timeline,
+      samples: state.samples,
+      events: state.events,
+    });
     renderSparkline(nodes.inspectorAlpha, {
+      width: widths.inspector,
       samples: state.samples,
       values: state.alphaSeries[selected],
       name: featureName(selected),
