@@ -214,6 +214,7 @@ mod tests {
         let mut house = House::new(3);
         let mut x = [0.0; NUM_SENSORS];
         let mut switched = Vec::new();
+        let (mut weak_seen, mut strong_seen) = (false, false);
         for _ in 0..200 {
             race.step().expect("finite readings");
             let target = house.next_sample(&mut x, &mut switched);
@@ -221,7 +222,12 @@ mod tests {
             assert_eq!(race.target(), target);
             assert_eq!(race.switched(), switched.as_slice());
             assert_eq!(race.coefficients(), house.coefficients());
+            let strong: [bool; RELEVANT] = std::array::from_fn(|k| house.is_strong(k));
+            assert_eq!(race.strong(), strong);
+            weak_seen |= strong.contains(&false);
+            strong_seen |= strong.contains(&true);
         }
+        assert!(weak_seen && strong_seen, "the run covers both levels");
         assert_eq!(race.completed(), 200);
     }
 
