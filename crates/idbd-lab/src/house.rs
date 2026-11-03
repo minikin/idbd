@@ -1,4 +1,4 @@
-//! The thermostat house behind the story page: twelve sensors, three of which move the
+//! The thermostat house behind the story page: six sensors, three of which move the
 //! room temperature by amounts that keep switching.
 //!
 //! This is an extension, not a task from Sutton (1992). Inputs are independent standard
@@ -9,7 +9,7 @@
 use crate::rng::Rng;
 
 /// Number of sensors in the house.
-pub const NUM_SENSORS: usize = 12;
+pub const NUM_SENSORS: usize = 6;
 
 /// Sensor names, in input order. The first [`RELEVANT`] move the temperature.
 pub const SENSORS: [&str; NUM_SENSORS] = [
@@ -17,14 +17,8 @@ pub const SENSORS: [&str; NUM_SENSORS] = [
     "oven",
     "front door",
     "wi-fi signal",
-    "router traffic",
     "doorbell battery",
-    "phone charge",
-    "plant soil",
-    "tv standby",
     "clock",
-    "mailbox",
-    "printer ink",
 ];
 
 /// Number of sensors that move the temperature.
@@ -159,9 +153,10 @@ mod tests {
     }
 
     #[test]
-    fn a_new_house_starts_strong_with_nine_inert_sensors() {
-        let house = House::new(1);
-        assert_eq!(house.seed(), 1);
+    fn a_new_house_starts_strong_with_three_inert_sensors() {
+        let house = House::new(3);
+        assert_eq!(house.seed(), 3);
+        assert!((0..RELEVANT).all(|sensor| house.is_strong(sensor)));
         assert_eq!(house.generated(), 0);
         let c = house.coefficients();
         assert_eq!(c[..RELEVANT], [1.2, 0.9, -1.1]);
@@ -176,9 +171,38 @@ mod tests {
         let rate = f64::from(u32::try_from(log.len()).expect("small"))
             / (19_999.0 * f64::from(u32::try_from(RELEVANT).expect("small")));
         assert!(
-            (rate - SWITCH_PROBABILITY).abs() < 0.003,
-            "switch rate {rate} vs {SWITCH_PROBABILITY}"
+            (rate - 1.0 / 60.0).abs() < 0.003,
+            "switch rate {rate}, documented as 1/60"
         );
+    }
+
+    #[test]
+    fn the_levels_are_the_documented_influences() {
+        assert_eq!(LEVELS, [[1.2, 0.2], [0.9, 0.1], [-1.1, -0.1]]);
+    }
+
+    #[test]
+    fn seed_7_reproduces_its_recorded_readings_and_switches() {
+        // Recorded from this implementation. A change here changes every published house
+        // result, so it must be deliberate.
+        let mut house = House::new(7);
+        let mut x = [0.0; NUM_SENSORS];
+        let mut switched = Vec::new();
+        let mut targets = Vec::new();
+        let mut log = Vec::new();
+        for _ in 0..200 {
+            targets.push(house.next_sample(&mut x, &mut switched).to_bits());
+            log.extend(switched.iter().map(|&s| (house.generated(), s)));
+        }
+        assert_eq!(
+            targets[..3],
+            [
+                13_830_281_868_836_244_833,
+                13_820_455_362_515_906_439,
+                4_610_336_207_472_215_403
+            ]
+        );
+        assert_eq!(log[..3], [(42, 2), (49, 2), (83, 1)]);
     }
 
     #[test]
@@ -186,7 +210,9 @@ mod tests {
         let mut house = House::new(5);
         let mut x = [0.0; NUM_SENSORS];
         let mut switched = Vec::new();
-        loop {
+        // At 1/60 per sensor a switch is due within a few dozen readings. The bound turns a
+        // house that never switches into a failure instead of a hang.
+        for _ in 0..1_000 {
             let before = house.coefficients();
             house.next_sample(&mut x, &mut switched);
             if let Some(&sensor) = switched.first() {
@@ -194,9 +220,10 @@ mod tests {
                 assert_ne!(before[sensor], after[sensor]);
                 assert!(LEVELS[sensor].contains(&after[sensor]));
                 assert_eq!(house.is_strong(sensor), after[sensor] == LEVELS[sensor][0]);
-                break;
+                return;
             }
         }
+        panic!("no relevant sensor switched in 1,000 readings");
     }
 
     #[test]

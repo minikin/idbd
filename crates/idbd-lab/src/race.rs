@@ -15,7 +15,10 @@ use crate::lms::Lms;
 pub const RACE_THETA: f64 = 0.015;
 
 /// The fixed LMS step size, selected by scenario E06 on the switching house.
-pub const RACE_LMS_STEP_SIZE: f64 = 0.03;
+pub const RACE_LMS_STEP_SIZE: f64 = 0.06;
+
+/// The fixed LMS step size, selected by scenario E06 on the still house.
+pub const STILL_RACE_LMS_STEP_SIZE: f64 = 0.001;
 
 /// IDBD and a fixed-step LMS learning one house.
 #[derive(Debug, Clone)]
@@ -34,13 +37,22 @@ pub struct Race {
 impl Race {
     /// Starts a race on the switching house with this seed, before any reading.
     pub fn new(seed: u64) -> Self {
+        Self::on(House::new(seed), RACE_LMS_STEP_SIZE)
+    }
+
+    /// Starts a race on the still house, where nothing switches, with the LMS step size
+    /// E06 selected for it.
+    pub fn still(seed: u64) -> Self {
+        Self::on(House::still(seed), STILL_RACE_LMS_STEP_SIZE)
+    }
+
+    fn on(house: House, lms_step_size: f64) -> Self {
         let config = Config::new(IDBD_INITIAL_STEP_SIZE, RACE_THETA)
             .expect("the race constants form a valid IDBD configuration");
         Self {
-            house: House::new(seed),
+            house,
             idbd: Idbd::new(NUM_SENSORS, config).expect("the house has sensors"),
-            lms: Lms::new(NUM_SENSORS, RACE_LMS_STEP_SIZE)
-                .expect("the race LMS step size is positive"),
+            lms: Lms::new(NUM_SENSORS, lms_step_size).expect("the race LMS step size is positive"),
             features: [0.0; NUM_SENSORS],
             target: 0.0,
             idbd_prediction: None,
@@ -135,6 +147,11 @@ impl Race {
         self.lms_prediction
     }
 
+    /// Returns the fixed LMS step size.
+    pub fn lms_step_size(&self) -> f64 {
+        self.lms.step_size()
+    }
+
     /// Returns IDBD's step size for every sensor.
     pub fn idbd_step_sizes(&self) -> Vec<f64> {
         self.idbd.step_sizes().collect()
@@ -197,6 +214,7 @@ mod tests {
         let mut house = House::new(3);
         let mut x = [0.0; NUM_SENSORS];
         let mut switched = Vec::new();
+        let (mut weak_seen, mut strong_seen) = (false, false);
         for _ in 0..200 {
             race.step().expect("finite readings");
             let target = house.next_sample(&mut x, &mut switched);
@@ -204,7 +222,12 @@ mod tests {
             assert_eq!(race.target(), target);
             assert_eq!(race.switched(), switched.as_slice());
             assert_eq!(race.coefficients(), house.coefficients());
+            let strong: [bool; RELEVANT] = std::array::from_fn(|k| house.is_strong(k));
+            assert_eq!(race.strong(), strong);
+            weak_seen |= strong.contains(&false);
+            strong_seen |= strong.contains(&true);
         }
+        assert!(weak_seen && strong_seen, "the run covers both levels");
         assert_eq!(race.completed(), 200);
     }
 
@@ -274,6 +297,18 @@ mod tests {
         assert_eq!(race.failure(), Some(message.as_str()));
         assert_eq!(race.step(), Err(message.clone()));
         assert_eq!(race.run(5), Err(message));
+    }
+
+    #[test]
+    fn a_still_race_never_switches_and_uses_its_own_lms_step_size() {
+        let mut race = Race::still(6);
+        assert_eq!(race.lms_step_size(), STILL_RACE_LMS_STEP_SIZE);
+        assert_eq!(Race::new(6).lms_step_size(), RACE_LMS_STEP_SIZE);
+        for _ in 0..2_000 {
+            race.step().expect("finite readings");
+            assert!(race.switched().is_empty());
+        }
+        assert_eq!(race.strong(), [true; RELEVANT]);
     }
 
     #[test]

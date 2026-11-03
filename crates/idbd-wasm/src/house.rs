@@ -6,7 +6,7 @@
 
 use idbd_lab::evaluation::IDBD_INITIAL_STEP_SIZE;
 use idbd_lab::house::{LEVELS, NUM_SENSORS, RELEVANT, SENSORS, SWITCH_PROBABILITY};
-use idbd_lab::race::{RACE_LMS_STEP_SIZE, RACE_THETA, Race};
+use idbd_lab::race::{RACE_LMS_STEP_SIZE, RACE_THETA, Race, STILL_RACE_LMS_STEP_SIZE};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -28,11 +28,13 @@ pub fn house_json() -> String {
         .join(",");
     format!(
         "{{\"sensors\":[{names}],\"relevant\":{RELEVANT},\"levels\":[{levels}],\
-         \"switchProbability\":{},\"initialStepSize\":{},\"theta\":{},\"lmsStepSize\":{}}}",
+         \"switchProbability\":{},\"initialStepSize\":{},\"theta\":{},\"lmsStepSize\":{},\
+         \"stillLmsStepSize\":{}}}",
         json_number(SWITCH_PROBABILITY),
         json_number(IDBD_INITIAL_STEP_SIZE),
         json_number(RACE_THETA),
         json_number(RACE_LMS_STEP_SIZE),
+        json_number(STILL_RACE_LMS_STEP_SIZE),
     )
 }
 
@@ -49,6 +51,12 @@ impl HouseRace {
             inner: Race::new(seed_from_number(seed)?),
         })
     }
+
+    fn create_still(seed: f64) -> Result<Self, String> {
+        Ok(Self {
+            inner: Race::still(seed_from_number(seed)?),
+        })
+    }
 }
 
 #[wasm_bindgen]
@@ -61,6 +69,22 @@ impl HouseRace {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: f64) -> Result<Self, JsError> {
         Self::create(seed).map_err(|message| js(&message))
+    }
+
+    /// Starts a race on the still house, where nothing switches.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless `seed` is a whole number in `0..2^53`.
+    pub fn still(seed: f64) -> Result<Self, JsError> {
+        Self::create_still(seed).map_err(|message| js(&message))
+    }
+
+    /// Returns the fixed LMS step size this race uses.
+    #[must_use]
+    #[wasm_bindgen(js_name = lmsStepSize)]
+    pub fn lms_step_size(&self) -> f64 {
+        self.inner.lms_step_size()
     }
 
     /// Lets both learners learn from the next reading, or neither.
@@ -196,7 +220,8 @@ mod tests {
             "{json}"
         );
         assert!(json.contains("\"theta\":0.015"), "{json}");
-        assert!(json.contains("\"lmsStepSize\":0.03"), "{json}");
+        assert!(json.contains("\"lmsStepSize\":0.06"), "{json}");
+        assert!(json.contains("\"stillLmsStepSize\":0.001"), "{json}");
         assert_eq!(json.matches("\",\"").count() + 1, NUM_SENSORS, "{json}");
     }
 
@@ -225,8 +250,15 @@ mod tests {
     }
 
     #[test]
+    fn a_still_race_reports_its_own_step_size() {
+        let race = HouseRace::create_still(1.0).expect("valid seed");
+        assert!((race.lms_step_size() - STILL_RACE_LMS_STEP_SIZE).abs() < f64::EPSILON);
+    }
+
+    #[test]
     fn an_invalid_seed_is_rejected() {
         assert!(HouseRace::create(-1.0).is_err());
         assert!(HouseRace::create(0.5).is_err());
+        assert!(HouseRace::create_still(-1.0).is_err());
     }
 }
