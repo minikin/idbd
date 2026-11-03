@@ -148,3 +148,17 @@ test("S07 the story page has no WCAG A or AA violations and fits a phone", async
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("S07 no section leaves an empty gap between its blocks", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openStory(page);
+  const gaps = await page.evaluate(() =>
+    [...document.querySelectorAll("main > section")].map((section) => {
+      const boxes = [...section.children].map((child) => child.getBoundingClientRect());
+      let largest = 0;
+      for (let i = 1; i < boxes.length; i += 1) largest = Math.max(largest, boxes[i].top - boxes[i - 1].bottom);
+      return { section: section.id || section.getAttribute("aria-labelledby"), largest };
+    }),
+  );
+  for (const { section, largest } of gaps) expect(largest, section).toBeLessThanOrEqual(64);
+});
