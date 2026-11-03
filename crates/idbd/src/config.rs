@@ -344,6 +344,11 @@ pub enum ConfigError {
         /// The initial beta.
         initial_beta: f64,
     },
+    /// The Autostep time scale is not finite or is less than one sample.
+    InvalidTimeScale {
+        /// The rejected value.
+        value: f64,
+    },
 }
 
 impl fmt::Display for ConfigError {
@@ -365,6 +370,9 @@ impl fmt::Display for ConfigError {
                 f,
                 "initial beta {initial_beta} lies outside the configured beta bounds"
             ),
+            Self::InvalidTimeScale { value } => {
+                write!(f, "time scale {value} is not finite and at least 1")
+            }
         }
     }
 }

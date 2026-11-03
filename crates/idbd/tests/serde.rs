@@ -2,6 +2,7 @@
 
 #![cfg(feature = "serde")]
 
+use idbd::autostep::{self, Autostep};
 use idbd::{Bounds, Config, Idbd, State};
 
 fn trained() -> Idbd {
@@ -162,4 +163,68 @@ fn c25_bounds_round_trip_on_their_own() {
         .expect_err("negative increment")
         .to_string();
     assert!(message.starts_with(&expected), "{message}");
+}
+
+#[test]
+fn c25_autostep_round_trips_bit_for_bit_and_rejects_invalid_input() {
+    let config = autostep::Config::new(0.1)
+        .and_then(|c| c.with_time_scale(100.0))
+        .expect("valid config");
+    let mut original = Autostep::new(2, config).expect("valid learner");
+    for t in 0..30_u32 {
+        let x = f64::from(t).sin();
+        original.update(&[x, 1.0], 3.0 * x).expect("finite");
+    }
+    let json = serde_json::to_string(&original).expect("serializes");
+    assert_eq!(
+        serde_json::to_value(&original).expect("serializes"),
+        serde_json::to_value(original.snapshot()).expect("serializes")
+    );
+    let mut restored: Autostep = serde_json::from_str(&json).expect("deserializes");
+    assert_eq!(restored.snapshot(), original.snapshot());
+    assert_eq!(
+        original.update(&[0.4, 1.0], 1.2),
+        restored.update(&[0.4, 1.0], 1.2)
+    );
+    assert_eq!(
+        serde_json::to_value(config).expect("serializes"),
+        serde_json::json!({ "initial_step_size": 0.1, "meta_step_size": 0.01, "time_scale": 100.0 })
+    );
+
+    let mut state = original.snapshot();
+    state.normalizers[0] = -1.0;
+    let invalid = serde_json::to_string(&state).expect("serializes");
+    let parsed: autostep::State = serde_json::from_str(&invalid).expect("State is not validated");
+    assert_eq!(parsed, state);
+    let expected = Autostep::from_state(state).expect_err("negative normalizer");
+    let message = serde_json::from_str::<Autostep>(&invalid)
+        .expect_err("Autostep is validated")
+        .to_string();
+    assert!(message.starts_with(&expected.to_string()), "{message}");
+
+    for (json, expected) in [
+        (
+            r#"{"initial_step_size":0.0,"meta_step_size":0.01,"time_scale":10.0}"#,
+            autostep::Config::new(0.0).expect_err("invalid").to_string(),
+        ),
+        (
+            r#"{"initial_step_size":0.1,"meta_step_size":-1.0,"time_scale":10.0}"#,
+            config
+                .with_meta_step_size(-1.0)
+                .expect_err("invalid")
+                .to_string(),
+        ),
+        (
+            r#"{"initial_step_size":0.1,"meta_step_size":0.01,"time_scale":0.5}"#,
+            config
+                .with_time_scale(0.5)
+                .expect_err("invalid")
+                .to_string(),
+        ),
+    ] {
+        let message = serde_json::from_str::<autostep::Config>(json)
+            .expect_err(json)
+            .to_string();
+        assert!(message.starts_with(&expected), "{json}: {message}");
+    }
 }

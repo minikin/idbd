@@ -318,6 +318,55 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       Then deserializing a learner returns the matching error
       And deserializing only a State accepts it unvalidated
 
+  @autostep
+  Rule: Autostep follows Table 1 of Mahmood, Sutton, Degris and Pilarski (2012)
+
+    Scenario: A01 Match an independent reference
+      Given Autostep fixtures computed in 50-digit decimal arithmetic, one with the paper's defaults and one with mu 0.5 and tau 2
+      When the learner processes each fixture sequence
+      Then every prediction, error, effective step size, weight, step size, trace and normalizer agrees within the equation tolerance
+      And at least one step has an effective step size above one
+
+    Scenario: A02 Construct with the paper's defaults
+      Given an initial step size
+      When I create an Autostep configuration
+      Then mu is 0.01 and tau is 10,000
+      And a non-positive initial step size, a negative or non-finite mu and a tau below 1 are rejected
+
+    Scenario: A03 Never overshoot the current target
+      Given any example
+      When the learner updates on it
+      Then the new error has the same sign as the old error, or is zero, and is not larger
+      And if sum(alpha_i x_i^2) exceeded one, every step size was divided by it
+
+    Scenario: A04 Fail without changing state
+      Given an input, a target or intermediate value that fails at any stage
+      When I update
+      Then I receive the error with its stage and coordinate
+      And weights, step sizes, traces and normalizers are bit-for-bit unchanged
+
+    Scenario: A05 Resume from a snapshot
+      Given a trained Autostep learner
+      When I restore a second learner from its snapshot and both process the same examples
+      Then reports and states agree bit for bit
+      And a snapshot with an empty, mismatched, non-finite, non-positive step size or negative normalizer entry is rejected
+
+    Scenario: A06 Learn raw targets with the defaults
+      Given targets in raw milliseconds and the paper's default mu and tau
+      When the learner processes 2,000 samples
+      Then every update succeeds and the final error is below 1 millisecond
+
+    Scenario: A07 Bound the step-size change per update
+      Given any example and mu
+      When the learner updates
+      Then each step size, before the overshoot guard, changes by a factor between exp(-mu) and exp(mu)
+      And every normalizer stays nonnegative
+
+    Scenario: A08 Avoid per-example heap allocation
+      Given an Autostep learner with 64 inputs
+      When it predicts and updates 2,000 times, including rejected updates
+      Then the counting allocator records no allocation
+
   @v0_1 @core @performance
   Rule: The ordinary learning path has predictable resource use
 
