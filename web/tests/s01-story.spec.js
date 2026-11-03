@@ -56,10 +56,10 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await page.click("#slow-next");
   await expect(page.locator("#slow-reading")).toHaveText("1");
   const one = (await story(page)).slow;
-  const sign = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`;
-  await expect(page.locator("#slow-guess")).toHaveText(`${sign(one.last.guess)} \u00b0C`);
-  await expect(page.locator("#slow-actual")).toHaveText(`${sign(one.last.target)} \u00b0C`);
-  await expect(page.locator("#slow-miss")).toHaveText(`${sign(one.last.target - one.last.guess)} \u00b0C`);
+  const words = (v) => `${v >= 0 ? "warmer" : "cooler"} by ${Math.abs(v).toFixed(2)}`;
+  await expect(page.locator("#slow-guess")).toHaveText(words(one.last.guess));
+  await expect(page.locator("#slow-actual")).toHaveText(words(one.last.target));
+  await expect(page.locator("#slow-miss")).toHaveText(`${Math.abs(one.last.target - one.last.guess).toFixed(2)} off`);
   await expect(page.locator("#slow-summary")).toContainText("IDBD guessed");
 
   await page.click("#slow-run");

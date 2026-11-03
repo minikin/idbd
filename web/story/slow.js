@@ -7,6 +7,9 @@ const HISTORY = 600;
 
 const fmt = (v, digits = 2) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}`;
 
+/** A temperature change in words: "warmer by 0.74" or "cooler by 0.16". */
+const inWords = (v) => `${v >= 0 ? "warmer" : "cooler"} by ${Math.abs(v).toFixed(2)}`;
+
 function sparkline(values) {
   if (values.length < 2) {
     return "";
@@ -88,9 +91,9 @@ export function createSlowMotion(wasm, house, nodes) {
       return;
     }
     const miss = last.target - last.guess;
-    nodes.guess.textContent = `${fmt(last.guess)} \u00b0C`;
-    nodes.actual.textContent = `${fmt(last.target)} \u00b0C`;
-    nodes.miss.textContent = `${fmt(miss)} \u00b0C`;
+    nodes.guess.textContent = inWords(last.guess);
+    nodes.actual.textContent = inWords(last.target);
+    nodes.miss.textContent = `${Math.abs(miss).toFixed(2)} off`;
 
     let biggest = 0;
     let up = 0;
@@ -102,7 +105,7 @@ export function createSlowMotion(wasm, house, nodes) {
       const a1 = last.alphas[s];
       if (Math.abs(w1 - w0) > Math.abs(last.weights[biggest] - last.before.weights[biggest])) biggest = s;
       const percent = ((a1 - a0) / a0) * 100;
-      const flat = Math.abs(percent) < 0.05;
+      const flat = a0.toFixed(4) === a1.toFixed(4);
       if (!flat && a1 > a0) up += 1;
       if (!flat && a1 < a0) down += 1;
       row.reading.textContent = fmt(last.features[s]);
@@ -114,8 +117,8 @@ export function createSlowMotion(wasm, house, nodes) {
     });
     const change = last.weights[biggest] - last.before.weights[biggest];
     nodes.summary.textContent =
-      `IDBD guessed ${fmt(last.guess)} \u00b0C, the room changed by ${fmt(last.target)} \u00b0C, so it missed by ` +
-      `${fmt(miss)} \u00b0C. It moved its trust in the ${house.sensors[biggest]} the most, by ${fmt(change, 3)}. ` +
+      `IDBD guessed the room would get ${inWords(last.guess)}. It got ${inWords(last.target)}, so the guess was ` +
+      `${Math.abs(miss).toFixed(2)} off. It moved its trust in the ${house.sensors[biggest]} the most, by ${fmt(change, 3)}. ` +
       `${up} speeds went up and ${down} went down. A speed goes up when that sensor's correction points ` +
       `the same way as its recent ones.`;
   }
