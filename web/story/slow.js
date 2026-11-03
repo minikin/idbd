@@ -1,11 +1,14 @@
 // Slow motion: one reading at a time from a fresh HouseRace, with every change IDBD makes
 // read from the crate before and after the update.
 
+import { svg } from "../src/dom.js";
+import { fmtSigned } from "../src/format.js";
+
 const SEED = 3;
 const RUN = 5000;
 const HISTORY = 600;
 
-const fmt = (v, digits = 2) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}`;
+const fmt = (v, digits = 2) => fmtSigned(v, digits);
 
 /** A temperature change in words: "warmer by 0.74" or "cooler by 0.16". */
 const inWords = (v) => `${v >= 0 ? "warmer" : "cooler"} by ${Math.abs(v).toFixed(2)}`;
@@ -35,11 +38,8 @@ export function createSlowMotion(wasm, house, nodes) {
     head.textContent = name;
     const cells = ["reading", "trust", "speed"].map(() => document.createElement("td"));
     const sparkCell = document.createElement("td");
-    const chart = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    chart.setAttribute("viewBox", "0 0 120 24");
-    chart.setAttribute("aria-hidden", "true");
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-    chart.append(line);
+    const line = svg("polyline");
+    const chart = svg("svg", { viewBox: "0 0 120 24", "aria-hidden": "true" }, [line]);
     sparkCell.append(chart);
     row.append(head, ...cells, sparkCell);
     nodes.rows.append(row);

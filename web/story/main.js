@@ -3,6 +3,7 @@
 // readings, chapter 3's faders, chapter 4's lanes and the game.
 
 import init, * as wasm from "../pkg/idbd_wasm.js";
+import { svg } from "../src/dom.js";
 import { SENSOR_COLORS, createHouse2d } from "./house.js";
 import { createGame } from "./game.js";
 import { createSlowMotion } from "./slow.js";
@@ -29,14 +30,6 @@ function points(values, width, height, range) {
     .join(" ");
 }
 
-function svg(name, attributes) {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
-  for (const [key, value] of Object.entries(attributes)) {
-    node.setAttribute(key, String(value));
-  }
-  return node;
-}
-
 async function mountRenderer(house) {
   const update2d = createHouse2d($("house-2d-sensors"), house.sensors);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -50,7 +43,7 @@ async function mountRenderer(house) {
     $("house-3d").setAttribute("role", "img");
     $("house-3d").setAttribute(
       "aria-label",
-      "A cutaway house with twelve sensors. Each sensor glows as wide as the speed IDBD has learned for it.",
+      "A cutaway house with six sensors. An amber ring around each sensor grows with the speed IDBD has learned for it.",
     );
     $("house-2d").style.visibility = "hidden";
     $("house-2d").setAttribute("aria-hidden", "true");
