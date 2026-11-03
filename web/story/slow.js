@@ -2,7 +2,7 @@
 // read from the crate before and after the update.
 
 const SEED = 3;
-const RUN = 1000;
+const RUN = 5000;
 const HISTORY = 600;
 
 const fmt = (v, digits = 2) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}`;
@@ -94,25 +94,30 @@ export function createSlowMotion(wasm, house, nodes) {
 
     let biggest = 0;
     let up = 0;
+    let down = 0;
     rows.forEach((row, s) => {
       const w0 = last.before.weights[s];
       const w1 = last.weights[s];
       const a0 = last.before.alphas[s];
       const a1 = last.alphas[s];
       if (Math.abs(w1 - w0) > Math.abs(last.weights[biggest] - last.before.weights[biggest])) biggest = s;
-      const faster = a1 > a0;
-      if (faster) up += 1;
+      const percent = ((a1 - a0) / a0) * 100;
+      const flat = Math.abs(percent) < 0.05;
+      if (!flat && a1 > a0) up += 1;
+      if (!flat && a1 < a0) down += 1;
       row.reading.textContent = fmt(last.features[s]);
-      row.trust.textContent = `${fmt(w0)} → ${fmt(w1)}`;
-      row.speed.textContent = `${a0.toFixed(4)} → ${a1.toFixed(4)} ${faster ? "↑ faster" : "↓ slower"}`;
-      row.speed.className = faster ? "up" : "down";
+      row.trust.textContent = `${fmt(w0)} \u2192 ${fmt(w1)}`;
+      row.speed.textContent = flat
+        ? `${a0.toFixed(4)} \u2192 ${a1.toFixed(4)} barely moved`
+        : `${a0.toFixed(4)} \u2192 ${a1.toFixed(4)} ${a1 > a0 ? "\u2191" : "\u2193"} ${fmt(percent, 1)}%`;
+      row.speed.className = flat ? "flat" : a1 > a0 ? "up" : "down";
     });
     const change = last.weights[biggest] - last.before.weights[biggest];
     nodes.summary.textContent =
       `IDBD guessed ${fmt(last.guess)} \u00b0C, the room changed by ${fmt(last.target)} \u00b0C, so it missed by ` +
       `${fmt(miss)} \u00b0C. It moved its trust in the ${house.sensors[biggest]} the most, by ${fmt(change, 3)}. ` +
-      `${up} of ${rows.length} speeds went up: those sensors' corrections pointed the same way as ` +
-      `their recent ones. The rest went down.`;
+      `${up} speeds went up and ${down} went down. A speed goes up when that sensor's correction points ` +
+      `the same way as its recent ones.`;
   }
 
   nodes.next.addEventListener("click", () => advance(1));

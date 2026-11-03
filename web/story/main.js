@@ -103,17 +103,11 @@ function startHero(house, renderer) {
       features: Array.from(race.features()),
       strong: Array.from(race.strong()),
     });
-    $("live-count").textContent = `reading ${race.completed().toLocaleString("en-US")}`;
+    $("live-count").textContent = `minute ${race.completed().toLocaleString("en-US")}`;
     $("live-actual").setAttribute("points", points(actual, 240, 56, 4));
     $("live-idbd").setAttribute("points", points(guess, 240, 56, 4));
     sparks.forEach((line, i) => line.setAttribute("points", points(readings[i], 240, 40, 3)));
-    const alphas = Array.from(race.idbdStepSizes());
-    const top = alphas
-      .map((a, i) => [a, i])
-      .sort((a, b) => b[0] - a[0])
-      .slice(0, house.relevant)
-      .map(([, i]) => house.sensors[i]);
-    $("trusted-list").textContent = top.join(", ");
+
   }
 
   function step() {
@@ -287,6 +281,9 @@ async function main() {
     reveal: $("reveal"),
     learned: $("learned"),
     learnedWrap: $("learned-wrap"),
+    learnedNote: $("learned-note"),
+    verdict: $("verdict"),
+    hints: $("hints"),
     failure: $("game-failure"),
   });
 

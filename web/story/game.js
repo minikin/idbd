@@ -7,13 +7,16 @@ import { SENSOR_COLORS } from "./house.js";
 const SEED = 20261103;
 const WARMUP = 5000;
 const TICK_MS = 100;
-const SCORE_WINDOW = 300;
+/** One round is 600 readings, a minute at 10 readings a second. Scores cover the round. */
+const ROUND = 600;
 const SMOOTH = 40;
-const CHART = 600;
+const CHART = ROUND;
 /** Readings before a leader is named, so one lucky guess does not win. */
 const MIN_SCORED = 50;
-/** A slider this close to the truth costs less than this per reading. */
-const SPOT_ON = 0.005;
+/** A slider within 0.15 of the truth counts as close: 0.15 squared. */
+const CLOSE = 0.0225;
+/** IDBD's starting step size, the reference for "faster" and "slower". */
+const START_SPEED = 0.05;
 /** The noise alone keeps even a perfect guess this far off, in degrees: sqrt(0.25). */
 const NOISE_FLOOR = 0.5;
 
@@ -21,7 +24,28 @@ const LEVEL_NOTES = {
   still:
     "Nothing changes in this house. Set every slider right and you will be off by about 0.50 \u00b0C, the noise alone.",
   changing:
-    "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. Try to keep up.",
+    "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. You will lose this one, and so will the fixed speed. Keeping up is what IDBD is for.",
+};
+
+const LEARNED_NOTES = {
+  still:
+    "Nothing changes in this house, so IDBD has calmed down on every sensor and their speeds are about equal. That is the right answer here, and it is why the fixed speed can win this level.",
+  changing:
+    "Here the sun, the oven and the front door keep switching, so IDBD keeps learning fast about them and slows down on the other three. A sensor can barely matter right now and still be watched closely, ready for its next change.",
+};
+
+/** The verdict at the end of a round, by level and winner. */
+const VERDICTS = {
+  still: {
+    you: "You win. You found how much each sensor matters, and in a calm house that never changes. Now try Level 2, where it does.",
+    idbd: "IDBD wins this round, narrowly. In a calm house the fixed speed usually edges ahead. Try Level 2 to see where IDBD pulls away.",
+    lms: "The fixed speed wins. That is expected: in a calm house one well-chosen speed is enough, and IDBD pays a little for staying ready to change. Now try Level 2.",
+  },
+  changing: {
+    you: "You beat both learners while the house kept changing. That is rare.",
+    idbd: "IDBD wins. It kept up by learning fast only about the sun, the oven and the front door.",
+    lms: "The fixed speed won this round. Over many rounds of this house IDBD comes out ahead: closer in all 10 of our simulated runs.",
+  },
 };
 
 /** Plain words for a slider value. */
@@ -60,6 +84,8 @@ export function createGame(wasm, house, nodes) {
   let series = { you: [], idbd: [], lms: [] };
   let changes = [];
   let failure = null;
+  let finished = false;
+  let hints = false;
 
   const sliders = house.sensors.map((name, sensor) => {
     const id = `trust-${sensor}`;
@@ -175,6 +201,7 @@ export function createGame(wasm, house, nodes) {
   }
 
   function start() {
+    if (finished) reset();
     if (running || failure) return;
     running = true;
     timer = setInterval(tick, TICK_MS);
@@ -205,8 +232,11 @@ export function createGame(wasm, house, nodes) {
     series = { you: [], idbd: [], lms: [] };
     changes = [];
     failure = null;
+    finished = false;
+    nodes.verdict.hidden = true;
     nodes.failure.hidden = true;
     nodes.levelNote.textContent = LEVEL_NOTES[level];
+    nodes.learnedNote.textContent = LEARNED_NOTES[level];
     setRevealed(false);
     render();
   }
@@ -235,12 +265,34 @@ export function createGame(wasm, house, nodes) {
     for (let s = 0; s < x.length; s += 1) you += trustValues[s] * x[s];
     const misses = { you: (y - you) ** 2, idbd: (y - race.idbdPrediction()) ** 2, lms: (y - race.lmsPrediction()) ** 2 };
     for (const key of Object.keys(misses)) {
-      keep(squared[key], misses[key], SCORE_WINDOW);
+      squared[key].push(misses[key]);
       keep(recent[key], misses[key], SMOOTH);
       keep(series[key], typical(recent[key]), CHART);
     }
     keep(changes, race.switched().length > 0, CHART);
     scored += 1;
+    if (scored >= ROUND) {
+      finish();
+      return;
+    }
+    render();
+  }
+
+  function finish() {
+    finished = true;
+    running = false;
+    clearInterval(timer);
+    timer = null;
+    const errors = scores();
+    const order = Object.keys(errors).sort((a, b) => errors[a] - errors[b]);
+    const [first, second] = order;
+    const names = { you: "You", idbd: "IDBD", lms: "The fixed speed" };
+    const closer = Math.round((1 - errors[first] / errors[second]) * 100);
+    const switches = changes.filter(Boolean).length;
+    const changed = level === "changing" ? ` What matters changed ${switches} times this round.` : "";
+    nodes.verdict.textContent =
+      `${VERDICTS[level][first]} ${names[first]} ended ${closer}% closer than ${names[second].toLowerCase()}.${changed}`;
+    nodes.verdict.hidden = false;
     render();
   }
 
@@ -256,21 +308,24 @@ export function createGame(wasm, house, nodes) {
   function renderCosts() {
     costs().forEach(({ cost, higher }, s) => {
       const slider = sliders[s];
-      const said = meaning(trustValues[s]);
-      if (cost < SPOT_ON) {
-        slider.cost.textContent = `${said} \u2713 right`;
+      const said = `you say: ${meaning(trustValues[s])}`;
+      if (!hints) {
+        slider.cost.textContent = said;
+        slider.cost.className = "cost";
+      } else if (cost < CLOSE) {
+        slider.cost.textContent = `${said} \u2713 close`;
         slider.cost.className = "cost good";
       } else {
-        slider.cost.textContent = `${said} \u00b7 ${higher ? "\u2191 should be higher" : "\u2193 should be lower"}`;
+        slider.cost.textContent = `${said} \u00b7 ${higher ? "\u2191 try higher" : "\u2193 try lower"}`;
         slider.cost.className = "cost";
       }
     });
   }
 
   function render() {
-    nodes.run.textContent = running ? "Pause" : "Start";
+    nodes.run.textContent = running ? "Pause" : finished ? "Play again" : "Start";
     nodes.run.disabled = Boolean(failure);
-    nodes.count.textContent = `reading ${scored.toLocaleString("en-US")}`;
+    nodes.count.textContent = `reading ${scored.toLocaleString("en-US")} of ${ROUND}`;
     const errors = scores();
     const leader =
       scored >= MIN_SCORED ? Object.keys(errors).reduce((a, b) => (errors[a] <= errors[b] ? a : b)) : null;
@@ -279,7 +334,8 @@ export function createGame(wasm, house, nodes) {
       player.value.textContent = value === null ? "--" : `${value.toFixed(2)} \u00b0C`;
       player.root.className = leader === player.key ? `score lead-${player.key}` : "score";
       player.captionNode.textContent = player.caption();
-      player.lead.textContent = leader === player.key ? "in the lead" : scored === 0 && !running ? "press Start" : "";
+      const lead = finished ? "winner" : "in the lead";
+      player.lead.textContent = leader === player.key ? lead : scored === 0 && !running ? "press Start" : "";
       player.lead.style.color = player.color;
     }
     renderCosts();
@@ -293,8 +349,10 @@ export function createGame(wasm, house, nodes) {
     const learners = [...series.idbd, ...series.lms];
     const peak = Math.max(0.8, learners.length ? Math.max(...learners) : 0) * 1.25;
     const toY = (v) => (178 - (Math.min(v, peak) / peak) * 170).toFixed(1);
-    // The first 40 units are a gutter for the degree labels.
-    const xAt = (i) => (40 + (i * 560) / (CHART - 1)).toFixed(1);
+    // The first 40 units are a gutter for the degree labels. The x axis grows with the
+    // round until it reaches its full length, so the lines fill the frame from the start.
+    const span = Math.max(series.idbd.length, 60) - 1;
+    const xAt = (i) => (40 + (i * 560) / span).toFixed(1);
     const line = (key) => series[key].map((v, i) => `${xAt(i)},${toY(v)}`).join(" ");
     let path = "";
     let drawing = false;
@@ -324,14 +382,17 @@ export function createGame(wasm, house, nodes) {
   function renderLearned() {
     const alphas = race.idbdStepSizes();
     const weights = race.idbdWeights();
-    const scale = Math.max(...alphas);
+    // Bars share one fixed scale, so equal speeds look equal and the calm house does not
+    // look like the busy one.
+    const scale = 0.14;
     learned.forEach((item, s) => {
-      const share = alphas[s] / scale;
-      const pace = share > 0.6 ? "fast" : share > 0.3 ? "medium" : "slow";
+      const ratio = alphas[s] / START_SPEED;
+      const pace =
+        ratio > 1.3 ? "faster than at the start" : ratio < 0.7 ? "slower than at the start" : "about as fast as at the start";
       const said = meaning(weights[s]);
       item.weight.textContent = said === "ignore it" ? "thinks it barely matters right now" : `thinks it ${said}`;
-      item.fill.style.width = `${Math.round(share * 100)}%`;
-      item.speed.textContent = `learns about it ${pace} (speed ${alphas[s].toFixed(3)})`;
+      item.fill.style.width = `${Math.round(Math.min(1, alphas[s] / scale) * 100)}%`;
+      item.speed.textContent = `learns about it ${pace} (speed ${alphas[s].toFixed(3)}, started at ${START_SPEED.toFixed(3)})`;
     });
   }
 
@@ -343,6 +404,12 @@ export function createGame(wasm, house, nodes) {
   }
 
   nodes.run.addEventListener("click", () => (running ? stop() : start()));
+  nodes.hints.addEventListener("click", () => {
+    hints = !hints;
+    nodes.hints.setAttribute("aria-pressed", String(hints));
+    nodes.hints.textContent = hints ? "Hide hints" : "Show hints";
+    renderCosts();
+  });
   nodes.reset.addEventListener("click", reset);
   nodes.reveal.addEventListener("click", () => setRevealed(nodes.learnedWrap.hidden));
   for (const button of nodes.levels) {
@@ -361,6 +428,8 @@ export function createGame(wasm, house, nodes) {
         trust: [...trustValues],
         costs: costs().map((c) => c.cost),
         revealed: !nodes.learnedWrap.hidden,
+        finished,
+        hints,
         failure,
         stepSizes: Array.from(race.idbdStepSizes()),
         lmsStepSize: race.lmsStepSize(),

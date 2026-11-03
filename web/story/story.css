@@ -1570,3 +1570,169 @@ h3 {
     mask-image: linear-gradient(90deg, #000 85%, transparent);
   }
 }
+
+.how h3 {
+  font-size: 16px;
+}
+
+.how ol {
+  margin: 0;
+  padding: 0 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.how li {
+  margin-left: 0;
+}
+
+.verdict {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.5;
+  border-color: var(--hairline-3);
+}
+
+.slow-table td.flat {
+  color: var(--ink-3);
+}
+
+.sensor-grid .unknown {
+  border: none;
+  width: auto;
+}
+
+.figure .key {
+  margin-top: -4px;
+}
+
+/* ---------- second review ---------- */
+
+.axis-note {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.axis-note span:nth-child(2) {
+  text-align: center;
+}
+
+.axis-note span:nth-child(3) {
+  text-align: right;
+}
+
+.hero-cards > .card {
+  justify-content: flex-start;
+}
+
+.legend > span {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  column-gap: 8px;
+  align-items: baseline;
+}
+
+.legend .dot {
+  margin-right: 0;
+}
+
+.site-footer {
+  position: relative;
+  border-top: 0;
+}
+
+.site-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0 24px auto;
+  border-top: 1px solid var(--hairline);
+}
+
+.slow-table tbody tr:last-child td,
+.slow-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+
+.slow-table th:first-child,
+.slow-table td:first-child {
+  padding-left: 0;
+}
+
+.how ol {
+  padding-left: 0;
+  list-style-position: inside;
+}
+
+.stat,
+.stat-block {
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.cost {
+  min-height: 1lh;
+}
+
+.level[aria-pressed="true"] {
+  border-color: rgb(255 181 71 / 0.45);
+  background: rgb(255 181 71 / 0.05);
+}
+
+.split {
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .instrument + .split > .chapter-copy:last-child {
+    padding-top: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  .cost {
+    min-height: 2lh;
+  }
+}
+
+@media (max-width: 640px) {
+  .slow-top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .slider {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  .slider label {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .slider output {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .slider input[type="range"] {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+
+  .cost {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    margin-top: -6px;
+  }
+
+  .reveal .card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.house-2d .label-chip {
+  fill: rgb(8 9 10 / 0.72);
+  stroke: var(--hairline);
+}

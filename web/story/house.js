@@ -82,7 +82,7 @@ export function createHouse2d(group, names) {
         el("line", { x1: cx, y1: cy, x2: x, y2: y + 4, class: "leader", stroke: "rgba(255,255,255,0.25)" }),
       );
       const text = el("text", {
-        x: label.end ? x - 4 : x + 4,
+        x: label.end ? x - 4 : x + 12,
         y,
         class: "label",
         "text-anchor": label.end ? "end" : "start",
@@ -90,6 +90,20 @@ export function createHouse2d(group, names) {
       });
       text.textContent = names[index];
       group.append(text);
+      // Same chip as the 3D labels: a dark pill with the sensor's dot.
+      const box = text.getBBox();
+      const left = label.end ? box.x - 14 : box.x - 14;
+      const chip = el("rect", {
+        x: left - 2,
+        y: box.y - 3,
+        width: box.width + 22,
+        height: box.height + 6,
+        rx: 8,
+        class: "label-chip",
+      });
+      const chipDot = el("circle", { cx: left + 6, cy: box.y + box.height / 2, r: 3, fill: SENSOR_COLORS[index] });
+      group.insertBefore(chip, text);
+      group.insertBefore(chipDot, text);
     }
     return { ring };
   });

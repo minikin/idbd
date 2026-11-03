@@ -63,7 +63,7 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-summary")).toContainText("IDBD guessed");
 
   await page.click("#slow-run");
-  await expect(page.locator("#slow-reading")).toHaveText("1,001");
+  await expect(page.locator("#slow-reading")).toHaveText("5,001");
   const later = (await story(page)).slow;
   const speeds = await page.$$eval("#slow-rows td:nth-child(4)", (cells) => cells.map((c) => c.textContent));
   speeds.forEach((text, s) => expect(text).toContain(`→ ${later.stepSizes[s].toFixed(4)}`));
@@ -79,13 +79,15 @@ test("S03 level 1 rewards matching the truth, and Reset clears everything", asyn
   expect(fresh.level).toBe("still");
   expect(fresh.lmsStepSize).toBe((await story(page)).house.stillLmsStepSize);
 
+  await expect(page.locator("#trust-0-cost")).toHaveText("you say: ignore it");
+  await page.click("#hints");
   for (const [sensor, value] of [[0, 1.2], [1, 0.9], [2, -1.1]]) await setSlider(page, sensor, value);
   const tuned = (await story(page)).game;
   expect(tuned.costs.every((c) => c < 0.005)).toBe(true);
-  await expect(page.locator("#trust-0-cost")).toHaveText("warms the room a lot \u2713 right");
+  await expect(page.locator("#trust-0-cost")).toHaveText("you say: warms the room a lot \u2713 close");
 
   await setSlider(page, 3, 1.5);
-  await expect(page.locator("#trust-3-cost")).toHaveText("warms the room a lot \u00b7 \u2193 should be lower");
+  await expect(page.locator("#trust-3-cost")).toHaveText("you say: warms the room a lot \u00b7 \u2193 try lower");
 
   await page.click("#game-run");
   await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 20000 });
@@ -121,7 +123,7 @@ test("S05 IDBD's trust and speeds stay hidden until the visitor asks", async ({ 
   await expect(page.locator("#reveal")).toHaveAttribute("aria-expanded", "true");
   const speeds = await page.$$eval("#learned .item .faint", (nodes) => nodes.map((n) => n.textContent));
   const game = (await story(page)).game;
-  speeds.forEach((text, s) => expect(text).toContain(`(speed ${game.stepSizes[s].toFixed(3)})`));
+  speeds.forEach((text, s) => expect(text).toContain(`(speed ${game.stepSizes[s].toFixed(3)},`));
 });
 
 test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => {
@@ -130,7 +132,8 @@ test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => 
   expect((await story(page)).renderer).toBe("2d");
   await expect(page.locator("#house-3d")).toBeHidden();
   await expect(page.locator("#house-2d")).toBeVisible();
-  expect(await page.locator("#house-2d-sensors circle").count()).toBe(18);
+  await expect(page.locator("#house-2d-sensors .attention")).toHaveCount(6);
+  await expect(page.locator("#house-2d-sensors .label-chip")).toHaveCount(6);
 });
 
 test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {
@@ -154,11 +157,28 @@ test("S07 no section leaves an empty gap between its blocks", async ({ page }) =
   await openStory(page);
   const gaps = await page.evaluate(() =>
     [...document.querySelectorAll("main > section")].map((section) => {
-      const boxes = [...section.children].map((child) => child.getBoundingClientRect());
+      const boxes = [...section.children]
+        .map((child) => child.getBoundingClientRect())
+        .filter((box) => box.height > 0);
       let largest = 0;
       for (let i = 1; i < boxes.length; i += 1) largest = Math.max(largest, boxes[i].top - boxes[i - 1].bottom);
       return { section: section.id || section.getAttribute("aria-labelledby"), largest };
     }),
   );
   for (const { section, largest } of gaps) expect(largest, section).toBeLessThanOrEqual(64);
+});
+
+test("S08 a round ends after 600 readings with a winner and a reason", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.clock.install();
+  await openStory(page);
+  await page.click("#game-run");
+  for (let second = 0; second < 61; second += 1) await page.clock.runFor(1_000);
+  const game = (await story(page)).game;
+  expect(game.finished).toBe(true);
+  expect(game.scored).toBe(600);
+  await expect(page.locator("#verdict")).toBeVisible();
+  await expect(page.locator("#verdict")).toContainText("closer than");
+  await expect(page.locator("#game-run")).toHaveText("Play again");
+  await expect(page.locator("#scores .lead", { hasText: "winner" })).toHaveCount(1);
 });
