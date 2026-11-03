@@ -1,6 +1,6 @@
 import { SENSOR_COLORS } from "./house.js";
 
-// "Play against it": the visitor's marks on the house's sensors against IDBD and a tuned fixed-step
+// "Play against it": the visitor's sliders against IDBD and a tuned fixed-step
 // learner, both computed by the crate's HouseRace on the same readings. Level 1 is the
 // still house, level 2 the switching house.
 
@@ -22,7 +22,7 @@ const LEVEL_NOTES = {
   changing:
     "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. Keeping up with that is what IDBD is for. Try to beat it.",
   still:
-    "Nothing changes in this house, so one well-chosen fixed speed is enough, and it usually edges out IDBD here. Set every switch right and you can beat both.",
+    "Nothing changes in this house, so one well-chosen fixed speed is enough, and it usually edges out IDBD here. Set every slider right and you can beat both.",
 };
 
 const LEARNED_NOTES = {
@@ -99,115 +99,68 @@ export function createGame(wasm, house, nodes) {
   let failure = null;
   let finished = false;
 
-  // Each mark uses the sensor's usual strength: in the calm house its constant level, in
-  // the busy house the average of its strong and weak level, and 1 for the sensors that
-  // never matter. The right marks are then the best fixed guess for that house.
-  const strength = (sensor) => {
-    if (sensor >= house.relevant) return 1;
-    const [strong, weak] = house.levels[sensor];
-    return Math.abs(level === "still" ? strong : (strong + weak) / 2);
+  // Five stops per sensor. "A lot" is the sensor's strong effect and "a little" its weak
+  // one; the three sensors that never matter use 1 and 0.2. In the calm house the right
+  // stops are exactly the truth, and in the busy house a player who spots a switch can
+  // follow it by hand.
+  const STOPS = ["cools a lot", "cools a little", "ignore", "warms a little", "warms a lot"];
+  const effect = (sensor, mark) => {
+    if (mark === 0) return 0;
+    const [strong, weak] = sensor < house.relevant ? house.levels[sensor].map(Math.abs) : [1, 0.2];
+    return Math.sign(mark) * (Math.abs(mark) === 2 ? strong : weak);
   };
-  const LABELS = { 0: "ignore", 1: "warms", [-1]: "cools" };
-  /**
-   * Where each device sits in the game's drawing (viewBox units). Chosen for the game so
-   * buttons never touch: on the window, the oven, the door, and clear wall spots for the
-   * three that do not matter.
-   */
-  const SPOTS = [
-    [396, 168],
-    [501, 292],
-    [178, 222],
-    [512, 196],
-    [150, 318],
-    [300, 128],
-  ];
-  const NEXT = { 0: 1, 1: -1, [-1]: 0 };
   let marks = house.sensors.map(() => 0);
 
-  // The game is played in the house: each sensor device is a button that cycles its mark,
-  // ignore, warms, cools, the way console games put actions on objects in the world.
-  const SVG = "http://www.w3.org/2000/svg";
-  const stage = document.createElement("div");
-  stage.className = "play-house";
-  const drawing = document.createElementNS(SVG, "svg");
-  drawing.setAttribute("viewBox", "0 30 660 440");
-  drawing.setAttribute("aria-hidden", "true");
-  for (const [points, kind] of [
-    ["300,190 556,338 364,449 108,301", "floor"],
-    ["300,190 556,338 556,208.5 300,60.5", "wall-r"],
-    ["300,190 108,301 108,171.5 300,60.5", "wall-l"],
-    ["364,182.6 428,219.6 428,164.1 364,127.1", "window"],
-    ["204,245.5 152.8,275.1 152.8,182.6 204,153", "door"],
-    ["498.4,271.4 543.2,297.3 504.8,319.5 460,293.6", "block-top"],
-    ["460,334.3 504.8,360.2 504.8,319.5 460,293.6", "block-left"],
-    ["543.2,338 504.8,360.2 504.8,319.5 543.2,297.3", "block-right"],
-  ]) {
-    const shape = document.createElementNS(SVG, "polygon");
-    shape.setAttribute("points", points);
-    shape.setAttribute("class", kind);
-    drawing.append(shape);
-  }
-  stage.append(drawing);
-  const help = document.createElement("p");
-  help.id = "device-help";
-  help.className = "sr-only";
-  help.textContent = "Press to change between ignore, warms and cools. Arrow keys move between sensors.";
-  stage.append(help);
+  // The stop names sit once above the rails, each centred over its stop.
+  const scale = document.createElement("div");
+  scale.className = "stop-scale";
+  scale.setAttribute("aria-hidden", "true");
+  const stopTicks = document.createElement("div");
+  stopTicks.className = "stop-ticks";
+  STOPS.forEach((stop, i) => {
+    const tick = document.createElement("span");
+    tick.textContent = stop;
+    tick.style.left = `${i * 25}%`;
+    stopTicks.append(tick);
+  });
+  scale.append(document.createElement("span"), stopTicks);
+  nodes.sliders.append(scale);
 
-  const devices = house.sensors.map((name, sensor) => {
-    const [x, y] = SPOTS[sensor];
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "device";
-    button.id = `device-${sensor}`;
-    button.style.left = `${(x / 660) * 100}%`;
-    button.style.top = `${((y - 30) / 440) * 100}%`;
+  const sliders = house.sensors.map((name, sensor) => {
+    const id = `trust-${sensor}`;
+    const row = document.createElement("div");
+    row.className = "stop-row";
+    const label = document.createElement("label");
+    label.htmlFor = id;
     const dot = document.createElement("i");
+    dot.className = "sensor-dot";
     dot.style.background = SENSOR_COLORS[sensor];
-    const text = document.createElement("span");
-    text.className = "device-name";
-    text.textContent = name;
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    button.append(dot, text, badge);
-    button.setAttribute("aria-describedby", "device-help");
-    button.addEventListener("click", () => setMark(sensor, NEXT[marks[sensor]]));
-    stage.append(button);
-    return { button, badge, name };
+    label.append(dot, name);
+    const input = document.createElement("input");
+    Object.assign(input, { id, type: "range", min: "-2", max: "2", step: "1", value: "0" });
+    input.className = "stop-input";
+    const output = document.createElement("output");
+    output.htmlFor = id;
+    input.addEventListener("input", () => setMark(sensor, Number(input.value)));
+    row.append(label, input, output);
+    nodes.sliders.append(row);
+    return { input, output };
   });
-
-  // Arrow keys move between devices, like a controller's d-pad.
-  stage.addEventListener("keydown", (event) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-    if (!step) return;
-    const at = devices.findIndex((d) => d.button === document.activeElement);
-    if (at < 0) return;
-    event.preventDefault();
-    devices[(at + step + devices.length) % devices.length].button.focus();
-  });
-  nodes.sliders.append(stage);
-  const legend = document.createElement("ul");
-  legend.className = "device-legend";
-  legend.setAttribute("aria-hidden", "true");
-  house.sensors.forEach((name, sensor) => {
-    const item = document.createElement("li");
-    const dot = document.createElement("i");
-    dot.style.background = SENSOR_COLORS[sensor];
-    item.append(dot, name);
-    legend.append(item);
-  });
-  nodes.sliders.append(legend);
 
   function setMark(sensor, mark) {
     marks[sensor] = mark;
-    trustValues[sensor] = mark * strength(sensor);
-    const device = devices[sensor];
-    device.badge.textContent = mark === 1 ? "\u2191 warms" : mark === -1 ? "\u2193 cools" : "ignore";
-    device.button.dataset.mark = LABELS[mark];
+    trustValues[sensor] = effect(sensor, mark);
+    const { input, output } = sliders[sensor];
+    input.value = String(mark);
+    input.setAttribute("aria-valuetext", STOPS[mark + 2]);
+    input.style.setProperty("--lo", `${Math.min(50, (mark + 2) * 25)}%`);
+    input.style.setProperty("--hi", `${Math.max(50, (mark + 2) * 25)}%`);
+    output.textContent = STOPS[mark + 2];
+    output.dataset.mark = mark > 0 ? "warms" : mark < 0 ? "cools" : "ignore";
   }
 
   const players = [
-    { key: "you", name: "You", color: "var(--you)", caption: () => "guessing with your marks" },
+    { key: "you", name: "You", color: "var(--you)", caption: () => "guessing with your sliders" },
     { key: "idbd", name: "IDBD", color: "var(--idbd)", caption: () => "tunes its own speed for each sensor" },
     {
       key: "lms",
@@ -258,6 +211,7 @@ export function createGame(wasm, house, nodes) {
     return { weight, fill, speed };
   });
 
+  const SVG = "http://www.w3.org/2000/svg";
   const floor = document.createElementNS(SVG, "line");
   floor.setAttribute("class", "floor-line");
   nodes.chart.insertBefore(floor, nodes.chart.firstChild);

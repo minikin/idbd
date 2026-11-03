@@ -1854,175 +1854,6 @@ body::after {
   }
 }
 
-/* ---------- the game's house ---------- */
-
-.play-house {
-  position: relative;
-  aspect-ratio: 660 / 440;
-  width: 100%;
-}
-
-.play-house svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.play-house .floor {
-  fill: var(--surface);
-  stroke: var(--hairline);
-}
-
-.play-house .wall-r {
-  fill: var(--raised);
-  stroke: var(--hairline);
-}
-
-.play-house .wall-l {
-  fill: #131417;
-  stroke: var(--hairline);
-}
-
-.play-house .window {
-  fill: rgb(255 181 71 / 0.08);
-  stroke: rgb(255 181 71 / 0.35);
-}
-
-.play-house .door {
-  fill: #1a1c20;
-  stroke: rgb(255 255 255 / 0.16);
-}
-
-.play-house .block-top {
-  fill: #26292e;
-}
-
-.play-house .block-left {
-  fill: #1d2024;
-}
-
-.play-house .block-right {
-  fill: #17191c;
-}
-
-.device {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 8px;
-  border: 1px solid var(--hairline-2);
-  border-radius: var(--radius-tile);
-  background: rgb(8 9 10 / 0.82);
-  color: var(--ink);
-  font: 500 12px var(--sans);
-  cursor: pointer;
-  transition:
-    border-color 150ms var(--ease),
-    transform 150ms var(--ease);
-}
-
-.device:hover {
-  border-color: var(--hairline-3);
-  transform: translate(-50%, -50%) scale(1.04);
-}
-
-.device i {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.device-name {
-  white-space: nowrap;
-}
-
-.device .badge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--raised);
-  color: var(--ink-2);
-}
-
-.device[data-mark="warms"] {
-  border-color: #fdba74;
-}
-
-.device[data-mark="warms"] .badge {
-  background: #fdba74;
-  color: var(--ground);
-}
-
-.device[data-mark="cools"] {
-  border-color: #7dd3fc;
-}
-
-.device[data-mark="cools"] .badge {
-  background: #7dd3fc;
-  color: var(--ground);
-}
-
-@media (max-width: 520px) {
-  .device {
-    padding: 4px 6px;
-    font-size: 10px;
-  }
-
-  .device .badge {
-    font-size: 10px;
-  }
-}
-
-/* The game's house takes the full width; scores and chart sit below it. */
-.game > .sliders {
-  flex: 1 1 100%;
-}
-
-.game > .game-main {
-  flex: 1 1 100%;
-}
-
-.play-house {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.device-legend {
-  display: none;
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 12px;
-  color: var(--ink-2);
-}
-
-.device-legend i {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-@media (max-width: 600px) {
-  .device-name {
-    display: none;
-  }
-
-  .device-legend {
-    display: flex;
-  }
-}
-
 .site-header {
   scroll-margin-top: 0;
 }
@@ -2043,7 +1874,132 @@ main section {
   border: 0;
 }
 
-/* On wide screens the scores stack beside the chart, so the chart keeps a readable size. */
+
+/* ---------- five-stop sliders ---------- */
+
+.stop-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) minmax(0, 1fr) 104px;
+  column-gap: 16px;
+  align-items: center;
+}
+
+/* The stop names, once, above the rails, each over its stop. The thumb's centre runs from
+   9 px to 9 px short of each end, so the ticks are inset by half the thumb. */
+.stop-scale {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) minmax(0, 1fr) 104px;
+  column-gap: 16px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.stop-ticks {
+  position: relative;
+  height: 18px;
+  margin: 0 9px;
+}
+
+.stop-ticks span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.stop-row label {
+  font-size: 14px;
+}
+
+.stop-row output {
+  font-size: 13px;
+  text-align: right;
+  color: var(--ink-2);
+}
+
+.stop-row output[data-mark="warms"] {
+  color: #fdba74;
+}
+
+.stop-row output[data-mark="cools"] {
+  color: #7dd3fc;
+}
+
+.stop-input {
+  --lo: 50%;
+  --hi: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stop-input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--hairline-2) var(--lo), var(--you) var(--lo), var(--you) var(--hi), var(--hairline-2) var(--hi));
+}
+
+.stop-input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--hairline-2) var(--lo), var(--you) var(--lo), var(--you) var(--hi), var(--hairline-2) var(--hi));
+}
+
+.stop-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--you);
+}
+
+.stop-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--you);
+}
+
+@media (max-width: 600px) {
+  .stop-scale {
+    display: none;
+  }
+
+  .stop-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0;
+  }
+
+  .stop-row label {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .stop-row output {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .stop-row .stop-input {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+
+/* The sliders take the full width so the rails are long; scores sit beside the chart. */
+.game > .sliders,
+.game > .game-main {
+  flex: 1 1 100%;
+}
+
 @media (min-width: 900px) {
   .game > .game-main {
     display: grid;
