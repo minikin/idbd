@@ -1,4 +1,4 @@
-//! The thermostat house behind the story page: twelve sensors, three of which move the
+//! The thermostat house behind the story page: six sensors, three of which move the
 //! room temperature by amounts that keep switching.
 //!
 //! This is an extension, not a task from Sutton (1992). Inputs are independent standard
@@ -9,7 +9,7 @@
 use crate::rng::Rng;
 
 /// Number of sensors in the house.
-pub const NUM_SENSORS: usize = 12;
+pub const NUM_SENSORS: usize = 6;
 
 /// Sensor names, in input order. The first [`RELEVANT`] move the temperature.
 pub const SENSORS: [&str; NUM_SENSORS] = [
@@ -17,14 +17,8 @@ pub const SENSORS: [&str; NUM_SENSORS] = [
     "oven",
     "front door",
     "wi-fi signal",
-    "router traffic",
     "doorbell battery",
-    "phone charge",
-    "plant soil",
-    "tv standby",
     "clock",
-    "mailbox",
-    "printer ink",
 ];
 
 /// Number of sensors that move the temperature.
@@ -159,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn a_new_house_starts_strong_with_nine_inert_sensors() {
+    fn a_new_house_starts_strong_with_three_inert_sensors() {
         let house = House::new(1);
         assert_eq!(house.seed(), 1);
         assert_eq!(house.generated(), 0);
