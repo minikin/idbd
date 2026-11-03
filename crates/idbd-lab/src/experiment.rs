@@ -4,7 +4,7 @@ use idbd::autostep::{self, Autostep};
 use idbd::{Config, Idbd};
 
 use crate::lms::Lms;
-use crate::world::{NUM_FEATURES, Preset, World};
+use crate::task::{Stream, Task};
 
 /// The learner evaluated in a run.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,7 +24,7 @@ pub enum LearnerSpec {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RunSpec {
     /// The task.
-    pub preset: Preset,
+    pub task: Task,
     /// The task seed. Every learner given the same seed sees the same stream.
     pub seed: u64,
     /// Samples processed before measurement starts.
@@ -53,15 +53,15 @@ enum Learner {
 }
 
 impl Learner {
-    fn new(spec: LearnerSpec) -> Result<Self, String> {
+    fn new(spec: LearnerSpec, num_features: usize) -> Result<Self, String> {
         match spec {
-            LearnerSpec::Idbd(config) => Idbd::new(NUM_FEATURES, config)
+            LearnerSpec::Idbd(config) => Idbd::new(num_features, config)
                 .map(Self::Idbd)
                 .map_err(|e| e.to_string()),
-            LearnerSpec::Autostep(config) => Autostep::new(NUM_FEATURES, config)
+            LearnerSpec::Autostep(config) => Autostep::new(num_features, config)
                 .map(Self::Autostep)
                 .map_err(|e| e.to_string()),
-            LearnerSpec::Lms { step_size } => Lms::new(NUM_FEATURES, step_size)
+            LearnerSpec::Lms { step_size } => Lms::new(num_features, step_size)
                 .map(Self::Lms)
                 .map_err(|e| e.to_string()),
         }
@@ -100,14 +100,13 @@ impl Learner {
 /// Returns a message if the learner configuration is invalid. Numerical failures
 /// during the run are reported in [`RunResult::failure`].
 pub fn run(spec: &RunSpec) -> Result<RunResult, String> {
-    let mut learner = Learner::new(spec.learner)?;
-    let mut world = World::new(spec.preset, spec.seed);
-    let mut x = [0.0; NUM_FEATURES];
-    let mut events = Vec::new();
+    let mut learner = Learner::new(spec.learner, spec.task.num_features())?;
+    let mut stream = Stream::new(spec.task, spec.seed);
+    let mut x = vec![0.0; spec.task.num_features()];
     let mut sum = 0.0;
     let mut failure = None;
     for t in 1..=spec.warmup + spec.measured {
-        let target = world.next_sample(&mut x, &mut events);
+        let target = stream.next_sample(&mut x);
         match learner.update(&x, target) {
             Ok(error) if t > spec.warmup => sum += error * error,
             Ok(_) => {}
@@ -154,10 +153,11 @@ fn measured_as_f64(count: u64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::{NUM_FEATURES, Preset, World};
 
     fn spec(learner: LearnerSpec) -> RunSpec {
         RunSpec {
-            preset: Preset::Sutton1992,
+            task: Task::Preset(Preset::Sutton1992),
             seed: 1,
             warmup: 2_000,
             measured: 1_000,
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn mse_averages_the_measured_window_only() {
         let spec = RunSpec {
-            preset: Preset::Sutton1992,
+            task: Task::Preset(Preset::Sutton1992),
             seed: 5,
             warmup: 30,
             measured: 7,
@@ -214,7 +214,7 @@ mod tests {
         };
         let measured = run(&spec).expect("valid").mse.expect("completed");
 
-        let mut world = World::new(spec.preset, spec.seed);
+        let mut world = World::new(Preset::Sutton1992, spec.seed);
         let mut lms = Lms::new(NUM_FEATURES, 0.04).expect("valid");
         let mut x = [0.0; NUM_FEATURES];
         let mut events = Vec::new();
@@ -247,7 +247,7 @@ mod tests {
         // stay finite until sample 289, so every measured sample completes and the mean
         // is still not a number.
         let result = run(&RunSpec {
-            preset: Preset::Sutton1992,
+            task: Task::Preset(Preset::Sutton1992),
             seed: 1,
             warmup: 100,
             measured: 100,
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn a_run_without_measured_samples_is_a_failure() {
         let result = run(&RunSpec {
-            preset: Preset::Stationary,
+            task: Task::Preset(Preset::Stationary),
             seed: 1,
             warmup: 10,
             measured: 0,

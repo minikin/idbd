@@ -101,19 +101,19 @@ const fn autostep_family() -> Family {
 }
 
 fn evaluate(preset: Preset) -> Result<TaskResult, String> {
-    let lms = tune_and_evaluate(Family::Lms, &LMS_GRID, preset)?;
+    let lms = tune_and_evaluate(Family::Lms, &LMS_GRID, preset.into())?;
     let idbd = tune_and_evaluate(
         Family::Idbd {
             initial_step_size: IDBD_INITIAL_STEP_SIZE,
             bounds: Bounds::none(),
         },
         &IDBD_GRID,
-        preset,
+        preset.into(),
     )?;
-    let autostep = tune_and_evaluate(autostep_family(), &MU_GRID, preset)?;
+    let autostep = tune_and_evaluate(autostep_family(), &MU_GRID, preset.into())?;
     let default = measure(
         autostep_family(),
-        &protocol(preset),
+        &protocol(preset.into()),
         DEFAULT_MU,
         &EVALUATION_SEEDS,
     )?;

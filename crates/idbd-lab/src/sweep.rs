@@ -9,7 +9,7 @@ use idbd::{Bounds, Config};
 use crate::experiment::{LearnerSpec, RunSpec, run};
 use crate::lms::Lms;
 use crate::stats::Summary;
-use crate::world::Preset;
+use crate::task::Task;
 
 /// Which learner a sweep varies, and what the swept value means.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,7 +86,7 @@ impl Family {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Protocol {
     /// The task.
-    pub preset: Preset,
+    pub task: Task,
     /// Samples processed before measurement starts.
     pub warmup: u64,
     /// Samples whose squared pre-update error is averaged.
@@ -155,7 +155,7 @@ pub fn measure(
     let mut runs = Vec::with_capacity(seeds.len());
     for &seed in seeds {
         let result = run(&RunSpec {
-            preset: protocol.preset,
+            task: protocol.task,
             seed,
             warmup: protocol.warmup,
             measured: protocol.measured,
@@ -333,7 +333,7 @@ mod tests {
         // Step size 5.0 overflows the squared-error sum before the weights overflow, so
         // every sample completes and the point still has no usable mean.
         let protocol = Protocol {
-            preset: Preset::Sutton1992,
+            task: Task::Preset(crate::world::Preset::Sutton1992),
             warmup: 100,
             measured: 100,
         };
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn a_measured_point_records_one_run_per_seed() {
         let protocol = Protocol {
-            preset: Preset::Sutton1992,
+            task: Task::Preset(crate::world::Preset::Sutton1992),
             warmup: 200,
             measured: 100,
         };

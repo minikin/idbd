@@ -4,6 +4,7 @@
 //! selected value is measured on [`EVALUATION_SEEDS`], which no tuning run uses.
 
 use crate::sweep::{Family, Point, Protocol, best, measure};
+use crate::task::Task;
 use crate::world::Preset;
 
 /// Fixed LMS step sizes offered to the tuning procedure.
@@ -38,9 +39,9 @@ pub const TASKS: [Preset; 4] = [
 ];
 
 /// The measurement protocol for one task.
-pub const fn protocol(preset: Preset) -> Protocol {
+pub const fn protocol(task: Task) -> Protocol {
     Protocol {
-        preset,
+        task,
         warmup: WARMUP,
         measured: MEASURED,
     }
@@ -66,8 +67,8 @@ pub struct Tuned {
 ///
 /// Returns a message if a grid value is not a valid configuration, or if no grid value
 /// completed every tuning seed.
-pub fn tune_and_evaluate(family: Family, grid: &[f64], preset: Preset) -> Result<Tuned, String> {
-    let protocol = protocol(preset);
+pub fn tune_and_evaluate(family: Family, grid: &[f64], task: Task) -> Result<Tuned, String> {
+    let protocol = protocol(task);
     let mut tuning = Vec::with_capacity(grid.len());
     for &value in grid {
         tuning.push(measure(family, &protocol, value, &TUNING_SEEDS)?);
@@ -77,7 +78,7 @@ pub fn tune_and_evaluate(family: Family, grid: &[f64], preset: Preset) -> Result
             format!(
                 "no {} grid value completed every tuning seed on {}",
                 family.learner_id(),
-                preset.id()
+                task.id()
             )
         })?
         .value;
@@ -103,7 +104,7 @@ mod tests {
     #[test]
     fn tune_and_evaluate_selects_the_best_completed_value() {
         let tuned =
-            tune_and_evaluate(Family::Lms, &[0.03, 5.0], Preset::Stationary).expect("valid");
+            tune_and_evaluate(Family::Lms, &[0.03, 5.0], Preset::Stationary.into()).expect("valid");
         assert_eq!(tuned.tuning.len(), 2);
         assert_eq!(
             tuned.tuning[1].failures(),
@@ -118,7 +119,7 @@ mod tests {
 
     #[test]
     fn a_grid_without_a_completed_value_is_an_error() {
-        let message = tune_and_evaluate(Family::Lms, &[5.0], Preset::Stationary)
+        let message = tune_and_evaluate(Family::Lms, &[5.0], Preset::Stationary.into())
             .expect_err("every run diverges");
         assert_eq!(
             message,

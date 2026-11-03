@@ -89,6 +89,19 @@ On these tasks untuned Autostep beat tuned LMS on two of three nonstationary tas
 tuned IDBD on all of them. At mu = 1, 19 of 20 tuning runs stopped when a step size underflowed
 to zero. [Method, mu sweep and step sizes](docs/results/autostep/README.md).
 
+**The thermostat house (new task, same protocol).** Twelve sensors with noisy readings, three
+of which switch between a strong and a weak influence on the room temperature. This is the
+task behind the story page. The noise alone gives an MSE of 0.25.
+
+| Task | LMS, tuned | IDBD, tuned | Autostep, default |
+| --- | --- | --- | --- |
+| House, influences switch | 0.762 +/- 0.003 | 0.572 +/- 0.004 | 0.596 +/- 0.006 |
+| Same house, nothing switches | 0.253 +/- 0.001 | 0.286 +/- 0.001 | 0.262 +/- 0.001 |
+
+IDBD was lower than tuned LMS on all 10 seeds of the switching house and on none of the still
+house. Its final step sizes were 0.09 to 0.12 on the three sensors that matter and about 0.011
+on the other nine. [Method and per-sensor step sizes](docs/results/house/README.md).
+
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
 about 5 ns per feature up to 10,000 features. One `exp` call per input accounts for an estimated
 85 to 97% of that, so SIMD has little to gain. An Autostep update costs about 2.4 to 2.7 times an
@@ -100,6 +113,7 @@ IDBD update. [Method and full table](docs/benchmarks.md).
 cargo run --release -p idbd-lab --bin sutton1992-exp1   # Experiment 1, about 3 s
 cargo run --release -p idbd-lab --bin sutton1992-exp2   # Experiment 2 and the Figure 5 sweep
 cargo run --release -p idbd-lab --bin evaluate          # IDBD against LMS on four tasks
+cargo run --release -p idbd-lab --bin house-eval        # the thermostat house
 cargo run --release -p idbd-lab --bin bench             # core timings
 ```
 

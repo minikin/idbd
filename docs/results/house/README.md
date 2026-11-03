@@ -1,0 +1,50 @@
+# The thermostat house
+
+Scenario E06. Produced by `cargo run --release -p idbd-lab --bin house-eval`.
+
+idbd-lab 0.1.0, generator xoshiro256** seeded by SplitMix64, Box-Muller normals (v1)
+
+## Method
+
+The house in `idbd_lab::house` has 12 sensors with independent standard normal readings. The target is the change in room temperature: the readings' dot product with the current influences, plus Gaussian noise with standard deviation 0.5. Only the first 3 sensors have an influence (sun on window 1.2 or 0.2, oven 0.9 or 0.1, front door -1.1 or -0.1). Before every reading after the first, each of them switches between its two levels with probability 0.01667. The other 9 sensors never matter. Task `still-house` is the same house with switching turned off, so every relevant sensor keeps its first influence.
+
+The protocol is that of [scenario E01](../evaluation/README.md): 20000 warm-up samples, then the squared pre-update error averaged over 10000 samples. The LMS step size and the IDBD meta step size theta are selected on seeds 1001..=1005 from the E01 grids and reported on seeds 1..=10. IDBD starts every input at step size 0.05 with no beta bounds. Autostep starts at 0.0083 (0.1 / n) with mu = 0.01 and tau = 10000, the paper's defaults, and is not tuned.
+
+## Results
+
+Mean MSE +/- standard error over the evaluation seeds. The selected parameter is in parentheses. The noise alone gives an MSE of 0.25.
+
+| task | LMS | IDBD | Autostep, default |
+| --- | --- | --- | --- |
+| `house` | 0.7619 +/- 0.002955 (0.03) | 0.5718 +/- 0.004354 (0.015) | 0.5964 +/- 0.005653 |
+| `still-house` | 0.2527 +/- 0.001231 (0.001) | 0.2855 +/- 0.001255 (0.015) | 0.2618 +/- 0.001237 |
+
+Paired by seed. A negative difference means the first learner had the lower error. The last column counts the evaluation seeds on which IDBD's error was below LMS's.
+
+| task | IDBD minus LMS | Autostep minus LMS | IDBD lower on |
+| --- | --- | --- | --- |
+| `house` | -0.1901 +/- 0.003197 | -0.1655 +/- 0.003796 | 10 of 10 seeds |
+| `still-house` | 0.03286 +/- 1.728e-4 | 0.009184 +/- 1.438e-4 | 0 of 10 seeds |
+
+## IDBD's step size per sensor
+
+IDBD at the selected theta = 0.015, after 30000 samples of task `house`, one run per evaluation seed. Per-seed values are in `step-sizes.csv`.
+
+| sensor | relevant | mean | min to max |
+| --- | --- | --- | --- |
+| sun on window | yes | 0.1182 | 0.1088 to 0.1381 |
+| oven | yes | 0.09047 | 0.08202 to 0.101 |
+| front door | yes | 0.1161 | 0.1041 to 0.132 |
+| wi-fi signal | no | 0.01102 | 0.01031 to 0.01152 |
+| router traffic | no | 0.01095 | 0.01009 to 0.01128 |
+| doorbell battery | no | 0.01105 | 0.01039 to 0.01141 |
+| phone charge | no | 0.0107 | 0.01016 to 0.01097 |
+| plant soil | no | 0.01114 | 0.01067 to 0.01156 |
+| tv standby | no | 0.01091 | 0.01058 to 0.01137 |
+| clock | no | 0.01103 | 0.01023 to 0.01163 |
+| mailbox | no | 0.01087 | 0.01024 to 0.01142 |
+| printer ink | no | 0.01083 | 0.01031 to 0.01164 |
+
+## Reading these results
+
+The house is a synthetic task built for the story page, not data from a real thermostat. Each number belongs to this protocol, these grids and this task. Nothing here establishes that one learner is better in general.
