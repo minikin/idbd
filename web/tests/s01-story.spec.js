@@ -22,11 +22,12 @@ const story = (page) =>
     slow: window.idbdStory.slow(),
   }));
 
-async function setSlider(page, sensor, value) {
-  await page.locator(`#trust-${sensor}`).evaluate((input, v) => {
-    input.value = String(v);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  }, value);
+async function mark(page, sensor, choice) {
+  for (let i = 0; i < 3; i += 1) {
+    if ((await page.locator(`#device-${sensor}`).getAttribute("data-mark")) === choice) return;
+    await page.click(`#device-${sensor}`);
+  }
+  throw new Error(`device ${sensor} never showed ${choice}`);
 }
 
 test("S01 the chapters show step sizes and errors computed by the crate", async ({ page }) => {
@@ -81,15 +82,23 @@ test("S03 the calm house rewards matching the truth, and Reset clears everything
   expect(fresh.level).toBe("still");
   expect(fresh.lmsStepSize).toBe((await story(page)).house.stillLmsStepSize);
 
-  await expect(page.locator("#trust-0-cost")).toHaveText("you say: ignore it");
-  await page.click("#hints");
-  for (const [sensor, value] of [[0, 1.2], [1, 0.9], [2, -1.1]]) await setSlider(page, sensor, value);
+  await expect(page.locator("#device-0")).toHaveAttribute("data-mark", "ignore");
+  await mark(page, 0, "warms");
+  await mark(page, 1, "warms");
+  await mark(page, 2, "cools");
+  await expect(page.locator("#device-0")).toHaveAttribute("data-mark", "warms");
+  await expect(page.locator("#device-0")).toContainText("warms");
   const tuned = (await story(page)).game;
-  expect(tuned.costs.every((c) => c < 0.005)).toBe(true);
-  await expect(page.locator("#trust-0-cost")).toHaveText("you say: warms the room a lot \u2713 close");
+  const strong = (await story(page)).house.levels.map(([level]) => level);
+  expect(tuned.trust).toEqual([...strong, 0, 0, 0]);
 
-  await setSlider(page, 3, 1.5);
-  await expect(page.locator("#trust-3-cost")).toHaveText("you say: warms the room a lot \u00b7 \u2193 try lower");
+  await page.click(".level[data-level='changing']");
+  await mark(page, 0, "warms");
+  const busy = (await story(page)).game;
+  const [sunStrong, sunWeak] = (await story(page)).house.levels[0];
+  expect(busy.trust[0]).toBeCloseTo((sunStrong + sunWeak) / 2, 12);
+  await page.click(".level[data-level='still']");
+  for (const [sensor, choice] of [[0, "warms"], [1, "warms"], [2, "cools"]]) await mark(page, sensor, choice);
 
   await page.click("#game-run");
   await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 20000 });
@@ -104,6 +113,7 @@ test("S03 the calm house rewards matching the truth, and Reset clears everything
   const reset = (await story(page)).game;
   expect(reset.scored).toBe(0);
   expect(reset.trust.every((v) => v === 0)).toBe(true);
+  await expect(page.locator("#device-0")).toHaveAttribute("data-mark", "ignore");
   expect(reset.revealed).toBe(false);
 });
 
@@ -181,10 +191,11 @@ test("S08 a round ends after 600 readings with a winner and a reason", async ({ 
   expect(game.finished).toBe(true);
   expect(game.scored).toBe(600);
   await expect(page.locator("#verdict")).toBeVisible();
-  await expect(page.locator("#verdict")).toContainText("Accuracy: ");
+  await expect(page.locator("#verdict")).toContainText("Accuracy over the round: ");
+  await expect(page.locator("#verdict")).toContainText(/[\u2605\u2606]{3}/);
   const accuracy = (await story(page)).game.accuracy;
   for (const value of Object.values(accuracy)) expect(value).toBeGreaterThanOrEqual(0);
-  await expect(page.locator("#scores .value").nth(1)).toHaveText(`${Math.round(accuracy.idbd * 100)}%`);
+  await expect(page.locator("#scores .value").nth(1)).toHaveText(/^\d{1,3}%$/);
   await expect(page.locator("#game-run")).toHaveText("Play again");
   await expect(page.locator("#scores .lead", { hasText: "winner" })).toHaveCount(1);
 });

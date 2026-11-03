@@ -1,6 +1,6 @@
 import { SENSOR_COLORS } from "./house.js";
 
-// "Play against it": the visitor's trust sliders against IDBD and a tuned fixed-step
+// "Play against it": the visitor's marks on the house's sensors against IDBD and a tuned fixed-step
 // learner, both computed by the crate's HouseRace on the same readings. Level 1 is the
 // still house, level 2 the switching house.
 
@@ -13,8 +13,6 @@ const SMOOTH = 100;
 const CHART = ROUND;
 /** Readings before a leader is named, so one lucky guess does not win. */
 const MIN_SCORED = 50;
-/** A slider within 0.15 of the truth counts as close: 0.15 squared. */
-const CLOSE = 0.0225;
 /** IDBD's starting step size, the reference for "faster" and "slower". */
 const START_SPEED = 0.05;
 /** The noise alone keeps even a perfect guess this far off, in degrees: sqrt(0.25). */
@@ -24,7 +22,7 @@ const LEVEL_NOTES = {
   changing:
     "The sun, the oven and the front door switch between a strong and a weak effect about every two seconds. Keeping up with that is what IDBD is for. Try to beat it.",
   still:
-    "Nothing changes in this house, so one well-chosen fixed speed is enough, and it usually edges out IDBD here. Set every slider right and you can beat both.",
+    "Nothing changes in this house, so one well-chosen fixed speed is enough, and it usually edges out IDBD here. Set every switch right and you can beat both.",
 };
 
 const LEARNED_NOTES = {
@@ -65,24 +63,26 @@ function keep(list, value, size) {
   if (list.length > size) list.shift();
 }
 
-/** Fills a slider's rail from its centre, 0, to the thumb. */
-function paintRail(input) {
-  const at = ((Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min))) * 100;
-  input.style.setProperty("--lo", `${Math.min(50, at)}%`);
-  input.style.setProperty("--hi", `${Math.max(50, at)}%`);
-}
 
 /**
- * Accuracy from 0 to 1. 1 is the best any guess can do, missing only by the noise. 0 is
- * no better than always guessing "no change", measured on the same readings.
+ * Accuracy from 0 to 1 against a fixed scale for the house. 1 misses only by the noise.
+ * 0 is the long-run error of always guessing "no change" in that house, which follows
+ * from its definition: each relevant sensor's effect squared, averaged over its strong
+ * and weak level when the house switches, plus the noise.
  */
-function accuracy(squaredMisses, squaredTargets) {
+function baseline(house, level) {
+  const effects = house.levels.reduce(
+    (sum, [strong, weak]) => sum + (level === "still" ? strong ** 2 : (strong ** 2 + weak ** 2) / 2),
+    0,
+  );
+  return effects + NOISE_FLOOR ** 2;
+}
+
+function accuracy(squaredMisses, nothing) {
   if (!squaredMisses.length) return null;
-  const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
+  const mean = squaredMisses.reduce((a, b) => a + b, 0) / squaredMisses.length;
   const floor = NOISE_FLOOR ** 2;
-  const nothing = mean(squaredTargets);
-  if (nothing <= floor) return null;
-  return Math.max(0, Math.min(1, (nothing - mean(squaredMisses)) / (nothing - floor)));
+  return Math.max(0, Math.min(1, (nothing - mean) / (nothing - floor)));
 }
 
 export function createGame(wasm, house, nodes) {
@@ -93,50 +93,121 @@ export function createGame(wasm, house, nodes) {
   let trustValues = house.sensors.map(() => 0);
   let scored = 0;
   let squared = { you: [], idbd: [], lms: [] };
-  let targets = [];
-  let recentTargets = [];
   let recent = { you: [], idbd: [], lms: [] };
   let series = { you: [], idbd: [], lms: [] };
   let changes = [];
   let failure = null;
   let finished = false;
-  let hints = false;
 
-  const sliders = house.sensors.map((name, sensor) => {
-    const id = `trust-${sensor}`;
-    const wrap = document.createElement("div");
-    wrap.className = "slider";
-    const row = document.createElement("div");
-    row.className = "slider-row";
-    const label = document.createElement("label");
-    label.htmlFor = id;
+  // Each mark uses the sensor's usual strength: in the calm house its constant level, in
+  // the busy house the average of its strong and weak level, and 1 for the sensors that
+  // never matter. The right marks are then the best fixed guess for that house.
+  const strength = (sensor) => {
+    if (sensor >= house.relevant) return 1;
+    const [strong, weak] = house.levels[sensor];
+    return Math.abs(level === "still" ? strong : (strong + weak) / 2);
+  };
+  const LABELS = { 0: "ignore", 1: "warms", [-1]: "cools" };
+  /**
+   * Where each device sits in the game's drawing (viewBox units). Chosen for the game so
+   * buttons never touch: on the window, the oven, the door, and clear wall spots for the
+   * three that do not matter.
+   */
+  const SPOTS = [
+    [396, 168],
+    [501, 292],
+    [178, 222],
+    [512, 196],
+    [150, 318],
+    [300, 128],
+  ];
+  const NEXT = { 0: 1, 1: -1, [-1]: 0 };
+  let marks = house.sensors.map(() => 0);
+
+  // The game is played in the house: each sensor device is a button that cycles its mark,
+  // ignore, warms, cools, the way console games put actions on objects in the world.
+  const SVG = "http://www.w3.org/2000/svg";
+  const stage = document.createElement("div");
+  stage.className = "play-house";
+  const drawing = document.createElementNS(SVG, "svg");
+  drawing.setAttribute("viewBox", "0 30 660 440");
+  drawing.setAttribute("aria-hidden", "true");
+  for (const [points, kind] of [
+    ["300,190 556,338 364,449 108,301", "floor"],
+    ["300,190 556,338 556,208.5 300,60.5", "wall-r"],
+    ["300,190 108,301 108,171.5 300,60.5", "wall-l"],
+    ["364,182.6 428,219.6 428,164.1 364,127.1", "window"],
+    ["204,245.5 152.8,275.1 152.8,182.6 204,153", "door"],
+    ["498.4,271.4 543.2,297.3 504.8,319.5 460,293.6", "block-top"],
+    ["460,334.3 504.8,360.2 504.8,319.5 460,293.6", "block-left"],
+    ["543.2,338 504.8,360.2 504.8,319.5 543.2,297.3", "block-right"],
+  ]) {
+    const shape = document.createElementNS(SVG, "polygon");
+    shape.setAttribute("points", points);
+    shape.setAttribute("class", kind);
+    drawing.append(shape);
+  }
+  stage.append(drawing);
+  const help = document.createElement("p");
+  help.id = "device-help";
+  help.className = "sr-only";
+  help.textContent = "Press to change between ignore, warms and cools. Arrow keys move between sensors.";
+  stage.append(help);
+
+  const devices = house.sensors.map((name, sensor) => {
+    const [x, y] = SPOTS[sensor];
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "device";
+    button.id = `device-${sensor}`;
+    button.style.left = `${(x / 660) * 100}%`;
+    button.style.top = `${((y - 30) / 440) * 100}%`;
     const dot = document.createElement("i");
-    dot.className = "sensor-dot";
     dot.style.background = SENSOR_COLORS[sensor];
-    label.append(dot, name);
-    const input = document.createElement("input");
-    Object.assign(input, { id, type: "range", min: "-1.5", max: "1.5", step: "0.1", value: "0" });
-    const output = document.createElement("output");
-    output.htmlFor = id;
-    output.textContent = "0.0";
-    const cost = document.createElement("p");
-    cost.className = "cost";
-    cost.id = `${id}-cost`;
-    input.setAttribute("aria-describedby", cost.id);
-    input.addEventListener("input", () => {
-      trustValues[sensor] = Number(input.value);
-      output.textContent = trustValues[sensor].toFixed(1);
-      paintRail(input);
-      renderCosts();
-    });
-    row.append(label, input, output);
-    wrap.append(row, cost);
-    nodes.sliders.append(wrap);
-    return { input, output, cost };
+    const text = document.createElement("span");
+    text.className = "device-name";
+    text.textContent = name;
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    button.append(dot, text, badge);
+    button.setAttribute("aria-describedby", "device-help");
+    button.addEventListener("click", () => setMark(sensor, NEXT[marks[sensor]]));
+    stage.append(button);
+    return { button, badge, name };
   });
 
+  // Arrow keys move between devices, like a controller's d-pad.
+  stage.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (!step) return;
+    const at = devices.findIndex((d) => d.button === document.activeElement);
+    if (at < 0) return;
+    event.preventDefault();
+    devices[(at + step + devices.length) % devices.length].button.focus();
+  });
+  nodes.sliders.append(stage);
+  const legend = document.createElement("ul");
+  legend.className = "device-legend";
+  legend.setAttribute("aria-hidden", "true");
+  house.sensors.forEach((name, sensor) => {
+    const item = document.createElement("li");
+    const dot = document.createElement("i");
+    dot.style.background = SENSOR_COLORS[sensor];
+    item.append(dot, name);
+    legend.append(item);
+  });
+  nodes.sliders.append(legend);
+
+  function setMark(sensor, mark) {
+    marks[sensor] = mark;
+    trustValues[sensor] = mark * strength(sensor);
+    const device = devices[sensor];
+    device.badge.textContent = mark === 1 ? "\u2191 warms" : mark === -1 ? "\u2193 cools" : "ignore";
+    device.button.dataset.mark = LABELS[mark];
+  }
+
   const players = [
-    { key: "you", name: "You", color: "var(--you)", caption: () => "guessing with your sliders" },
+    { key: "you", name: "You", color: "var(--you)", caption: () => "guessing with your marks" },
     { key: "idbd", name: "IDBD", color: "var(--idbd)", caption: () => "tunes its own speed for each sensor" },
     {
       key: "lms",
@@ -154,7 +225,7 @@ export function createGame(wasm, house, nodes) {
     who.append(swatch, player.name);
     const prefix = document.createElement("span");
     prefix.className = "prefix";
-    prefix.textContent = "accuracy";
+    prefix.textContent = "accuracy, last 10 seconds";
     const value = document.createElement("span");
     value.className = "value";
     const caption = document.createElement("span");
@@ -187,7 +258,6 @@ export function createGame(wasm, house, nodes) {
     return { weight, fill, speed };
   });
 
-  const SVG = "http://www.w3.org/2000/svg";
   const floor = document.createElementNS(SVG, "line");
   floor.setAttribute("class", "floor-line");
   nodes.chart.insertBefore(floor, nodes.chart.firstChild);
@@ -231,15 +301,10 @@ export function createGame(wasm, house, nodes) {
     timer = null;
     newRace();
     trustValues = house.sensors.map(() => 0);
-    for (const slider of sliders) {
-      slider.input.value = "0";
-      slider.output.textContent = "0.0";
-      paintRail(slider.input);
-    }
+    marks = house.sensors.map(() => 0);
+    house.sensors.forEach((_, sensor) => setMark(sensor, 0));
     scored = 0;
     squared = { you: [], idbd: [], lms: [] };
-    targets = [];
-    recentTargets = [];
     recent = { you: [], idbd: [], lms: [] };
     series = { you: [], idbd: [], lms: [] };
     changes = [];
@@ -276,12 +341,10 @@ export function createGame(wasm, house, nodes) {
     let you = 0;
     for (let s = 0; s < x.length; s += 1) you += trustValues[s] * x[s];
     const misses = { you: (y - you) ** 2, idbd: (y - race.idbdPrediction()) ** 2, lms: (y - race.lmsPrediction()) ** 2 };
-    targets.push(y * y);
-    keep(recentTargets, y * y, SMOOTH);
     for (const key of Object.keys(misses)) {
       squared[key].push(misses[key]);
       keep(recent[key], misses[key], SMOOTH);
-      keep(series[key], accuracy(recent[key], recentTargets) ?? 0, CHART);
+      keep(series[key], accuracy(recent[key], baseline(house, level)) ?? 0, CHART);
     }
     keep(changes, race.switched().length > 0, CHART);
     scored += 1;
@@ -305,7 +368,10 @@ export function createGame(wasm, house, nodes) {
     const table = order.map((key) => `${names[key]} ${Math.round((acc[key] ?? 0) * 100)}%`).join(", ");
     const switches = changes.filter(Boolean).length;
     const changed = level === "changing" ? ` What matters changed ${switches} times this round.` : "";
-    nodes.verdict.textContent = `${VERDICTS[level][first]} Accuracy: ${table}.${changed}`;
+    const yours = acc.you ?? 0;
+    const stars = yours >= 0.9 ? 3 : yours >= 0.7 ? 2 : yours >= 0.4 ? 1 : 0;
+    const starText = `${"\u2605".repeat(stars)}${"\u2606".repeat(3 - stars)}`;
+    nodes.verdict.textContent = `${starText}  ${VERDICTS[level][first]} Accuracy over the round: ${table}.${changed}`;
     nodes.verdict.hidden = false;
     render();
   }
@@ -318,32 +384,10 @@ export function createGame(wasm, house, nodes) {
   /** Accuracy over the round, per player. Higher is better. */
   function accuracies() {
     return {
-      you: accuracy(squared.you, targets),
-      idbd: accuracy(squared.idbd, targets),
-      lms: accuracy(squared.lms, targets),
+      you: accuracy(squared.you, baseline(house, level)),
+      idbd: accuracy(squared.idbd, baseline(house, level)),
+      lms: accuracy(squared.lms, baseline(house, level)),
     };
-  }
-
-  function costs() {
-    const truth = race.coefficients();
-    return trustValues.map((t, s) => ({ cost: (t - truth[s]) ** 2, higher: truth[s] > t }));
-  }
-
-  function renderCosts() {
-    costs().forEach(({ cost, higher }, s) => {
-      const slider = sliders[s];
-      const said = `you say: ${meaning(trustValues[s])}`;
-      if (!hints) {
-        slider.cost.textContent = said;
-        slider.cost.className = "cost";
-      } else if (cost < CLOSE) {
-        slider.cost.textContent = `${said} \u2713 close`;
-        slider.cost.className = "cost good";
-      } else {
-        slider.cost.textContent = `${said} \u00b7 ${higher ? "\u2191 try higher" : "\u2193 try lower"}`;
-        slider.cost.className = "cost";
-      }
-    });
   }
 
   function render() {
@@ -353,7 +397,11 @@ export function createGame(wasm, house, nodes) {
     const errors = scores();
     const leader =
       scored >= MIN_SCORED ? Object.keys(errors).reduce((a, b) => (errors[a] <= errors[b] ? a : b)) : null;
-    const acc = accuracies();
+    const acc = {
+      you: accuracy(recent.you, baseline(house, level)),
+      idbd: accuracy(recent.idbd, baseline(house, level)),
+      lms: accuracy(recent.lms, baseline(house, level)),
+    };
     for (const player of players) {
       const value = errors[player.key];
       const share = acc[player.key];
@@ -364,7 +412,6 @@ export function createGame(wasm, house, nodes) {
       player.lead.textContent = leader === player.key ? lead : scored === 0 && !running ? "press Start" : "";
       player.lead.style.color = player.color;
     }
-    renderCosts();
     renderChart();
     if (!nodes.learnedWrap.hidden) renderLearned();
   }
@@ -415,12 +462,6 @@ export function createGame(wasm, house, nodes) {
   }
 
   nodes.run.addEventListener("click", () => (running ? stop() : start()));
-  nodes.hints.addEventListener("click", () => {
-    hints = !hints;
-    nodes.hints.setAttribute("aria-pressed", String(hints));
-    nodes.hints.textContent = hints ? "Hide hints" : "Show hints";
-    renderCosts();
-  });
   nodes.reset.addEventListener("click", reset);
   nodes.reveal.addEventListener("click", () => setRevealed(nodes.learnedWrap.hidden));
   for (const button of nodes.levels) {
@@ -438,10 +479,9 @@ export function createGame(wasm, house, nodes) {
         scores: scores(),
         accuracy: accuracies(),
         trust: [...trustValues],
-        costs: costs().map((c) => c.cost),
+        marks: [...marks],
         revealed: !nodes.learnedWrap.hidden,
         finished,
-        hints,
         failure,
         stepSizes: Array.from(race.idbdStepSizes()),
         lmsStepSize: race.lmsStepSize(),

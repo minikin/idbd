@@ -22,7 +22,7 @@ const COLORS = {
  * is anchored there: 0 for its left edge, 0.5 for its middle, 1 for its right edge.
  */
 const LABEL_OFFSETS = [
-  [18, 30, 0],
+  [0, -46, 0.5],
   [16, 10, 0],
   [10, 30, 0],
   [16, -26, 0],

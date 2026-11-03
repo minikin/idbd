@@ -1789,3 +1789,269 @@ body::after {
     display: none;
   }
 }
+
+/* ---------- three-way switches ---------- */
+
+.switch {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.switch-name {
+  font-size: 14px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+}
+
+.choice {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 500 13px var(--sans);
+  cursor: pointer;
+  transition:
+    background 150ms var(--ease),
+    color 150ms var(--ease);
+}
+
+.choice:hover {
+  color: var(--ink);
+}
+
+.choice[aria-pressed="true"] {
+  color: var(--ground);
+  font-weight: 600;
+}
+
+.choice-cools[aria-pressed="true"] {
+  background: #7dd3fc;
+}
+
+.choice-ignore[aria-pressed="true"] {
+  background: var(--ink-2);
+}
+
+.choice-warms[aria-pressed="true"] {
+  background: #fdba74;
+}
+
+@media (max-width: 520px) {
+  .switch {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+}
+
+/* ---------- the game's house ---------- */
+
+.play-house {
+  position: relative;
+  aspect-ratio: 660 / 440;
+  width: 100%;
+}
+
+.play-house svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.play-house .floor {
+  fill: var(--surface);
+  stroke: var(--hairline);
+}
+
+.play-house .wall-r {
+  fill: var(--raised);
+  stroke: var(--hairline);
+}
+
+.play-house .wall-l {
+  fill: #131417;
+  stroke: var(--hairline);
+}
+
+.play-house .window {
+  fill: rgb(255 181 71 / 0.08);
+  stroke: rgb(255 181 71 / 0.35);
+}
+
+.play-house .door {
+  fill: #1a1c20;
+  stroke: rgb(255 255 255 / 0.16);
+}
+
+.play-house .block-top {
+  fill: #26292e;
+}
+
+.play-house .block-left {
+  fill: #1d2024;
+}
+
+.play-house .block-right {
+  fill: #17191c;
+}
+
+.device {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline-2);
+  border-radius: var(--radius-tile);
+  background: rgb(8 9 10 / 0.82);
+  color: var(--ink);
+  font: 500 12px var(--sans);
+  cursor: pointer;
+  transition:
+    border-color 150ms var(--ease),
+    transform 150ms var(--ease);
+}
+
+.device:hover {
+  border-color: var(--hairline-3);
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.device i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.device-name {
+  white-space: nowrap;
+}
+
+.device .badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--raised);
+  color: var(--ink-2);
+}
+
+.device[data-mark="warms"] {
+  border-color: #fdba74;
+}
+
+.device[data-mark="warms"] .badge {
+  background: #fdba74;
+  color: var(--ground);
+}
+
+.device[data-mark="cools"] {
+  border-color: #7dd3fc;
+}
+
+.device[data-mark="cools"] .badge {
+  background: #7dd3fc;
+  color: var(--ground);
+}
+
+@media (max-width: 520px) {
+  .device {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .device .badge {
+    font-size: 10px;
+  }
+}
+
+/* The game's house takes the full width; scores and chart sit below it. */
+.game > .sliders {
+  flex: 1 1 100%;
+}
+
+.game > .game-main {
+  flex: 1 1 100%;
+}
+
+.play-house {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.device-legend {
+  display: none;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.device-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+@media (max-width: 600px) {
+  .device-name {
+    display: none;
+  }
+
+  .device-legend {
+    display: flex;
+  }
+}
+
+.site-header {
+  scroll-margin-top: 0;
+}
+
+main section {
+  scroll-margin-top: 64px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* On wide screens the scores stack beside the chart, so the chart keeps a readable size. */
+@media (min-width: 900px) {
+  .game > .game-main {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(0, 2.4fr);
+    align-items: start;
+  }
+
+  .game-main .scores {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

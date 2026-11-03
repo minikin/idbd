@@ -315,8 +315,7 @@
         <div class="how card">
           <h3>How to play</h3>
           <ol>
-          <li><strong>You guess too.</strong> Every reading, your guess is each sensor's value times your slider, added up.</li>
-          <li><strong>A slider says what a sensor does.</strong> Above 0 means the sensor warms the room, and the bigger the number, the stronger. Below 0 means it cools the room. 0 means "ignore it".</li>
+          <li><strong>You guess too.</strong> Mark each sensor: does it warm the room, cool it, or not matter? Every reading, your guess adds up the usual effect of the sensors you marked.</li>
           <li><strong>Highest accuracy wins.</strong> 100% is as close as anyone can get: the readings are noisy, so even a perfect guess misses a little. 0% is no better than always guessing "the temperature won't change". A round is 600 readings, one minute.</li>
           </ol>
         </div>
@@ -342,7 +341,7 @@
 
         <div class="game">
           <div class="card sliders">
-            <div class="card-head"><span>What each sensor does, in your opinion</span><button type="button" class="button small" id="hints" aria-pressed="false">Show hints</button></div>
+            <div class="card-head"><span>Tap a sensor to say what it does: ignore, warms, cools</span></div>
             <div id="sliders"></div>
           </div>
           <div class="game-main">

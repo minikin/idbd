@@ -145,7 +145,8 @@ function startHero(house, renderer) {
   new IntersectionObserver((entries) => {
     visible = entries.some((entry) => entry.isIntersecting);
   }).observe($("top"));
-  setInterval(step, 400);
+  // Fast enough that the relevant sensors switch every few seconds on screen.
+  setInterval(step, 150);
   return race;
 }
 
@@ -192,12 +193,10 @@ function fillLanes(house) {
   const strong = Array.from({ length: house.relevant }, () => []);
   let idbd = 0;
   let lms = 0;
-  let nothing = 0;
   for (let t = 0; t < LANES_SHOWN; t += 1) {
     race.step();
     const flags = race.strong();
     flags.forEach((flag, k) => strong[k].push(flag === 1));
-    nothing += race.target() ** 2;
     idbd += (race.target() - race.idbdPrediction()) ** 2;
     lms += (race.target() - race.lmsPrediction()) ** 2;
   }
@@ -243,9 +242,10 @@ function fillLanes(house) {
   speedLabel.textContent = "speed";
   lanes.append(axis, axisLabel, speedLabel);
 
-  // Accuracy as in the game: 100% misses only by the noise (0.25 squared), 0% is no
-  // better than always guessing "no change".
-  const accuracyOf = (mse) => Math.max(0, Math.min(1, (nothing / LANES_SHOWN - mse) / (nothing / LANES_SHOWN - 0.25)));
+  // The same fixed scale as the game: 0% is the switching house's long-run error for
+  // always guessing "no change".
+  const nothingLongRun = house.levels.reduce((sum, [strong, weak]) => sum + (strong ** 2 + weak ** 2) / 2, 0) + 0.25;
+  const accuracyOf = (mse) => Math.max(0, Math.min(1, (nothingLongRun - mse) / (nothingLongRun - 0.25)));
   const result = { idbd: idbd / LANES_SHOWN, lms: lms / LANES_SHOWN, strong };
   result.idbdAccuracy = accuracyOf(result.idbd);
   result.lmsAccuracy = accuracyOf(result.lms);
@@ -291,7 +291,6 @@ async function main() {
     learnedWrap: $("learned-wrap"),
     learnedNote: $("learned-note"),
     verdict: $("verdict"),
-    hints: $("hints"),
     failure: $("game-failure"),
   });
 
