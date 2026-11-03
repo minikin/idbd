@@ -1338,6 +1338,6 @@ h3 {
 }
 
 /* In a vertical chapter the copy's flex-basis would set its height, not its width. */
-.chapter > .chapter-copy {
+.chapter:not(.split) > .chapter-copy {
   flex: none;
 }
