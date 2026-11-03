@@ -25,14 +25,14 @@ use idbd_lab::task::Task;
 
 const TASKS: [Task; 2] = [Task::House, Task::StillHouse];
 
-/// Autostep's starting step size: the paper's 0.1 / n rule for 12 inputs.
-const AUTOSTEP_INITIAL_STEP_SIZE: f64 = 0.1 / 12.0;
+/// Autostep's starting step size: the paper's 0.1 / n rule for 6 inputs.
+const AUTOSTEP_INITIAL_STEP_SIZE: f64 = 0.1 / 6.0;
 
 const DEFAULT_OUT: &str = "docs/results/house";
 
 const _: () = assert!(
-    NUM_SENSORS == 12,
-    "AUTOSTEP_INITIAL_STEP_SIZE assumes 12 inputs"
+    NUM_SENSORS == 6,
+    "AUTOSTEP_INITIAL_STEP_SIZE assumes 6 inputs"
 );
 
 struct TaskResult {

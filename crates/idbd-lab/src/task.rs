@@ -9,7 +9,7 @@ use crate::world::{self, Event, Preset, World};
 pub enum Task {
     /// A 20-input tracking task from [`crate::world`].
     Preset(Preset),
-    /// The 12-sensor house from [`crate::house`].
+    /// The 6-sensor house from [`crate::house`].
     House,
     /// The same house with switching turned off.
     StillHouse,
@@ -82,16 +82,16 @@ mod tests {
         assert_eq!(Task::from(Preset::Drifting).id(), "drifting");
         assert_eq!(Task::House.id(), "house");
         assert_eq!(Task::StillHouse.id(), "still-house");
-        assert_eq!(Task::StillHouse.num_features(), 12);
+        assert_eq!(Task::StillHouse.num_features(), 6);
         assert_eq!(Task::Preset(Preset::Sutton1992).num_features(), 20);
-        assert_eq!(Task::House.num_features(), 12);
+        assert_eq!(Task::House.num_features(), 6);
     }
 
     #[test]
     fn a_stream_matches_its_underlying_task() {
         let mut stream = Stream::new(Task::House, 4);
         let mut house = House::new(4);
-        let (mut a, mut b) = ([0.0; 12], [0.0; 12]);
+        let (mut a, mut b) = ([0.0; 6], [0.0; 6]);
         let mut switched = Vec::new();
         for _ in 0..100 {
             let ta = stream.next_sample(&mut a);
