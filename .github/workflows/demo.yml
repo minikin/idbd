@@ -30,13 +30,22 @@ jobs:
       - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2
         with:
           tool: just,wasm-bindgen@0.2.113
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --omit=dev
+        working-directory: web
       - run: just web-build
-      # Only the files the page loads. Tests, tooling and anything outside web/ stay out.
+      # Only the files the pages load. Tests, tooling and anything outside web/ stay out.
       - name: Assemble the site
         run: |
-          mkdir -p _site/pkg
-          cp web/index.html web/styles.css _site/
+          mkdir -p _site/pkg _site/vendor
+          cp web/index.html web/explorer.html web/styles.css _site/
           cp -R web/src _site/src
+          cp -R web/story _site/story
+          cp web/vendor/three.module.min.js web/vendor/three.LICENSE _site/vendor/
           cp web/pkg/idbd_wasm.js web/pkg/idbd_wasm_bg.wasm _site/pkg/
           find _site -type f | sort
           ! find _site -iname '*internal*' | grep .

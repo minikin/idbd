@@ -33,8 +33,9 @@ test("D12 every view identifies its preset, seed, version and settings", async (
   expect(header).toMatch(/seed\n1/i);
   expect(header).toMatch(/rust core version\n\d+\.\d+\.\d+/i);
   expect(header).toContain("xoshiro256");
-  expect(header).toContain("theta 0.0100");
-  expect(header).toContain("adapted from the paper's Experiment 2 value of 0.001");
+  expect(header).toContain("theta 0.01,");
+  expect(header).toContain("theta 0.015 had the lowest mean squared error, 1.525");
+  expect(header).toContain("Mahmood, Sutton, Degris and Pilarski (2012)");
   expect(header).toContain("100 samples");
   expect(header).toContain("synthetic");
 

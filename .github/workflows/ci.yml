@@ -195,12 +195,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
       - run: just web-build
       - name: The core stays free of WASM dependencies
         run: |
           ! cargo tree -p idbd -e normal | grep -E 'wasm-bindgen|js-sys'
-      - run: npm ci
-        working-directory: web
       - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: web
       - run: npx playwright test

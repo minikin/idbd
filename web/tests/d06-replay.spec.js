@@ -119,5 +119,5 @@ test("D06 changing a hyperparameter starts a new labeled run", async ({ page }) 
   expect(state.theta).toBe(0.02);
   expect(state.replay).toBe(null);
   await expect(page.locator("#replay-note")).toBeHidden();
-  await expect(page.locator("#run-header")).toContainText("theta 0.0200");
+  await expect(page.locator("#run-header")).toContainText("theta 0.02,");
 });

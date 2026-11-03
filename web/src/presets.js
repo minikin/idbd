@@ -2,35 +2,37 @@
 
 /**
  * The LMS baseline's step size, in one place so it is easy to change. 0.03 is the
- * best value in the recorded Sutton 1992 Experiment 1 grid: 20 seeds, mean squared
- * error 3.40 with a standard error of 0.02. See RESULTS_URL.
+ * best value in the recorded Sutton 1992 Experiment 1 grid in
+ * docs/results/sutton1992-experiment1: 20 seeds, mean squared error 3.402 with a
+ * standard error of 0.017.
  */
 export const DEFAULT_LMS_STEP_SIZE = 0.03;
-
-/** Where the step size above was selected. */
-export const RESULTS_URL =
-  "https://github.com/minikin/idbd/blob/main/docs/results/sutton1992-experiment1/README.md";
 
 /** The IDBD initial step size, as in Sutton (1992). */
 export const DEFAULT_INITIAL_STEP_SIZE = 0.05;
 
 /**
- * The IDBD meta step size. The paper's Experiment 2 uses 0.001 over 250,000 samples;
- * this demo uses 0.01 so that step sizes visibly separate within a run a visitor will
- * actually sit through.
+ * The IDBD meta step size. In the recorded Experiment 1 grid, 0.015 has the lowest
+ * error and 0.01 is within 0.03 of it. 0.02 diverged on 5 of 20 seeds, so the demo
+ * keeps a margin below the best value.
  */
 export const DEFAULT_THETA = 0.01;
 
 export const DEFAULT_SEED = 1;
 
 export const THETA_NOTE =
-  "0.01, adapted from the paper's Experiment 2 value of 0.001 so that adaptation is " +
-  "visible within tens of thousands of samples.";
+  "The default is 0.01. In our Sutton 1992 Experiment 1 grid over 20 seeds, theta " +
+  "0.015 had the lowest mean squared error, 1.525, and 0.01 had 1.547. Theta 0.02 " +
+  "diverged on 5 of the 20 seeds, so the default keeps a margin below the best value.";
+
+/** Autostep's source, so its settings are never credited to Sutton (1992). */
+export const AUTOSTEP_NOTE =
+  "the defaults from Mahmood, Sutton, Degris and Pilarski (2012), not tuned to this task";
 
 export const LMS_NOTE =
   "Fixed step size, shared by all 20 inputs. 0.03 is the best value in our Sutton 1992 " +
-  "Experiment 1 grid, over 20 seeds, with a mean squared error of 3.40 and a standard " +
-  "error of 0.02. That grid used the paper task, so it does not carry over to the other " +
+  "Experiment 1 grid, over 20 seeds, with a mean squared error of 3.402 and a standard " +
+  "error of 0.017. That grid used the paper task, so it does not carry over to the other " +
   "tasks here.";
 
 /** Playback speeds, in samples per second. */
@@ -43,7 +45,7 @@ export const SPEEDS = [
   { label: "20,000 samples / second", value: 20000 },
 ];
 
-export const DEFAULT_SPEED = 100;
+export const DEFAULT_SPEED = 1000;
 
 /** Display copy per preset id. The ids come from the Rust core. */
 export const PRESET_COPY = {
