@@ -1,0 +1,35 @@
+# release-plz opens a release PR when releasable commits land on main. Publishing runs
+# only from a manual dispatch of .github/workflows/release.yml, and only for a version
+# that is not on crates.io yet.
+
+[workspace]
+semver_check = true
+git_release_enable = true
+pr_labels = ["release"]
+
+[[package]]
+name = "idbd"
+changelog_path = "crates/idbd/CHANGELOG.md"
+git_tag_name = "v{{ version }}"
+
+[[package]]
+name = "idbd-lab"
+release = false
+
+[[package]]
+name = "idbd-wasm"
+release = false
+
+[changelog]
+protect_breaking_commits = true
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Performance" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^revert", group = "Reverted" },
+  { message = "^(ci|build|test|style|chore)", skip = true },
+  # Commits before the switch to Conventional Commits are covered by the hand-written notes.
+  { message = ".*", skip = true },
+]
