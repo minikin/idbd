@@ -1683,7 +1683,7 @@ h3 {
 }
 
 @media (min-width: 900px) {
-  .instrument + .split > .chapter-copy:last-child {
+  .split:has(+ .instrument) > .chapter-copy:last-child {
     padding-top: 36px;
   }
 }
