@@ -97,7 +97,7 @@ fn evaluate(preset: Preset) -> Result<TaskResult, String> {
     let mut evaluation = Vec::new();
     for (family, grid) in families() {
         eprintln!("tuning {} on {}", family.learner_id(), preset.id());
-        let tuned = tune_and_evaluate(family, grid, preset)?;
+        let tuned = tune_and_evaluate(family, grid, preset.into())?;
         eprintln!(
             "  selected {} {}, evaluation MSE {} over {} seeds, {} failed",
             family.parameter(),

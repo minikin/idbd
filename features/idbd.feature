@@ -429,6 +429,14 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And every failed run is reported with its sample and stage, never replaced by a value
       And the report claims no general ordering of the learners
 
+    Scenario: E06 Measure the thermostat house behind the story page
+      Given a 6-sensor house where 3 sensors switch between a strong and a weak influence
+      And the same house with switching turned off
+      When LMS and IDBD are tuned with the E01 protocol and Autostep runs at its defaults
+      Then every learner's evaluation MSE is reported for both houses, with paired differences by seed
+      And IDBD's final step size is reported for every sensor
+      And the report states that the house is synthetic and claims no general ordering
+
     Scenario: E03 Integrate the crate in a practical streaming example
       Given a documented example of latency prediction under a deployment change
       And its data is explicitly identified as synthetic or measured

@@ -83,7 +83,7 @@ fn run() -> Result<(), String> {
     };
 
     let protocol = Protocol {
-        preset: Preset::Sutton1992,
+        task: Preset::Sutton1992.into(),
         warmup: WARMUP,
         measured: MEASURED,
     };
