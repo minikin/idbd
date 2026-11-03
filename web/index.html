@@ -225,6 +225,7 @@
             <div class="stat-block"><span class="muted">Miss</span><span class="mono value" id="slow-miss">-</span></div>
           </div>
           <p class="slow-summary" id="slow-summary">Press Next reading to start.</p>
+          <p class="scroll-hint faint">Scroll the table sideways for the speeds &rarr;</p>
           <div class="table-scroll" tabindex="0" role="region" aria-label="What IDBD changed for each sensor">
             <table class="slow-table">
               <thead>
@@ -282,7 +283,7 @@
         <div class="band">
           <figure class="wrap band-figure">
             <div class="card-head">
-              <span>600 readings of one simulated run. Amber marks when a sensor strongly affects the room.</span>
+              <span>600 readings of one simulated run. Amber marks when a sensor strongly affects the room. The last three never do.</span>
               <span class="mono faint">computed by the idbd crate</span>
             </div>
             <div class="lanes" id="lanes"></div>
@@ -323,7 +324,7 @@
           </button>
         </div>
 
-        <div class="split end">
+        <div class="game-bar">
           <p class="muted" id="level-note"></p>
           <div class="actions">
             <button type="button" class="button primary" id="game-run">Start</button>
@@ -345,7 +346,7 @@
                 <path id="game-changes" class="changes" d=""></path>
                 <polyline id="game-lms" class="line-lms" points=""></polyline>
                 <polyline id="game-idbd" class="line-idbd" points=""></polyline>
-                <polyline id="game-you" class="line-you" points=""></polyline>
+                <path id="game-you" class="line-you" d=""></path>
               </svg>
               <div class="key">
                 <span><span class="swatch swatch-you"></span>you</span>

@@ -167,15 +167,15 @@ function fillDesk(house) {
     const fader = document.createElement("div");
     fader.className = "fader";
     fader.setAttribute("aria-hidden", "true");
-    const height = `${Math.round((alpha / scale) * 240)}px`;
-    const [track, level, knob] = ["track", "level", "knob"].map((name) => {
+    const height = `${((alpha / scale) * 100).toFixed(1)}%`;
+    const [track, fill, knob] = ["track", "fill", "knob"].map((name) => {
       const part = document.createElement("div");
       part.className = name;
       return part;
     });
-    level.style.height = height;
+    fill.style.height = height;
     knob.style.bottom = height;
-    fader.append(track, level, knob);
+    fader.append(track, fill, knob);
     const label = document.createElement("span");
     label.className = "fader-label";
     label.append(house.sensors[i]);
@@ -208,11 +208,11 @@ function fillLanes(house) {
   race.free();
 
   const lanes = $("lanes");
-  const rows = [...strong.map((flags, k) => ({ sensor: k, flags })), { sensor: 3, flags: [] }];
+  const rows = house.sensors.map((_, sensor) => ({ sensor, flags: strong[sensor] ?? [] }));
   for (const { sensor, flags } of rows) {
     const name = document.createElement("span");
     name.textContent = house.sensors[sensor];
-    if (sensor >= house.relevant) name.className = "inert";
+    name.className = sensor >= house.relevant ? "lane-name inert" : "lane-name";
     const strip = svg("svg", { viewBox: "0 0 1000 20", preserveAspectRatio: "none", "aria-hidden": "true" });
     strip.append(svg("rect", { x: 0, y: 0, width: 1000, height: 20, rx: 3, class: "lane-ground" }));
     let start = null;

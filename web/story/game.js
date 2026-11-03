@@ -41,6 +41,13 @@ function keep(list, value, size) {
   if (list.length > size) list.shift();
 }
 
+/** Fills a slider's rail from its centre, 0, to the thumb. */
+function paintRail(input) {
+  const at = ((Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min))) * 100;
+  input.style.setProperty("--lo", `${Math.min(50, at)}%`);
+  input.style.setProperty("--hi", `${Math.max(50, at)}%`);
+}
+
 export function createGame(wasm, house, nodes) {
   let level = "still";
   let race = null;
@@ -78,6 +85,7 @@ export function createGame(wasm, house, nodes) {
     input.addEventListener("input", () => {
       trustValues[sensor] = Number(input.value);
       output.textContent = trustValues[sensor].toFixed(1);
+      paintRail(input);
       renderCosts();
     });
     row.append(label, input, output);
@@ -189,6 +197,7 @@ export function createGame(wasm, house, nodes) {
     for (const slider of sliders) {
       slider.input.value = "0";
       slider.output.textContent = "0.0";
+      paintRail(slider.input);
     }
     scored = 0;
     squared = { you: [], idbd: [], lms: [] };
@@ -279,12 +288,25 @@ export function createGame(wasm, house, nodes) {
   }
 
   function renderChart() {
-    const peak = Math.max(1.5, ...series.idbd, ...series.lms) * 1.25;
+    // The axis follows the two learners. A visitor far off the scale is drawn up to the
+    // top and marked, not allowed to flatten everyone else.
+    const learners = [...series.idbd, ...series.lms];
+    const peak = Math.max(0.8, learners.length ? Math.max(...learners) : 0) * 1.25;
     const toY = (v) => (178 - (Math.min(v, peak) / peak) * 170).toFixed(1);
     // The first 40 units are a gutter for the degree labels.
     const xAt = (i) => (40 + (i * 560) / (CHART - 1)).toFixed(1);
     const line = (key) => series[key].map((v, i) => `${xAt(i)},${toY(v)}`).join(" ");
-    nodes.you.setAttribute("points", line("you"));
+    let path = "";
+    let drawing = false;
+    series.you.forEach((v, i) => {
+      if (v > peak) {
+        drawing = false;
+        return;
+      }
+      path += `${drawing ? "L" : "M"}${xAt(i)} ${toY(v)}`;
+      drawing = true;
+    });
+    nodes.you.setAttribute("d", path);
     nodes.idbd.setAttribute("points", line("idbd"));
     nodes.lms.setAttribute("points", line("lms"));
     nodes.changes.setAttribute("d", changes.map((c, i) => (c ? `M${xAt(i)} 0V180` : "")).join(""));
