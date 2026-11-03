@@ -150,7 +150,7 @@ jobs:
           ! cargo tree -p idbd -e normal | grep -E 'wasm-bindgen|js-sys'
       - run: npm ci
         working-directory: web
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: web
       - run: npx playwright test
         working-directory: web

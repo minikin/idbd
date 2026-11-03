@@ -99,13 +99,18 @@ comes from the Rust crate compiled to WebAssembly.
 
 ```sh
 just web-serve   # build crates/idbd-wasm, then serve http://127.0.0.1:8173
-just web-setup   # once: install Playwright and Chromium into web/node_modules
-just web-test    # rebuild, then run the Playwright tests
+just web-setup   # once: install Playwright with Chromium, Firefox and WebKit
+just web-test    # rebuild, then run the Playwright tests in all three browsers
 ```
 
 The build needs the `wasm32-unknown-unknown` target, `wasm-bindgen-cli` 0.2.113 (the version
 pinned in `crates/idbd-wasm`) and Node.js. The app is static: after `just web-build`, any file
 server that sends `.wasm` as `application/wasm` can host `web/`.
+
+The `Demo` workflow builds the site and deploys it to GitHub Pages. It copies only
+`index.html`, `styles.css`, `src/` and the two files the page loads from `pkg/`. It deploys on
+every push to `main` once the repository variable `DEPLOY_DEMO` is `true`, and on any manual run.
+GitHub Pages must be enabled with "GitHub Actions" as the source.
 
 ## Development
 

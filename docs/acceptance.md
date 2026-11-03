@@ -71,6 +71,7 @@ zero-input coordinates, bitwise snapshot round trips and betas within their boun
 | D08 | Test | `web/tests/d08-visible-failure.spec.js`, `d08_a_failure_freezes_the_last_mutually_completed_sample` |
 | D09 | Test | `web/tests/d09-responsive.spec.js` at 390 and 1440 pixels |
 | D10 | Test | `web/tests/d10-keyboard.spec.js` |
+| D15 | Test | `web/tests/d15-accessibility.spec.js` runs axe-core 4.14 with the WCAG 2.0, 2.1 and 2.2 A and AA tags in Chromium, Firefox and WebKit. Its first run found secondary text at 4.07:1 contrast and an event list that keyboard users could not scroll. Both are fixed. |
 | D11 | Test | `web/tests/d11-bounded-playback.spec.js` plays 100,000 samples at 20,000 samples per second, then checks that Pause takes effect within a second and holds, that 2,000 samples are retained for charts and that the all-sample metrics are finite. `d11_history_is_bounded_and_totals_cover_every_sample` covers the lab side. |
 | D12 | Test | `web/tests/d12-presets.spec.js` |
 | D13 | Test | `web/tests/d13-export.spec.js` |
@@ -81,4 +82,4 @@ zero-input coordinates, bitwise snapshot round trips and betas within their boun
 | ID | Status | Evidence |
 | --- | --- | --- |
 | R01 | Partial | All core scenarios pass. Experiment 1 and the benchmarks are attached. MSRV 1.85 is tested in CI. `cargo tree -p idbd` shows no dependencies. The package contains the licenses, the README with the citation and equations, and a README doctest. `cargo publish -p idbd --dry-run` passes. The name `idbd` was unclaimed on crates.io on 2026-11-02. Publication itself has not happened and needs the owner's approval. |
-| R02 | Partial | The demo gates pass. The page shows the core version, generator and settings. The demo's WASM dependencies stay out of the core's dependency graph (checked in CI). The app is static. It has not been deployed, so deployment verification is open. Browser tests run in Chromium only. |
+| R02 | Partial | The demo gates pass in Chromium, Firefox and WebKit. The page shows the core version, generator and settings. The demo's WASM dependencies stay out of the core's dependency graph (checked in CI). The `Demo` workflow builds and deploys the static site to GitHub Pages. It has not run yet, because Pages and the `DEPLOY_DEMO` variable are not enabled, so deployment verification is open. |
