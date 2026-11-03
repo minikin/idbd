@@ -42,7 +42,7 @@ jobs:
       - name: Assemble the site
         run: |
           mkdir -p _site/pkg _site/vendor
-          cp web/index.html web/story.html web/styles.css _site/
+          cp web/index.html web/explorer.html web/styles.css _site/
           cp -R web/src _site/src
           cp -R web/story _site/story
           cp web/vendor/three.module.min.js web/vendor/three.LICENSE _site/vendor/

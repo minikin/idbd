@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 async function openStory(page) {
-  await page.goto("/story.html");
+  await page.goto("/");
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 20000 });
 }
 

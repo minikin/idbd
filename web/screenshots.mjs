@@ -6,7 +6,7 @@ import { mkdir } from "node:fs/promises";
 import { chromium } from "@playwright/test";
 
 const OUT = process.argv[2] ?? "../internal/screenshots";
-const URL = process.argv[3] ?? "http://127.0.0.1:8173/";
+const URL = process.argv[3] ?? "http://127.0.0.1:8173/explorer.html";
 const SIZES = [
   { name: "390", width: 390, height: 844 },
   { name: "1440", width: 1440, height: 900 },

@@ -7,7 +7,7 @@ export function withinTolerance(a, b) {
 
 /** Loads the demo and waits until the WebAssembly module has booted. */
 export async function openApp(page) {
-  await page.goto("/");
+  await page.goto("/explorer.html");
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 20000 });
 }
 

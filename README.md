@@ -123,14 +123,14 @@ lists the generator, seeds, grids and sign-flip timing.
 
 ## Story page
 
-`web/story.html` explains IDBD to people who have never trained a model. A thermostat house
+`web/index.html` explains IDBD to people who have never trained a model. A thermostat house
 has twelve sensors, three of which move the room temperature by amounts that keep switching.
 The page shows the speeds IDBD learns for each sensor, the house changing, and a game in which
 the visitor sets trust sliders by hand and races IDBD and a tuned fixed-step learner. Every
 learning value comes from the crate through WebAssembly, on the task measured in scenario E06.
 The house is drawn with three.js (0.170.0, pinned in `web/package.json`), and in 2D when WebGL
 is missing or the visitor prefers reduced motion. After `just web-serve` it is at
-http://127.0.0.1:8173/story.html.
+http://127.0.0.1:8173 and the Explorer is at http://127.0.0.1:8173/explorer.html.
 
 ## IDBD Explorer
 
@@ -139,7 +139,7 @@ a shared stream, with Sutton's task as the default and clearly labeled extension
 comes from the Rust crate compiled to WebAssembly.
 
 ```sh
-just web-serve   # build crates/idbd-wasm, then serve http://127.0.0.1:8173
+just web-serve   # build, then serve the story at http://127.0.0.1:8173 and this demo at /explorer.html
 just web-setup   # once: install Playwright with Chromium, Firefox and WebKit
 just web-test    # rebuild, then run the Playwright tests in all three browsers
 ```
@@ -149,7 +149,7 @@ pinned in `crates/idbd-wasm`) and Node.js. The app is static: after `just web-bu
 server that sends `.wasm` as `application/wasm` can host `web/`.
 
 The `Demo` workflow builds the site and deploys it to GitHub Pages. It copies only
-`index.html`, `story.html`, `styles.css`, `src/`, `story/`, three.js from `vendor/` and the two
+`index.html`, `explorer.html`, `styles.css`, `src/`, `story/`, three.js from `vendor/` and the two
 files the pages load from `pkg/`. It deploys on
 every push to `main` once the repository variable `DEPLOY_DEMO` is `true`, and on any manual run.
 GitHub Pages must be enabled with "GitHub Actions" as the source.

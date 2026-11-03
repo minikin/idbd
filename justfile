@@ -20,7 +20,7 @@ web-build:
     cp web/node_modules/three/build/three.module.min.js web/vendor/
     cp web/node_modules/three/LICENSE web/vendor/three.LICENSE
 
-# Serve the demo at http://127.0.0.1:8173 (story page at /story.html).
+# Serve the story page at http://127.0.0.1:8173 and the Explorer at /explorer.html.
 web-serve: web-build
     node web/serve.mjs
 

@@ -3,321 +3,314 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>IDBD Explorer</title>
+    <title>IDBD: a learner that works out what to listen to</title>
     <meta
       name="description"
-      content="An interactive run of the IDBD learning rule from Sutton (1992), computed in the browser by the Rust idbd crate compiled to WebAssembly."
+      content="A thermostat house with twelve sensors explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;1,6..72,300&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./story/story.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three.module.min.js" } }
+    </script>
   </head>
   <body data-app-ready="false">
-    <a class="skip-link" href="#experiment">Skip to the experiment</a>
+    <a class="skip-link" href="#story">Skip to the story</a>
 
-    <header class="masthead">
-      <p class="eyebrow">Sutton 1992 &middot; incremental delta-bar-delta</p>
-      <h1>IDBD Explorer</h1>
-      <p class="lede">
-        IDBD is the LMS rule with a separate learning rate for every input, and it adapts
-        each rate while it learns. Inputs whose recent corrections keep pointing the same
-        way get larger steps, and inputs whose corrections cancel out get smaller ones.
-      </p>
-      <nav class="masthead-links" aria-label="References">
-        <a href="https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf">The paper (AAAI-92, PDF)</a>
-        <a href="https://github.com/minikin/idbd">Source code</a>
-        <a
-          href="https://github.com/minikin/idbd/blob/main/docs/results/sutton1992-experiment1/README.md"
-          >Experiment 1 results</a
-        >
-      </nav>
-      <dl class="build-info" id="build-info" aria-label="Build information"></dl>
-      <p class="notice" id="load-error" role="alert" hidden></p>
+    <header class="site-header">
+      <div class="wrap header-row">
+        <a class="wordmark" href="#top">
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <circle cx="11" cy="11" r="3" fill="var(--idbd)"></circle>
+            <circle cx="11" cy="11" r="7" fill="none" stroke="var(--idbd)" stroke-opacity=".45"></circle>
+            <circle cx="11" cy="11" r="10.5" fill="none" stroke="var(--ink)" stroke-opacity=".15"></circle>
+          </svg>
+          idbd
+        </a>
+        <nav aria-label="Main" class="nav">
+          <a class="wide-only" href="#story">Story</a>
+          <a href="#play">Play</a>
+          <a href="./explorer.html">Advanced</a>
+          <a class="wide-only" href="https://github.com/minikin/idbd">GitHub</a>
+        </nav>
+      </div>
     </header>
 
-    <main>
-      <section class="section" id="guided" aria-labelledby="guided-title">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">One update, term by term</p>
-            <h2 id="guided-title">What a single IDBD update does</h2>
+    <main id="top">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">IDBD &middot; Sutton, 1992</p>
+          <h1 id="hero-title">A learner that works out what to listen to.</h1>
+          <p class="lede">
+            Twelve sensors in a house. Three of them move the room temperature, and how much
+            they move it keeps changing. IDBD finds those three on its own and decides how
+            fast to trust each one.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#story">
+              Watch it learn
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </a>
+            <a class="button" href="#play">Try to keep up</a>
           </div>
-          <p class="sample-badge" data-sample-badge id="guided-sample">sample 0</p>
+          <a class="quiet-link" href="./explorer.html">For ML engineers: Advanced mode, the full Explorer &rarr;</a>
         </div>
 
-        <p class="section-lede">
-          A three-input learner on the task <span class="mono">y = 2 x0 - x1 + 0 x2</span>.
-          Advance one sample and read the update in the order the algorithm performs it.
-          Every number below is read from the Rust core before and after its own update.
-        </p>
-
-        <div class="guided-grid">
-          <div class="panel">
-            <h3 class="panel-title">The sample</h3>
-            <table class="data-table" id="guided-sample-table">
-              <caption class="visually-hidden">
-                Inputs, true coefficients and target of the guided sample
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Input</th>
-                  <th scope="col">Value</th>
-                  <th scope="col">True coefficient</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-            <dl class="pairs" id="guided-sample-pairs"></dl>
-
-            <h3 class="panel-title">Follow one input</h3>
-            <div
-              class="chip-row"
-              id="guided-feature-choice"
-              role="radiogroup"
-              aria-label="Input to follow through the update"
-            ></div>
-
-            <div class="button-row">
-              <button type="button" id="guided-advance" class="button primary">
-                Advance one update
-              </button>
-              <button type="button" id="guided-restart" class="button">Restart</button>
-            </div>
-            <p class="note" id="guided-note"></p>
-
-            <h3 class="panel-title" id="guided-state-title">State after this sample</h3>
-            <table class="data-table" id="guided-state-table">
-              <caption class="visually-hidden">
-                Weight, step size and trace of each input after the guided sample
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Input</th>
-                  <th scope="col">Weight</th>
-                  <th scope="col">Alpha</th>
-                  <th scope="col">Trace</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <div class="hero-visual">
+          <div class="house" id="house">
+            <div class="house-3d" id="house-3d" hidden></div>
+            <svg class="house-2d" id="house-2d" viewBox="0 30 660 440" role="img" aria-labelledby="house-2d-label">
+              <title id="house-2d-label">A cutaway house with twelve sensors. Each sensor glows as wide as the speed IDBD has learned for it.</title>
+              <defs>
+                <filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="9"></feGaussianBlur></filter>
+              </defs>
+              <polygon points="300,190 556,338 364,449 108,301" class="floor"></polygon>
+              <polygon points="300,190 556,338 556,208.5 300,60.5" class="wall-r"></polygon>
+              <polygon points="300,190 108,301 108,171.5 300,60.5" class="wall-l"></polygon>
+              <polygon points="364,182.6 428,219.6 428,164.1 364,127.1" class="window"></polygon>
+              <polygon points="204,245.5 152.8,275.1 152.8,182.6 204,153" class="door"></polygon>
+              <polygon points="498.4,271.4 543.2,297.3 504.8,319.5 460,293.6" class="block-top"></polygon>
+              <polygon points="460,334.3 504.8,360.2 504.8,319.5 460,293.6" class="block-left"></polygon>
+              <polygon points="543.2,338 504.8,360.2 504.8,319.5 543.2,297.3" class="block-right"></polygon>
+              <g id="house-2d-sensors"></g>
+            </svg>
           </div>
-
-          <div class="panel ladder-panel">
-            <h3 class="panel-title">
-              The update for <span id="ladder-feature" class="mono">x0</span>, in order
-            </h3>
-            <ol class="ladder" id="guided-ladder"></ol>
-            <div class="button-row">
-              <button type="button" id="guided-continue" class="button primary">
-                Continue to the full experiment
-              </button>
+          <div class="hero-cards">
+            <div class="card legend">
+              <span><span class="dot dot-idbd" aria-hidden="true"></span>IDBD trusts: <strong id="trusted-list">sun on window, oven, front door</strong></span>
+              <span class="muted"><span class="dot dot-ignored" aria-hidden="true"></span>Ignores the other nine</span>
+            </div>
+            <div class="card live">
+              <div class="card-head"><span>Room temperature, live</span><span class="mono" id="live-count">reading 0</span></div>
+              <svg viewBox="0 0 240 56" class="spark" aria-hidden="true">
+                <polyline id="live-actual" class="line-actual" points=""></polyline>
+                <polyline id="live-idbd" class="line-idbd" points=""></polyline>
+              </svg>
+              <div class="key">
+                <span><span class="swatch swatch-actual"></span>actual</span>
+                <span><span class="swatch swatch-idbd"></span>IDBD's guess</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="section" id="experiment" aria-labelledby="experiment-title">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Twenty inputs, one shared stream</p>
-            <h2 id="experiment-title">The experiment</h2>
-          </div>
-          <p class="sample-badge" data-sample-badge id="experiment-sample">sample 0</p>
-        </div>
-
-        <div class="controls" role="group" aria-label="Playback">
-          <div class="button-row">
-            <button type="button" id="run" class="button primary">Run</button>
-            <button type="button" id="pause" class="button">Pause</button>
-            <button type="button" id="step" class="button">Step</button>
-            <button type="button" id="change-world" class="button">Change the world</button>
-            <button type="button" id="reset" class="button">Reset</button>
-            <button type="button" id="export" class="button">Export run</button>
-            <button type="button" id="replay" class="button">Replay to this sample</button>
-            <button type="button" id="load-run-button" class="button">Load run</button>
-            <input type="file" id="load-run" accept=".json,application/json" aria-label="Run export file" hidden />
-          </div>
-          <div class="field">
-            <label for="speed">Playback speed</label>
-            <select id="speed"></select>
-          </div>
-          <p class="playback-state" id="playback-state" role="status">Paused</p>
-        </div>
-
-        <p class="notice replay" id="replay-note" role="status" hidden></p>
-
-        <div class="settings-grid">
-          <div class="field wide">
-            <label for="preset">Task</label>
-            <select id="preset"></select>
-            <p class="note" id="preset-description"></p>
-          </div>
-          <div class="field">
-            <label for="seed">Seed</label>
-            <input id="seed" type="number" min="0" step="1" value="1" />
-          </div>
-          <div class="field">
-            <label for="alpha0">Initial step size <span class="mono">alpha0</span></label>
-            <input id="alpha0" type="number" min="0.0001" step="0.01" value="0.05" />
-          </div>
-          <div class="field">
-            <label for="theta">Meta step size <span class="mono">theta</span></label>
-            <input id="theta" type="number" min="0" step="0.001" value="0.01" />
-          </div>
-          <div class="field">
-            <label for="lms-step">LMS step size</label>
-            <input id="lms-step" type="number" min="0.0001" step="0.01" value="0.03" />
-          </div>
-          <div class="field apply">
-            <button type="button" id="apply-settings" class="button primary">
-              Apply and start a new run
-            </button>
-            <p class="note">Changing any setting above starts a new run from sample 0.</p>
+      <section id="story" class="chapter wrap split" aria-labelledby="ch1-title">
+        <div class="chapter-copy">
+          <p class="eyebrow">01 &middot; Too many signals</p>
+          <h2 id="ch1-title">Most of what a house measures is noise.</h2>
+          <p>
+            Every minute the thermostat reads twelve sensors. The sun on the window, the oven
+            and the front door move the room temperature. The Wi-Fi signal, the doorbell
+            battery and the clock do not.
+          </p>
+          <p>Nobody tells the learner which is which. It has to work that out from the readings alone.</p>
+          <div class="chips">
+            <span class="chip">12 sensors</span><span class="chip">3 matter</span><span class="chip muted">0 labels</span>
           </div>
         </div>
+        <div class="chapter-figure">
+          <ul class="sensor-grid" id="sensor-grid" aria-label="The twelve sensors and their latest readings"></ul>
+          <div class="figure-foot">
+            <p class="muted">Every sensor wiggles. Which three actually move the temperature?</p>
+            <span class="mono faint">live readings from the simulated house</span>
+          </div>
+        </div>
+      </section>
 
-        <dl class="run-header" id="run-header" aria-label="Run definition"></dl>
+      <section class="chapter wrap" aria-labelledby="ch2-title">
+        <div class="statement">
+          <p class="eyebrow">02 &middot; One speed is a bad compromise</p>
+          <h2 id="ch2-title" class="display">A single learning speed is either late or nervous.</h2>
+          <p>
+            A plain learner changes its mind at one fixed speed, the same for every sensor. Set it
+            low and it takes ages to notice the oven is on. Set it high and every flicker of the
+            Wi-Fi signal shakes the prediction.
+          </p>
+        </div>
+        <div class="two-up">
+          <figure class="card figure">
+            <div class="card-head"><span class="strong">Low speed</span><span class="mono lms">calm, but late</span></div>
+            <div class="axis-note mono"><span>before</span><span>oven turns on &darr;</span><span>after</span></div>
+            <svg viewBox="0 0 560 220" role="img" aria-label="Sketch: after the oven turns on, the actual temperature jumps and the low-speed prediction creeps up long after it.">
+              <line x1="200" y1="0" x2="200" y2="220" class="marker"></line>
+              <polyline class="line-actual" points="0,150 40,154 80,149 120,146 160,152 200,153 210,125 230,92 250,77 270,72 300,73 340,74 380,67 420,68 460,74 500,71 560,67"></polyline>
+              <path class="line-lms" d="M0 151 L200 151 C250 150 300 138 360 118 S480 86 560 78"></path>
+            </svg>
+            <figcaption>The room warmed up minutes ago. The prediction is still catching up.</figcaption>
+          </figure>
+          <figure class="card figure">
+            <div class="card-head"><span class="strong">High speed</span><span class="mono lms">quick, but nervous</span></div>
+            <div class="axis-note mono"><span>before</span><span>oven turns on &darr;</span><span>after</span></div>
+            <svg viewBox="0 0 560 220" role="img" aria-label="Sketch: the high-speed prediction follows the jump quickly but jitters around the actual temperature the whole time.">
+              <line x1="200" y1="0" x2="200" y2="220" class="marker"></line>
+              <polyline class="line-actual" points="0,150 40,154 80,149 120,146 160,152 200,153 210,125 230,92 250,77 270,72 300,73 340,74 380,67 420,68 460,74 500,71 560,67"></polyline>
+              <polyline class="line-lms thin" points="0,151 10,165 20,143 30,165 40,151 60,173 80,148 100,159 120,153 130,137 150,146 170,137 190,151 200,159 210,129 220,114 230,77 250,80 270,63 290,50 310,50 330,87 340,49 350,81 370,65 390,72 410,64 430,63 450,72 470,86 480,53 510,46 520,89 530,40 540,63 560,85"></polyline>
+            </svg>
+            <figcaption>It caught the oven at once, and now it jumps at the Wi-Fi signal and the clock too.</figcaption>
+          </figure>
+        </div>
+        <div class="rule-row">
+          <p class="big">What we want: fast for the oven, still for the clock. No single speed does both.</p>
+          <span class="mono faint">curves are sketches, not measurements</span>
+        </div>
+      </section>
 
-        <div class="notice failure" id="failure" role="alert" hidden></div>
-
-        <div class="panel-grid">
-          <div class="panel" id="weights-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">Learned weight per input</h3>
-                <p class="note">
-                  Select an input to inspect it. Arrow keys move between inputs.
-                </p>
+      <section class="chapter wrap" aria-labelledby="ch3-title">
+        <figure class="card instrument">
+          <div class="card-head">
+            <span>Speed IDBD learned for each sensor after <span id="desk-readings">30,000</span> readings</span>
+            <span class="mono faint">simulated house, computed by the idbd crate</span>
+          </div>
+          <ul class="desk" id="desk" aria-label="Learned speed per sensor"></ul>
+        </figure>
+        <div class="split">
+          <div class="chapter-copy">
+            <p class="eyebrow">03 &middot; A speed for every sensor</p>
+            <h2 id="ch3-title">IDBD gives each sensor its own speed, and keeps tuning it.</h2>
+            <p class="faint small">Richard Sutton called it Incremental Delta-Bar-Delta in 1992.</p>
+          </div>
+          <div class="chapter-copy">
+            <p>It watches how its own corrections behave, one sensor at a time.</p>
+            <div class="rules">
+              <div class="rule">
+                <svg width="88" height="24" viewBox="0 0 88 24" aria-hidden="true"><path d="M4 12h18M16 6l6 6-6 6M34 12h18M46 6l6 6-6 6M64 12h18M76 6l6 6-6 6" class="arrow-idbd"></path></svg>
+                <p>A sensor's corrections keep pointing the same way: its speed goes up.</p>
               </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
-            </div>
-            <div class="legend" id="weights-legend"></div>
-            <div
-              class="weight-list"
-              id="weight-list"
-              role="listbox"
-              aria-label="Inputs, by learned weight"
-            ></div>
-          </div>
-
-          <div class="panel" id="error-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">Prediction error over samples</h3>
-                <p class="note" id="error-subtitle"></p>
+              <div class="rule">
+                <svg width="88" height="24" viewBox="0 0 88 24" aria-hidden="true"><path d="M4 12h18M16 6l6 6-6 6M52 12H34M40 6l-6 6 6 6M64 12h18M76 6l6 6-6 6" class="arrow-muted"></path></svg>
+                <p>Its corrections cancel each other out: its speed goes down.</p>
               </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
             </div>
-            <div class="legend" id="error-legend"></div>
-            <div class="chart" id="error-chart"></div>
-            <p class="note">
-              The chart keeps the most recent 2,000 samples. A run starts both learners
-              at zero weights, so its first samples include an initial transient. This
-              single run on synthetic data does not show that either rule is better in
-              general.
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter" aria-labelledby="ch4-title">
+        <div class="wrap split end">
+          <div class="chapter-copy wide">
+            <p class="eyebrow">04 &middot; The house never sits still</p>
+            <h2 id="ch4-title">What matters keeps changing. Nobody announces it.</h2>
+            <p>
+              Clouds cross the sun. Someone opens the kitchen door. The front door swings open
+              and shut. After each change, the corrections for that sensor all point the same way
+              until the learner catches up, so IDBD keeps those three sensors fast. The noise
+              sensors' corrections keep cancelling out, so they stay slow.
             </p>
           </div>
-
-          <div class="panel" id="alpha-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">IDBD step sizes, all 20 inputs</h3>
-                <p class="note">
-                  Alpha is the size of the learning adjustment an input receives, not its
-                  importance or a confidence.
-                </p>
-              </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
+          <a class="button primary" href="#play">Try to keep up by hand</a>
+        </div>
+        <div class="band">
+          <figure class="wrap band-figure">
+            <div class="card-head">
+              <span>600 readings of one simulated run. Amber marks when a sensor strongly affects the room.</span>
+              <span class="mono faint">computed by the idbd crate</span>
             </div>
-            <div class="legend" id="alpha-legend"></div>
-            <div class="chart" id="alpha-chart"></div>
+            <div class="lanes" id="lanes"></div>
+            <figcaption class="stats">
+              <div class="stat"><span class="muted">IDBD, average squared error</span><span class="mono value idbd" id="run-idbd">-</span></div>
+              <div class="stat"><span class="muted">Fixed speed, <span id="run-lms-rate">0.03</span></span><span class="mono value lms" id="run-lms">-</span></div>
+              <p class="muted small">
+                These two numbers are this run's. Over the 10 evaluation seeds of
+                <a href="https://github.com/minikin/idbd/blob/main/docs/results/house/README.md">scenario E06</a>,
+                IDBD averaged 0.572 against 0.762 for the best fixed speed and was lower on all
+                10. In the same house with nothing switching, the fixed speed won on all 10.
+              </p>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="play" class="chapter wrap" aria-labelledby="play-title">
+        <div class="split end">
+          <div class="chapter-copy wide">
+            <p class="eyebrow">05 &middot; Play</p>
+            <h2 id="play-title">Try to keep up.</h2>
+            <p>
+              How much the sun, the oven and the front door matter keeps changing, about once
+              a second. Set how much you trust each sensor and race two learners that have
+              already lived in this house for 5,000 readings. Lower error wins.
+            </p>
           </div>
-
-          <div class="panel" id="events-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">World events</h3>
-                <p class="note">
-                  Changes to the target-generating relationship, applied before a sample.
-                </p>
-              </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
-            </div>
-            <div class="legend" id="events-legend"></div>
-            <div class="chart timeline" id="event-timeline"></div>
-            <p class="note" id="event-summary"></p>
-            <ul class="event-list" id="event-list" tabindex="0" aria-label="Recent world events, newest first"></ul>
+          <div class="actions">
+            <button type="button" class="button primary" id="game-run">Start</button>
+            <button type="button" class="button" id="game-reset">Reset</button>
           </div>
+        </div>
 
-          <div class="panel" id="inspector-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">
-                  Input <span class="mono" id="inspector-name">x0</span>
-                </h3>
-                <p class="note">
-                  The true coefficient is known simulator information, not something
-                  either learner is told.
-                </p>
-              </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
-            </div>
-            <dl class="pairs" id="inspector-pairs"></dl>
-            <p class="note" id="inspector-meaning"></p>
-            <div class="chart sparkline" id="inspector-alpha"></div>
+        <div class="game">
+          <div class="card sliders">
+            <div class="card-head"><span>Your trust in each sensor</span><span class="mono">-1.5 to 1.5</span></div>
+            <div id="sliders"></div>
           </div>
-
-          <div class="panel" id="table-panel">
-            <div class="panel-head">
-              <div>
-                <h3 class="panel-title">Exact values</h3>
-                <p class="note">
-                  The same state the charts draw, as numbers. Copy from here rather than
-                  reading values off a mark.
-                </p>
+          <div class="game-main">
+            <div class="scores" id="scores" aria-live="polite" aria-atomic="true"></div>
+            <div class="card">
+              <div class="card-head"><span>Room temperature change, last 80 readings</span><span class="mono" id="game-count">reading 0</span></div>
+              <svg viewBox="0 0 600 180" class="race-chart" role="img" aria-label="Last 80 readings: actual temperature change and the predictions of you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
+                <line x1="0" y1="90" x2="600" y2="90" class="zero"></line>
+                <path id="game-changes" class="changes" d=""></path>
+                <polyline id="game-actual" class="line-actual" points=""></polyline>
+                <polyline id="game-lms" class="line-lms" points=""></polyline>
+                <polyline id="game-idbd" class="line-idbd" points=""></polyline>
+                <polyline id="game-you" class="line-you" points=""></polyline>
+              </svg>
+              <div class="key">
+                <span><span class="swatch swatch-actual"></span>actual</span>
+                <span><span class="swatch swatch-you"></span>you</span>
+                <span><span class="swatch swatch-idbd"></span>IDBD</span>
+                <span><span class="swatch swatch-lms"></span>fixed speed</span>
+                <span><span class="swatch swatch-change"></span>the house changed</span>
               </div>
-              <p class="sample-badge" data-sample-badge>sample 0</p>
-            </div>
-            <dl class="pairs" id="metrics-pairs"></dl>
-            <div class="table-scroll" tabindex="0" role="region" aria-label="Per-input state table">
-              <table class="data-table" id="state-table">
-                <caption class="visually-hidden">
-                  Per-input state after the last completed sample
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Input</th>
-                    <th scope="col">Value</th>
-                    <th scope="col">True coefficient</th>
-                    <th scope="col">IDBD weight</th>
-                    <th scope="col">LMS weight</th>
-                    <th scope="col">Alpha</th>
-                    <th scope="col">Trace</th>
-                    <th scope="col">Autostep weight</th>
-                    <th scope="col">Autostep alpha</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
             </div>
           </div>
+        </div>
+
+        <div class="card reveal">
+          <div class="card-head">
+            <span class="strong">What IDBD has worked out</span>
+            <button type="button" class="button small" id="reveal" aria-expanded="false" aria-controls="learned">Show IDBD's speeds</button>
+          </div>
+          <div id="learned" class="learned" hidden></div>
+        </div>
+
+        <p class="mono faint small" id="game-note">
+          IDBD and the fixed-speed learner run in the idbd crate, compiled to WebAssembly. They
+          use the settings scenario E06 selected for this house: theta 0.015 for IDBD and step
+          size 0.03 for the fixed speed. Your score uses the same readings.
+        </p>
+        <p class="failure" id="game-failure" role="alert" hidden></p>
+      </section>
+
+      <section id="advanced" class="chapter wrap advanced" aria-labelledby="advanced-title">
+        <div class="card advanced-card">
+          <div>
+            <p class="eyebrow">Advanced mode</p>
+            <h2 id="advanced-title">The full Explorer, for ML engineers.</h2>
+            <p>
+              Step through one IDBD update coordinate by coordinate, run IDBD, LMS and Autostep
+              side by side on Sutton's tasks, change the world, replay and export runs.
+            </p>
+          </div>
+          <a class="button primary" href="./explorer.html">Open the Explorer</a>
         </div>
       </section>
     </main>
 
-    <footer class="colophon">
-      <p>
-        Synthetic data, generated in the browser. Learning runs in the Rust
-        <span class="mono">idbd</span> crate compiled to WebAssembly; the page only draws
-        what the core reports.
-      </p>
+    <footer class="site-footer wrap mono">
+      <span>Runs the idbd Rust crate in your browser</span>
+      <span>Simulated sensor data</span>
+      <span>No tracking</span>
+      <span id="core-version"></span>
     </footer>
 
-    <div class="tooltip" id="tooltip" role="status" aria-live="off" hidden></div>
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./story/main.js"></script>
   </body>
 </html>
