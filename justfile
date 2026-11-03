@@ -11,11 +11,16 @@ check:
 
 # Compile the WebAssembly adapter and generate the browser glue in web/pkg.
 # The pinned wasm-bindgen crate version and the installed CLI version must match.
+# The story page loads three.js from web/vendor, copied from the pinned npm package.
 web-build:
     cargo build --release --target wasm32-unknown-unknown -p idbd-wasm
     wasm-bindgen --target web --out-dir web/pkg target/wasm32-unknown-unknown/release/idbd_wasm.wasm
+    test -f web/node_modules/three/build/three.module.min.js || (cd web && npm ci)
+    mkdir -p web/vendor
+    cp web/node_modules/three/build/three.module.min.js web/vendor/
+    cp web/node_modules/three/LICENSE web/vendor/three.LICENSE
 
-# Serve the demo at http://127.0.0.1:8173.
+# Serve the demo at http://127.0.0.1:8173 (story page at /story.html).
 web-serve: web-build
     node web/serve.mjs
 

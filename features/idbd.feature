@@ -582,6 +582,25 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And its rolling MSE is drawn with a distinct color and dash pattern, and listed with its weights and step sizes
       And if any of the three learners rejects a sample, none of them learns from it
 
+    Scenario: S01 Explain IDBD to a non-specialist with the thermostat house
+      Given the story page, built on the house measured in scenario E06
+      When it loads
+      Then every step size, prediction and error it shows comes from the crate through WebAssembly
+      And chapter curves that are sketches say so
+      And it states the E06 result for both the switching house and the still house
+
+    Scenario: S02 Let a visitor race the learners by hand
+      Given the game on the story page
+      When the visitor sets trust sliders and starts the race
+      Then IDBD and the fixed-step learner use the parameters E06 selected for the house
+      And all three scores average the same 300 most recent readings
+      And Reset restores the readings, the sliders and the hidden step-size panel
+
+    Scenario: S04 Keep the story page usable without WebGL or motion
+      Given a browser without WebGL, or a visitor who prefers reduced motion
+      When the story page loads
+      Then the house is drawn in 2D from the same step sizes
+
     Scenario: D15 Pass automated WCAG checks in every supported browser
       Given the page at rest, after a run with a world change, and in the dark color scheme
       When axe-core checks the WCAG 2.2 A and AA rules in Chromium, Firefox and WebKit

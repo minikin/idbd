@@ -2,6 +2,7 @@
 /target/
 .DS_Store
 /web/pkg/
+/web/vendor/
 /web/node_modules/
 /web/test-results/
 /web/playwright-report/
