@@ -33,9 +33,19 @@ const LABEL_OFFSETS = [
 /** Each sensor's own blink period in seconds, so they never pulse in step. */
 const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 1.0];
 
+/**
+ * The 3D room is larger than the 8 x 6 floor of the shared sensor layout, so the devices
+ * and their labels have room. Positions are stretched by these factors; furniture keeps
+ * its size.
+ */
+const WIDTH = 11;
+const DEPTH = 8;
+const SX = WIDTH / 8;
+const SZ = DEPTH / 6;
+
 /** House coordinates (x, y, z up) to three.js coordinates (x, y up, z). */
 function toScene([x, y, z]) {
-  return new THREE.Vector3(x, z, y);
+  return new THREE.Vector3(x * SX, z, y * SZ);
 }
 
 function radialTexture(ring) {
@@ -109,12 +119,12 @@ export function mountHouse3d(container, names) {
   key.position.set(6, 10, 8);
   scene.add(key);
 
-  scene.add(box([8, 0.1, 6], [4, -0.05, 3], COLORS.floor, 0.1));
-  scene.add(box([8, 3.5, 0.1], [4, 1.75, -0.05], COLORS.wall, 0.1));
-  scene.add(box([0.1, 3.5, 6], [-0.05, 1.75, 3], COLORS.wallSide, 0.1));
-  scene.add(box([1.4, 1.1, 1.2], [7.1, 0.55, 0.8], COLORS.block, 0.08));
-  scene.add(box([2.4, 0.8, 1.2], [2.2, 0.4, 5.0], COLORS.block, 0.08));
-  scene.add(box([1.4, 0.9, 1.2], [4.9, 0.45, 3.0], COLORS.block, 0.08));
+  scene.add(box([WIDTH, 0.1, DEPTH], [WIDTH / 2, -0.05, DEPTH / 2], COLORS.floor, 0.1));
+  scene.add(box([WIDTH, 3.5, 0.1], [WIDTH / 2, 1.75, -0.05], COLORS.wall, 0.1));
+  scene.add(box([0.1, 3.5, DEPTH], [-0.05, 1.75, DEPTH / 2], COLORS.wallSide, 0.1));
+  scene.add(box([1.4, 1.1, 1.2], [7.1 * SX, 0.55, 0.8 * SZ], COLORS.block, 0.08));
+  scene.add(box([2.4, 0.8, 1.2], [2.6 * SX, 0.4, 5.0 * SZ], COLORS.block, 0.08));
+  scene.add(box([1.4, 0.9, 1.2], [4.9 * SX, 0.45, 3.0 * SZ], COLORS.block, 0.08));
 
   const glow = radialTexture(false);
   const ringTexture = radialTexture(true);
@@ -124,7 +134,7 @@ export function mountHouse3d(container, names) {
     new THREE.PlaneGeometry(2, 1.5),
     new THREE.MeshBasicMaterial({ color: COLORS.sun, transparent: true, opacity: 0.2 }),
   );
-  pane.position.set(3, 1.95, 0.02);
+  pane.position.set(3 * SX, 1.95, 0.02);
   scene.add(pane);
   const beam = new THREE.Mesh(
     new THREE.PlaneGeometry(2.4, 2.6),
@@ -138,28 +148,28 @@ export function mountHouse3d(container, names) {
     }),
   );
   beam.rotation.x = -Math.PI / 2;
-  beam.position.set(3.4, 0.02, 1.7);
+  beam.position.set(3.4 * SX, 0.02, 1.7 * SZ);
   scene.add(beam);
 
   const heat = sprite(glow, COLORS.heat, 0.4);
-  heat.position.set(7.1, 1.35, 0.8);
+  heat.position.set(7.1 * SX, 1.35, 0.8 * SZ);
   heat.scale.set(1.8, 1.8, 1);
   scene.add(heat);
 
   // The front door swings on a hinge at its back edge.
   const hinge = new THREE.Group();
-  hinge.position.set(0.04, 0, 3.0);
+  hinge.position.set(0.04, 0, 3.0 * SZ);
   hinge.add(box([0.05, 2.5, 1.6], [0, 1.25, 0.8], COLORS.door, 0.2));
   scene.add(hinge);
 
   const face = new THREE.Mesh(new THREE.CircleGeometry(0.32, 32), new THREE.MeshBasicMaterial({ color: 0x2b2e34 }));
   face.rotation.y = Math.PI / 2;
-  face.position.set(0.03, 2.75, 1.75);
+  face.position.set(0.03, 2.75, 2.2 * SZ - 0.45);
   scene.add(face);
   const hand = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.26), new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
   hand.geometry.translate(0, 0.13, 0);
   hand.rotation.y = Math.PI / 2;
-  hand.position.set(0.04, 2.75, 1.75);
+  hand.position.set(0.04, 2.75, 2.2 * SZ - 0.45);
   scene.add(hand);
 
   // Wi-fi rings keep pulsing outward: the signal wiggles whether or not it matters.
@@ -205,10 +215,10 @@ export function mountHouse3d(container, names) {
   const state = { strong: [1, 1, 1], door: 0, sun: 1, oven: 1 };
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  const target = new THREE.Vector3(4, 1.5, 3);
-  const base = new THREE.Vector3(4 + 14, 1.5 + 11.5, 3 + 14);
+  const target = new THREE.Vector3(WIDTH / 2, 1.5, DEPTH / 2);
+  const base = new THREE.Vector3(WIDTH / 2 + 16, 1.5 + 13, DEPTH / 2 + 16);
   const corners = [];
-  for (const x of [0, 8]) for (const y of [0, 3.5]) for (const z of [0, 6]) corners.push(new THREE.Vector3(x, y, z));
+  for (const x of [0, WIDTH]) for (const y of [0, 3.5]) for (const z of [0, DEPTH]) corners.push(new THREE.Vector3(x, y, z));
 
   /** Fits the whole house in the frame, with a margin for the camera's sway. */
   function resize() {

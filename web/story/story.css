@@ -1767,7 +1767,7 @@ main::before {
 #play::before {
   content: "";
   position: absolute;
-  inset: 0 -20vw;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(50rem 30rem at 50% 30%, rgb(91 141 239 / 0.06), transparent 70%);
@@ -1782,10 +1782,6 @@ body::after {
   pointer-events: none;
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-body {
-  overflow-x: hidden;
 }
 
 @media (prefers-reduced-transparency: reduce) {
