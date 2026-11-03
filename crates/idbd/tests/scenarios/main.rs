@@ -7,6 +7,7 @@
     reason = "scenarios specify exact values for zero errors, unchanged betas and bounds"
 )]
 
+mod autostep;
 mod bounds;
 mod construction;
 mod failures;

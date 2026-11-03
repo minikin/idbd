@@ -94,13 +94,38 @@ online calibration, and research on step-size adaptation.
 Do not use it for nonlinear models, batch training, sparse high-dimensional inputs or TD
 learning. This crate covers one linear output with dense `f64` inputs.
 
+## Autostep
+
+`idbd::autostep::Autostep` implements Autostep (Mahmood, Sutton, Degris and Pilarski, 2012), an
+IDBD variant designed to need no tuning. It divides each step-size update by a running maximum
+of its size, so the meta step size has no units, and it divides all step sizes by
+`sum(alpha_i * x_i^2)` whenever that sum exceeds one, so an update never overshoots the current
+target. The paper reports near-best results on all of its test problems with `mu = 0.01` and
+`tau = 10_000`, which are the defaults.
+
+```rust
+use idbd::autostep::{Autostep, Config};
+
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+let mut learner = Autostep::new(3, Config::new(0.1 / 3.0)?)?;
+let report = learner.update(&[1.0, 0.4, 2.0], 95.0)?; // raw milliseconds
+assert!(report.effective_step_size > 0.0);
+# Ok(())
+# }
+```
+
+It has the same guarantees as `Idbd`: validated inputs, atomic updates, no allocation on the
+learning path and complete snapshots, which here include the normalizers `v_i`. It has no beta
+bounds. The overshoot guard plays their protective role.
+
 ## Limitations
 
 - **Scale matters, for inputs and the target.** The trace decay `1 - alpha_i * x_i^2` assumes
   inputs of moderate size, and the meta step `theta * error * x_i * h_i` grows with the square
   of the error scale. Standardize inputs and express the target in units where typical errors
   are near 1. In the latency example, raw millisecond targets overflow a step size within a few
-  samples, and the update returns `Stage::StepSize` instead of learning.
+  samples, and the update returns `Stage::StepSize` instead of learning. Autostep's meta
+  step has no units, so the target's scale does not change how fast its step sizes adapt.
 - **Correlated inputs.** The derivation assumes that changing one step size mainly affects its
   own weight. With strongly correlated inputs that approximation is weaker.
 - **Theta is still a parameter.** IDBD replaces one learning rate per input with one meta step
@@ -115,7 +140,11 @@ Richard S. Sutton. *Adapting Bias by Gradient Descent: An Incremental Version of
 Delta-Bar-Delta.* In Proceedings of the Tenth National Conference on Artificial Intelligence
 (AAAI-92), pages 171-176, 1992. <https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf>
 
-Figure 2 of the paper prints the trace decay as a sum, `h_i + [1 - alpha_i x_i^2]^+`. Equation 6
+A. Rupam Mahmood, Richard S. Sutton, Thomas Degris and Patrick M. Pilarski. *Tuning-free
+step-size adaptation.* In IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), pages 2121-2124, 2012. <https://doi.org/10.1109/ICASSP.2012.6288330>
+
+Figure 2 of the Sutton paper prints the trace decay as a sum, `h_i + [1 - alpha_i x_i^2]^+`. Equation 6
 and the derivation show a product, which this crate implements.
 
 The repository at <https://github.com/minikin/idbd> has the reproduction of the paper's

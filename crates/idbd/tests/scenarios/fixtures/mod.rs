@@ -2,9 +2,11 @@
 
 mod reference_data;
 
-pub(crate) use reference_data::{C06_C07, SEQUENCE_BOUNDED, SEQUENCE_UNBOUNDED};
+pub(crate) use reference_data::{
+    AUTOSTEP_DEFAULTS, AUTOSTEP_FAST, C06_C07, SEQUENCE_BOUNDED, SEQUENCE_UNBOUNDED,
+};
 
-use idbd::{Bounds, Config};
+use idbd::{Bounds, Config, autostep};
 
 pub(crate) struct Fixture {
     pub(crate) initial_step_size: f64,
@@ -42,6 +44,38 @@ impl Fixture {
         }
         Config::new(self.initial_step_size, self.meta_step_size)
             .and_then(|c| c.with_bounds(bounds))
+            .expect("valid fixture configuration")
+    }
+
+    pub(crate) fn num_features(&self) -> usize {
+        self.steps[0].features.len()
+    }
+}
+
+pub(crate) struct AutostepFixture {
+    pub(crate) initial_step_size: f64,
+    pub(crate) meta_step_size: f64,
+    pub(crate) time_scale: f64,
+    pub(crate) steps: &'static [AutostepStep],
+}
+
+pub(crate) struct AutostepStep {
+    pub(crate) features: &'static [f64],
+    pub(crate) target: f64,
+    pub(crate) prediction: f64,
+    pub(crate) error: f64,
+    pub(crate) effective_step_size: f64,
+    pub(crate) weights: &'static [f64],
+    pub(crate) step_sizes: &'static [f64],
+    pub(crate) traces: &'static [f64],
+    pub(crate) normalizers: &'static [f64],
+}
+
+impl AutostepFixture {
+    pub(crate) fn config(&self) -> autostep::Config {
+        autostep::Config::new(self.initial_step_size)
+            .and_then(|c| c.with_meta_step_size(self.meta_step_size))
+            .and_then(|c| c.with_time_scale(self.time_scale))
             .expect("valid fixture configuration")
     }
 

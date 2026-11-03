@@ -1,4 +1,4 @@
-//! C23: Avoid per-example heap allocation in the core.
+//! C23 and A08: Avoid per-example heap allocation in the core.
 //!
 //! A counting global allocator records allocations made by the current thread while a
 //! measurement window is open. Setup, snapshots and harness work run outside the window.
@@ -12,6 +12,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 use std::hint::black_box;
 
+use idbd::autostep::{self, Autostep};
 use idbd::{Bounds, Config, Idbd};
 
 struct CountingAllocator;
@@ -111,4 +112,33 @@ fn c23_avoid_per_example_heap_allocation_in_the_core() {
         black_box(sink);
         assert_eq!(allocations, 0, "bounds {bounds:?}");
     }
+}
+
+#[test]
+fn a08_autostep_updates_do_not_allocate() {
+    const N: usize = 64;
+    let config = autostep::Config::new(0.1 / 64.0).expect("valid config");
+    let mut learner = Autostep::new(N, config).expect("valid learner");
+    let mut features = vec![0.0; N];
+    let mut sink = 0.0;
+    let allocations = count_allocations(|| {
+        for t in 0..2_000_u32 {
+            let phase = f64::from(t);
+            for (i, x) in (0_u32..).zip(features.iter_mut()) {
+                *x = (phase * 0.37 + f64::from(i)).sin();
+            }
+            let target = 50.0 * features[0] - 0.5 * features[1] + 0.25 * features[2];
+            sink += learner.predict(&features).expect("prediction");
+            let report = learner.update(&features, target).expect("update");
+            sink += report.error + report.effective_step_size;
+            sink += learner.weights()[0] + learner.step_sizes()[1] + learner.traces()[2];
+            sink += learner.normalizers()[3];
+            sink += learner.config().meta_step_size();
+            if learner.update(&features, f64::NAN).is_ok() {
+                sink += 1.0;
+            }
+        }
+    });
+    black_box(sink);
+    assert_eq!(allocations, 0, "Autostep allocated on the learning path");
 }

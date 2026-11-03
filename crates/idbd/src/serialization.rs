@@ -1,13 +1,14 @@
 //! Optional `serde` support, enabled by the `serde` feature.
 //!
-//! [`Bounds`] and [`Config`] deserialize through their validating constructors, and
-//! [`Idbd`] deserializes through [`Idbd::from_state`], so invalid input is an error, never
-//! a learner that breaks an invariant. [`State`] stays unvalidated, as with
-//! [`State::new`].
+//! [`Bounds`], [`Config`] and [`autostep::Config`] deserialize through their validating
+//! constructors, and [`Idbd`] and [`Autostep`] deserialize through their `from_state`, so
+//! invalid input is an error, never a learner that breaks an invariant. [`State`] and
+//! [`autostep::State`] stay unvalidated, as with their `new` functions.
 
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::autostep::{self, Autostep};
 use crate::{Bounds, Config, Idbd, State};
 
 #[derive(Default, Serialize, Deserialize)]
@@ -151,5 +152,101 @@ impl Serialize for Idbd {
 impl<'de> Deserialize<'de> for Idbd {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         Idbd::from_state(State::deserialize(deserializer)?).map_err(D::Error::custom)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AutostepConfigRepr {
+    initial_step_size: f64,
+    meta_step_size: f64,
+    time_scale: f64,
+}
+
+/// Borrows an Autostep learner's parts so that serializing it copies nothing.
+#[derive(Serialize)]
+struct AutostepStateRef<'state> {
+    config: &'state autostep::Config,
+    weights: &'state [f64],
+    step_sizes: &'state [f64],
+    traces: &'state [f64],
+    normalizers: &'state [f64],
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AutostepStateRepr {
+    config: autostep::Config,
+    weights: Vec<f64>,
+    step_sizes: Vec<f64>,
+    traces: Vec<f64>,
+    normalizers: Vec<f64>,
+}
+
+impl Serialize for autostep::Config {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        AutostepConfigRepr {
+            initial_step_size: self.initial_step_size(),
+            meta_step_size: self.meta_step_size(),
+            time_scale: self.time_scale(),
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for autostep::Config {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let repr = AutostepConfigRepr::deserialize(deserializer)?;
+        autostep::Config::new(repr.initial_step_size)
+            .and_then(|config| config.with_meta_step_size(repr.meta_step_size))
+            .and_then(|config| config.with_time_scale(repr.time_scale))
+            .map_err(D::Error::custom)
+    }
+}
+
+impl Serialize for autostep::State {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        AutostepStateRef {
+            config: &self.config,
+            weights: &self.weights,
+            step_sizes: &self.step_sizes,
+            traces: &self.traces,
+            normalizers: &self.normalizers,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for autostep::State {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let repr = AutostepStateRepr::deserialize(deserializer)?;
+        Ok(autostep::State::new(
+            repr.config,
+            repr.weights,
+            repr.step_sizes,
+            repr.traces,
+            repr.normalizers,
+        ))
+    }
+}
+
+/// Serializes the same fields as [`Autostep::snapshot`], without allocating.
+impl Serialize for Autostep {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        AutostepStateRef {
+            config: self.config(),
+            weights: self.weights(),
+            step_sizes: self.step_sizes(),
+            traces: self.traces(),
+            normalizers: self.normalizers(),
+        }
+        .serialize(serializer)
+    }
+}
+
+/// Deserializes an [`autostep::State`] and restores it with [`Autostep::from_state`].
+impl<'de> Deserialize<'de> for Autostep {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Autostep::from_state(autostep::State::deserialize(deserializer)?).map_err(D::Error::custom)
     }
 }

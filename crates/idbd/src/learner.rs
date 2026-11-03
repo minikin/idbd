@@ -197,33 +197,11 @@ impl Idbd {
     }
 
     fn check_features(&self, features: &[f64]) -> Result<(), Error> {
-        if features.len() != self.committed.weights.len() {
-            return Err(Error::DimensionMismatch {
-                expected: self.committed.weights.len(),
-                found: features.len(),
-            });
-        }
-        match features.iter().position(|x| !x.is_finite()) {
-            Some(index) => Err(Error::NonFiniteFeature { index }),
-            None => Ok(()),
-        }
+        check_features(self.committed.weights.len(), features)
     }
 
     fn dot(&self, features: &[f64]) -> Result<f64, Error> {
-        let prediction = self
-            .committed
-            .weights
-            .iter()
-            .zip(features)
-            .fold(0.0, |sum, (w, x)| sum + w * x);
-        if prediction.is_finite() {
-            Ok(prediction)
-        } else {
-            Err(Error::Numerical {
-                stage: Stage::Prediction,
-                coordinate: None,
-            })
-        }
+        dot(&self.committed.weights, features)
     }
 
     /// Returns the number of input features.
@@ -262,6 +240,36 @@ impl Idbd {
 }
 
 /// One coordinate's weight, log step size and trace.
+/// Checks the feature count, then that every feature is finite.
+pub(crate) fn check_features(num_features: usize, features: &[f64]) -> Result<(), Error> {
+    if features.len() != num_features {
+        return Err(Error::DimensionMismatch {
+            expected: num_features,
+            found: features.len(),
+        });
+    }
+    match features.iter().position(|x| !x.is_finite()) {
+        Some(index) => Err(Error::NonFiniteFeature { index }),
+        None => Ok(()),
+    }
+}
+
+/// Returns `w · x`, summed left to right.
+pub(crate) fn dot(weights: &[f64], features: &[f64]) -> Result<f64, Error> {
+    let prediction = weights
+        .iter()
+        .zip(features)
+        .fold(0.0, |sum, (w, x)| sum + w * x);
+    if prediction.is_finite() {
+        Ok(prediction)
+    } else {
+        Err(Error::Numerical {
+            stage: Stage::Prediction,
+            coordinate: None,
+        })
+    }
+}
+
 #[derive(Clone, Copy)]
 struct Coordinate {
     weight: f64,
@@ -433,6 +441,10 @@ pub enum Stage {
     Weight,
     /// The new trace.
     Trace,
+    /// Autostep only: the running normalizer `v_i` of the step-size update.
+    Normalizer,
+    /// Autostep only: the effective step size `sum(alpha_i * x_i^2)`.
+    EffectiveStepSize,
 }
 
 impl fmt::Display for Stage {
@@ -444,6 +456,8 @@ impl fmt::Display for Stage {
             Self::StepSize => "step size",
             Self::Weight => "weight",
             Self::Trace => "trace",
+            Self::Normalizer => "normalizer",
+            Self::EffectiveStepSize => "effective step size",
         })
     }
 }
@@ -478,7 +492,7 @@ pub enum Error {
 }
 
 impl Error {
-    const fn numerical(stage: Stage, coordinate: usize) -> Self {
+    pub(crate) const fn numerical(stage: Stage, coordinate: usize) -> Self {
         Self::Numerical {
             stage,
             coordinate: Some(coordinate),

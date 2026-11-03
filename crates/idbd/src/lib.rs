@@ -64,10 +64,17 @@
 //!   configuration, weights, betas and traces.
 //! - The crate has no dependencies and no `unsafe` code. It requires `std`.
 //!
+//! # Autostep
+//!
+//! The [`autostep`] module implements Autostep (Mahmood et al., 2012), an IDBD variant
+//! whose meta step size needs no tuning to the scale of the target, and which never
+//! overshoots the current target. It has the same validation, atomicity and
+//! allocation guarantees.
+//!
 //! # Features
 //!
 //! - `serde`: implements `Serialize` and `Deserialize` for [`Config`], [`Bounds`],
-//!   [`State`] and [`Idbd`]. Deserializing a `Config` or `Bounds` runs the same checks as
+//!   [`State`] and [`Idbd`], and for the [`autostep`] types. Deserializing a `Config` or `Bounds` runs the same checks as
 //!   their constructors, and deserializing an `Idbd` runs [`Idbd::from_state`]. A
 //!   deserialized `State` is unvalidated, as with [`State::new`]. Off by default, so the
 //!   default build has no dependencies. A checkpoint resumes bit for bit only if the
@@ -99,6 +106,7 @@
 //! Intelligence (AAAI-92), pp. 171-176, 1992.
 //! <https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf>
 
+pub mod autostep;
 mod config;
 mod learner;
 #[cfg(feature = "serde")]

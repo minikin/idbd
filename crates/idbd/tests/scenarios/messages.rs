@@ -1,6 +1,7 @@
 //! Error messages are part of the public behavior: lowercase, no trailing punctuation,
 //! and they name the failing value, coordinate or stage.
 
+use idbd::autostep::{self, Autostep};
 use idbd::{BoundKind, ConfigError, Error, Stage, StateError};
 
 #[track_caller]
@@ -54,6 +55,10 @@ fn config_error_messages() {
         (
             ConfigError::InitialBetaOutOfBounds { initial_beta: -3.0 },
             "initial beta -3 lies outside the configured beta bounds",
+        ),
+        (
+            ConfigError::InvalidTimeScale { value: 0.5 },
+            "time scale 0.5 is not finite and at least 1",
         ),
     ];
     for (error, expected) in cases {
@@ -145,8 +150,68 @@ fn operation_error_messages() {
             numerical(Stage::Trace, Some(3)),
             "numerical failure at the trace stage for coordinate 3",
         ),
+        (
+            numerical(Stage::Normalizer, Some(4)),
+            "numerical failure at the normalizer stage for coordinate 4",
+        ),
+        (
+            numerical(Stage::EffectiveStepSize, None),
+            "numerical failure at the effective step size stage",
+        ),
     ];
     for (error, expected) in cases {
         assert_message(&error, expected);
     }
+}
+
+#[test]
+fn autostep_state_error_messages() {
+    let cases = [
+        (autostep::StateError::Empty, "state has no features"),
+        (
+            autostep::StateError::LengthMismatch {
+                weights: 3,
+                step_sizes: 3,
+                traces: 3,
+                normalizers: 2,
+            },
+            "state vectors differ in length: 3 weights, 3 step sizes, 3 traces, 2 normalizers",
+        ),
+        (
+            autostep::StateError::NonFiniteWeight { index: 1 },
+            "weight 1 is not finite",
+        ),
+        (
+            autostep::StateError::InvalidStepSize {
+                index: 2,
+                step_size: 0.0,
+            },
+            "step size 2 (0) is not finite and strictly positive",
+        ),
+        (
+            autostep::StateError::NonFiniteTrace { index: 0 },
+            "trace 0 is not finite",
+        ),
+        (
+            autostep::StateError::InvalidNormalizer {
+                index: 4,
+                normalizer: -1.0,
+            },
+            "normalizer 4 (-1) is not finite and nonnegative",
+        ),
+    ];
+    for (error, expected) in cases {
+        assert_message(&error, expected);
+    }
+}
+
+#[test]
+fn autostep_debug_shows_configuration_and_every_vector() {
+    let learner = Autostep::new(1, autostep::Config::new(0.25).expect("valid")).expect("valid");
+    assert_eq!(
+        format!("{learner:?}"),
+        "Autostep { config: Config { initial_step_size: 0.25, meta_step_size: 0.01, \
+         time_scale: 10000.0 }, weights: [0.0], step_sizes: [0.25], traces: [0.0], \
+         normalizers: [0.0], .. }"
+    );
 }
