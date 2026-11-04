@@ -1810,3 +1810,14 @@ main section {
   display: block;
   padding-left: 16px;
 }
+
+.eyebrow-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hero-links {
+  display: flex;
+  flex-direction: column;
+}
