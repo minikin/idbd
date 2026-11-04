@@ -19,9 +19,9 @@ const LABELS = new Map([
   [0, { dx: 44, dy: -80 }],
   [1, { dx: 82, dy: -22 }],
   [2, { dx: 80, dy: 40 }],
-  [3, { dx: 30, dy: -40, muted: true }],
-  [4, { dx: 10, dy: 100, muted: true }],
-  [5, { dx: -50, dy: -30, muted: true, end: true }],
+  [3, { dx: 30, dy: -40 }],
+  [4, { dx: 10, dy: 100 }],
+  [5, { dx: -50, dy: -30, end: true }],
 ]);
 
 /**
@@ -30,6 +30,11 @@ const LABELS = new Map([
  */
 export const SENSOR_COLORS = ["#fde68a", "#f87171", "#34d399", "#22d3ee", "#f472b6", "#cbd5e1"];
 
+/** Each sensor's own blink period in seconds, so they never pulse in step. */
+export const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 2.6];
+
+/** The breakpoint below which the 2D drawing hides its labels, matching story.css. */
+export const PHONE = "(max-width: 640px)";
 
 /** Isometric projection into the 2D drawing's coordinates. */
 export function project([x, y, z]) {
@@ -45,14 +50,13 @@ export function glowRadius(alpha) {
 }
 
 /**
- * How strongly a sensor reads as trusted, from 0 to 1, relative to the fastest and the
- * median learned speed. Driven only by IDBD's step sizes.
+ * Ring opacity for each learned step size, relative to the fastest. The floor of 0.5 keeps
+ * the faintest amber ring at 3:1 against the house's lightest surface (WCAG 1.4.11), so
+ * every ring stays visible and its size carries the speed.
  */
-export function trust(alphas) {
-  const sorted = [...alphas].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const max = sorted.at(-1);
-  return alphas.map((a) => (max > median ? Math.min(1, Math.max(0, (a - median) / (max - median))) : 0));
+export function ringOpacity(alphas) {
+  const max = Math.max(...alphas);
+  return alphas.map((a) => 0.5 + 0.45 * (max > 0 ? Math.max(0, a) / max : 0));
 }
 
 /**
@@ -60,12 +64,13 @@ export function trust(alphas) {
  * own color at its own period through CSS. IDBD's attention is an amber ring.
  */
 export function createHouse2d(group, names) {
+  const chips = [];
   const sensors = SENSOR_POSITIONS.map((position, index) => {
     const [cx, cy] = project(position);
     const ring = svg("circle", { cx, cy, r: 16, class: "attention" });
     const glow = svg("circle", { cx, cy, r: 9, class: "led-glow", fill: SENSOR_COLORS[index], filter: "url(#blur)" });
     const dot = svg("circle", { cx, cy, r: 4, class: "led", fill: SENSOR_COLORS[index] });
-    glow.style.animationDuration = `${[3.1, 1.7, 2.3, 0.9, 2.9, 1.0][index]}s`;
+    glow.style.animationDuration = `${PERIODS[index]}s`;
     group.append(ring, glow, dot);
     const label = LABELS.get(index);
     if (label) {
@@ -84,28 +89,39 @@ export function createHouse2d(group, names) {
       text.textContent = names[index];
       group.append(text);
       // Same chip as the 3D labels: a dark pill with the sensor's dot.
-      const box = text.getBBox();
-      const left = label.end ? box.x - 14 : box.x - 14;
-      const chip = svg("rect", {
-        x: left - 2,
-        y: box.y - 3,
-        width: box.width + 22,
-        height: box.height + 6,
-        rx: 8,
-        class: "label-chip",
-      });
-      const chipDot = svg("circle", { cx: left + 6, cy: box.y + box.height / 2, r: 3, fill: SENSOR_COLORS[index] });
+      const chip = svg("rect", { rx: 8, class: "label-chip" });
+      const chipDot = svg("circle", { r: 3, fill: SENSOR_COLORS[index] });
       group.insertBefore(chip, text);
       group.insertBefore(chipDot, text);
+      chips.push({ text, chip, chipDot });
     }
     return { ring };
   });
 
+  // A hidden label measures as an empty box, so the chips are sized whenever the labels
+  // become visible: after the fonts load and whenever the phone breakpoint flips.
+  function sizeChips() {
+    for (const { text, chip, chipDot } of chips) {
+      const box = text.getBBox();
+      if (box.width === 0) continue;
+      const left = box.x - 14;
+      chip.setAttribute("x", left - 2);
+      chip.setAttribute("y", box.y - 3);
+      chip.setAttribute("width", box.width + 22);
+      chip.setAttribute("height", box.height + 6);
+      chipDot.setAttribute("cx", left + 6);
+      chipDot.setAttribute("cy", box.y + box.height / 2);
+    }
+  }
+  sizeChips();
+  document.fonts?.ready.then(sizeChips);
+  window.matchMedia(PHONE).addEventListener("change", sizeChips);
+
   return function update({ alphas }) {
-    const t = trust(alphas);
+    const opacity = ringOpacity(alphas);
     sensors.forEach(({ ring }, i) => {
       ring.setAttribute("r", glowRadius(alphas[i]).toFixed(1));
-      ring.setAttribute("stroke-opacity", (0.2 + 0.7 * t[i]).toFixed(2));
+      ring.setAttribute("stroke-opacity", opacity[i].toFixed(2));
     });
   };
 }
