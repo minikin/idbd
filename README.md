@@ -1,28 +1,55 @@
 # idbd
 
-A Rust implementation of Incremental Delta-Bar-Delta (IDBD, Sutton 1992), an approximate
-reproduction of the paper's experiments, and IDBD Explorer, a browser demo that runs the same
-Rust code through WebAssembly.
+<p align="center">
+  <a href="https://github.com/minikin/idbd/actions/workflows/ci.yml"><img src="https://github.com/minikin/idbd/raw/badges/ci.svg" alt="CI"></a>
+  <a href="https://github.com/minikin/idbd/actions/workflows/ci.yml"><img src="https://github.com/minikin/idbd/raw/badges/coverage.svg" alt="coverage"></a>
+  <a href="scripts/coverage.sh"><img src="https://github.com/minikin/idbd/raw/badges/crap.svg" alt="CRAP score"></a>
+  <a href="crates/idbd/Cargo.toml"><img src="https://github.com/minikin/idbd/raw/badges/msrv.svg" alt="minimum Rust version"></a>
+  <a href="#license"><img src="https://github.com/minikin/idbd/raw/badges/license.svg" alt="license"></a>
+</p>
 
-IDBD is the LMS rule with one learning rate per input, `alpha_i = exp(beta_i)`. It adapts each
-`beta_i` online by gradient descent on the squared prediction error, so inputs that carry signal
-keep large steps and inputs that only add noise get small ones.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.webp">
+    <img src="docs/assets/hero-light.webp" alt="The idbd demo: an isometric house whose six sensors carry amber rings sized by the step size IDBD learned for each, two measured traces of a fixed-step learner that is either late or nervous when the oven switches on, and the Explorer's step-size chart with five relevant inputs near 0.1 and fifteen irrelevant ones near 0.01">
+  </picture>
+</p>
+
+IDBD (Sutton, 1992) is the LMS rule with one learning rate per input. It keeps
+`beta_i = ln(alpha_i)` for every input and moves it by gradient descent on the squared error,
+so an input whose corrections keep pointing the same way gets a larger step and an input whose
+corrections cancel out gets a smaller one. No input is marked as relevant in advance.
+
+This repository has three parts:
+
+- `idbd`, the crate: IDBD and Autostep (Mahmood et al., 2012) as checked, atomic,
+  allocation-free online learners. No dependencies, no `unsafe`, Rust 1.85 or newer.
+- `idbd-lab`: an approximate reproduction of the paper's two experiments, plus new tasks, with
+  every result below produced from recorded seeds.
+- A browser demo that runs the same Rust through WebAssembly: a story page for people who have
+  never trained a model, and an Explorer for those who have.
 
 | Path | Contents |
 | --- | --- |
-| [`crates/idbd`](crates/idbd) | The published library. No dependencies, no `unsafe`, MSRV 1.85. |
+| [`crates/idbd`](crates/idbd) | The library. |
 | [`crates/idbd-lab`](crates/idbd-lab) | Unpublished. Seeded tasks, an LMS baseline, experiment and benchmark binaries. |
 | [`crates/idbd-wasm`](crates/idbd-wasm) | Unpublished. The `wasm-bindgen` adapter used by the demo. |
-| [`web`](web) | IDBD Explorer, a static browser app with Playwright tests. |
+| [`web`](web) | The story page and the Explorer, static, with Playwright tests. |
 | [`docs`](docs) | Reproduction instructions, generated results and benchmarks. |
 | [`features/idbd.feature`](features/idbd.feature) | The behavior specification: 61 scenarios in 13 rules. |
 
 ## Using the crate
 
+```toml
+[dependencies]
+idbd = "0.1"
+```
+
 ```rust
 use idbd::{Config, Idbd};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initial step size 0.05, meta step size theta 0.01.
     let mut learner = Idbd::new(3, Config::new(0.05, 0.01)?)?;
     let report = learner.update(&[0.5, -1.0, 1.0], 2.0)?;
     println!("error before learning: {}", report.error);
@@ -30,12 +57,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`crates/idbd/examples/latency.rs` is a complete streaming application: input and target
-scaling, predicting before learning, skipping an invalid sample, and checkpointing the learner
-with its stream position. Run it with `cargo run -p idbd --example latency`.
+`update` predicts, measures the error, adapts the step sizes and then the weights, in Sutton's
+order. A failed update returns a typed error and leaves the learner bit for bit as it was. The
+learning path does not allocate.
 
-The [crate README](crates/idbd/README.md) covers the update equations, configuration, bounds,
-checkpoints, when to use IDBD and its limitations.
+[`examples/latency.rs`](crates/idbd/examples/latency.rs) is a complete streaming application:
+input and target scaling, predicting before learning, skipping an invalid sample, and
+checkpointing the learner with its stream position. Run it with
+`cargo run -p idbd --example latency`. The [crate README](crates/idbd/README.md) covers the
+update equations, configuration, bounds, checkpoints, when to use IDBD and its limitations.
+
+## The demo
+
+<p align="center">
+  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's house learning live: amber rings around the sun, oven and front door sensors stay wide while the rings on the Wi-Fi, doorbell and water heater stay small, and a live chart shows the room's temperature change against IDBD's guess">
+</p>
+
+The story page explains IDBD with a thermostat house. Six sensors, three of which move the room
+temperature by amounts that keep switching. The page walks through one update in slow motion,
+plots a fixed learning speed that is late or nervous when the oven switches on, and ends with a
+game in which you set the trust in each sensor by hand and race IDBD and a tuned fixed-speed
+learner. Every learning value on the page comes from the crate. In a house where nothing
+switches, the tuned fixed speed wins, and the page says so.
+
+The Explorer runs IDBD, LMS and untuned Autostep side by side on Sutton's 20-input task, with
+replay, export and a guided single update.
+
+```sh
+just web-serve   # build, then serve the story at http://127.0.0.1:8173 and /explorer.html
+```
 
 ## Results
 
@@ -121,39 +171,24 @@ Each binary writes CSV, SVG and Markdown under `docs/results` (or `--out <dir>`)
 same build and platform reproduce the files byte for byte. [docs/reproduction.md](docs/reproduction.md)
 lists the generator, seeds, grids and sign-flip timing.
 
-## Story page
-
-`web/index.html` explains IDBD to people who have never trained a model. A thermostat house
-has six sensors, three of which move the room temperature by amounts that keep switching.
-The page explains the guess, check and correct loop in plain words, shows single IDBD updates
-in slow motion, and ends with a game in which the visitor sets trust sliders by hand and races
-IDBD and a tuned fixed-step learner, first in a still house and then in a switching one. Every
-learning value comes from the crate through WebAssembly, on the task measured in scenario E06.
-The house is drawn with three.js (0.170.0, pinned in `web/package.json`), and in 2D when WebGL
-is missing or the visitor prefers reduced motion. After `just web-serve` it is at
-http://127.0.0.1:8173 and the Explorer is at http://127.0.0.1:8173/explorer.html.
-
-## IDBD Explorer
-
-The demo walks through one IDBD update, then runs IDBD, LMS and untuned Autostep side by side on
-a shared stream, with Sutton's task as the default and clearly labeled extensions. Every learning value it shows
-comes from the Rust crate compiled to WebAssembly.
+## Building the demo
 
 ```sh
-just web-serve   # build, then serve the story at http://127.0.0.1:8173 and this demo at /explorer.html
 just web-setup   # once: install Playwright with Chromium, Firefox and WebKit
 just web-test    # rebuild, then run the Playwright tests in all three browsers
+just readme-assets   # re-render the README images from the demo
 ```
 
 The build needs the `wasm32-unknown-unknown` target, `wasm-bindgen-cli` 0.2.113 (the version
-pinned in `crates/idbd-wasm`) and Node.js. The app is static: after `just web-build`, any file
-server that sends `.wasm` as `application/wasm` can host `web/`.
+pinned in `crates/idbd-wasm`) and Node.js. The house is drawn with three.js 0.170.0, pinned in
+`web/package.json`, and in 2D when WebGL is missing or the visitor prefers reduced motion. The
+site is static: after `just web-build`, any file server that sends `.wasm` as
+`application/wasm` can host `web/`.
 
-The `Demo` workflow builds the site and deploys it to GitHub Pages. It copies only
-`index.html`, `explorer.html`, `styles.css`, `src/`, `story/`, three.js from `vendor/` and the two
-files the pages load from `pkg/`. It deploys on
-every push to `main` once the repository variable `DEPLOY_DEMO` is `true`, and on any manual run.
-GitHub Pages must be enabled with "GitHub Actions" as the source.
+The `Demo` workflow deploys to GitHub Pages. It copies only `index.html`, `explorer.html`,
+`styles.css`, `src/`, `story/`, three.js from `vendor/` and the two files the pages load from
+`pkg/`. It deploys on every push to `main` once the repository variable `DEPLOY_DEMO` is
+`true`, and on any manual run. GitHub Pages must be enabled with "GitHub Actions" as the source.
 
 ## Development
 
