@@ -40,14 +40,18 @@ jobs:
             --status completed --limit 20 --json conclusion \
             --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].conclusion')
           ci=$([ "$conclusion" = success ] && echo passing || echo failing)
-          # The lcov.info of the newest main run that uploaded one.
-          for id in $(gh run list --workflow ci.yml --branch main --event push \
-              --status completed --limit 30 --json databaseId --jq '.[].databaseId'); do
+          # The lcov.info of the newest main run that uploaded one, and the commit it
+          # measured: CRAP is scored against that commit, not the current checkout.
+          coverage_sha=""
+          while read -r id sha; do
             if gh run download "$id" -n lcov -D artifact; then
-              echo "Coverage from run $id"
+              echo "Coverage from run $id at $sha"
+              coverage_sha=$sha
               break
             fi
-          done
+          done < <(gh run list --workflow ci.yml --branch main --event push \
+            --status completed --limit 30 --json databaseId,headSha \
+            --jq '.[] | "\(.databaseId) \(.headSha)"')
           coverage=""
           if [ -f artifact/lcov.info ]; then
             # Line coverage of the published crate only, not the lab or the wasm adapter.
@@ -59,6 +63,7 @@ jobs:
           msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           echo "version=$version ci=$ci coverage=$coverage license=$license msrv=$msrv"
           {
+            echo "coverage_sha=$coverage_sha"
             echo "version=$version"
             echo "ci=$ci"
             echo "coverage=$coverage"
@@ -76,7 +81,14 @@ jobs:
           tool: cargo-crap@0.9.0
       - name: Score CRAP
         if: hashFiles('artifact/lcov.info') != ''
-        run: cargo crap -p idbd --lcov artifact/lcov.info --threshold 10 --format shields --output crap-badge.json
+        env:
+          COVERAGE_SHA: ${{ steps.values.outputs.coverage_sha }}
+        run: |
+          git fetch --depth 1 origin "$COVERAGE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/scored" FETCH_HEAD
+          cd "$RUNNER_TEMP/scored"
+          cargo crap -p idbd --lcov "$GITHUB_WORKSPACE/artifact/lcov.info" --threshold 10 \
+            --format shields --output "$GITHUB_WORKSPACE/crap-badge.json"
 
       - name: Render
         env:
