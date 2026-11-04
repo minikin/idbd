@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  # Automatic triggers are off until the project is ready. Runs start by hand only.
+  # pull_request:
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:

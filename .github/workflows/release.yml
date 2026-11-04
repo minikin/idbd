@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  # Automatic triggers are off until the project is ready. Runs start by hand only.
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
