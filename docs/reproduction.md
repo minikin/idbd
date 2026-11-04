@@ -2,7 +2,8 @@
 
 Every number under `docs/results/` and in `docs/benchmarks.md` was produced by a binary in
 `crates/idbd-lab`. Nothing in those files is typed in by hand. Each binary rewrites its whole
-output directory, so a rerun on the same build replaces the files with identical content.
+output directory. A rerun of the experiments on the same build replaces the files with
+identical content. The timings in `docs/benchmarks.md` change from run to run.
 
 ## Commands
 

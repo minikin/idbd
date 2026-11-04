@@ -33,7 +33,7 @@ LMS, fixed step size:
 | 0.07 | 5.633 | 0.0411 | 20 | 0 |
 | 0.08 | 9.818 | 0.1361 | 20 | 0 |
 | 0.09 | 129.693 | 29.817 | 20 | 0 |
-| 0.1 | 2.628e186 | inf | 20 | 0 |
+| 0.1 | 2.628e186 | 2.277e186 | 20 | 0 |
 
 IDBD, meta step size:
 
@@ -82,7 +82,7 @@ These numbers are not expected to match the paper's samples digit for digit, and
 
 5 of 440 runs stopped on a numerical failure. `raw.csv` records the sample index and the learner's message for each one, and `summary.csv` counts them per grid value. A grid value with any failure is not selectable as a best setting, because a mean over the surviving seeds would hide the risk.
 
-LMS at alpha 0.09 and LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 10 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Files
 

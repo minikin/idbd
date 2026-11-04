@@ -589,10 +589,7 @@ fn failure_section(lms: &[Point], idbd: &[Point]) -> String {
              the risk.\n\n"
         )
     };
-    let note = diverged_note(
-        axis_upper(lms, idbd),
-        &[("LMS", "alpha", lms), ("IDBD", "theta", idbd)],
-    );
+    let note = diverged_note(&[("LMS", "alpha", lms), ("IDBD", "theta", idbd)]);
     [counted, note].concat()
 }
 

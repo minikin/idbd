@@ -57,18 +57,23 @@ pub fn plus_minus(summary: Option<Summary>) -> String {
     }
 }
 
+/// Mean squared error above which a completed grid value is reported as divergence. The
+/// largest finite steady state in the recorded sweeps is below 1e3 (LMS at alpha 0.09 on
+/// Sutton's task, whose mean-square contraction factor `1 - 2 alpha + 22 alpha^2` is 0.998)
+/// and the diverged ones are above 1e160, so the bound is far from both.
+pub const DIVERGED_ABOVE: f64 = 1e10;
+
 /// Names the grid values whose runs completed while the error grew without bound, so a
 /// reader does not take a row like `1.328e177` for a measurement.
 ///
 /// Each group is a learner name, the name of its swept parameter and its points. A point
-/// has diverged when its standard error is not finite or its mean is above `threshold`.
-/// A value named by more than one group appears once. Returns an empty string when
-/// nothing diverged.
-pub fn diverged_note(threshold: f64, groups: &[(&str, &str, &[Point])]) -> String {
+/// has diverged when its mean is above [`DIVERGED_ABOVE`] or not finite. A value named
+/// by more than one group appears once. Returns an empty string when nothing diverged.
+pub fn diverged_note(groups: &[(&str, &str, &[Point])]) -> String {
     let mut named: Vec<String> = Vec::new();
     for (learner, parameter_name, points) in groups {
         for point in *points {
-            if !diverged(point, threshold) {
+            if !diverged(point) {
                 continue;
             }
             let name = format!("{learner} at {parameter_name} {}", parameter(point.value));
@@ -82,18 +87,17 @@ pub fn diverged_note(threshold: f64, groups: &[(&str, &str, &[Point])]) -> Strin
     }
     format!(
         "{} ran to the end of the stream without a non-finite value, so the runs are \
-         recorded as completed, but the error grew without bound: the mean is above \
-         {bound} or the standard error is not finite. Treat those rows as divergence, not \
-         as a measurement.\n\n",
+         recorded as completed, but the error grew without bound: the mean squared error \
+         is above {bound:e}. Treat those rows as divergence, not as a measurement.\n\n",
         named.join(" and "),
-        bound = parameter(threshold),
+        bound = DIVERGED_ABOVE,
     )
 }
 
-fn diverged(point: &Point, threshold: f64) -> bool {
+fn diverged(point: &Point) -> bool {
     point
         .summary()
-        .is_some_and(|s| !s.standard_error().is_finite() || s.mean() > threshold)
+        .is_some_and(|s| !s.mean().is_finite() || s.mean() > DIVERGED_ABOVE)
 }
 
 /// Formats a measured value with about four significant digits and at least three
@@ -198,25 +202,27 @@ mod tests {
     }
 
     #[test]
-    fn diverged_note_names_a_mean_above_the_bound_and_a_non_finite_spread() {
-        let above = point(0.09, &[100.0, 200.0]);
-        let unbounded = point(0.1, &[1e300, f64::MAX]);
-        let fine = point(0.03, &[3.4, 3.5]);
-        let points = vec![fine, above, unbounded];
-        let note = diverged_note(10.0, &[("LMS", "alpha", &points)]);
+    fn diverged_note_names_means_above_the_bound_and_keeps_a_large_steady_state() {
+        let large = point(0.09, &[44.0, 597.0]);
+        let above = point(0.1, &[1e160, 6e177]);
+        let infinite = point(0.2, &[1.0, f64::INFINITY]);
+        let points = vec![large, above, infinite];
+        let note = diverged_note(&[("LMS", "alpha", &points)]);
         assert!(
-            note.starts_with("LMS at alpha 0.09 and LMS at alpha 0.1 ran to the end"),
+            note.starts_with("LMS at alpha 0.1 and LMS at alpha 0.2 ran to the end"),
             "{note}"
         );
-        assert!(note.contains("the mean is above 10 or"), "{note}");
+        assert!(note.contains("is above 1e10."), "{note}");
     }
 
     #[test]
     fn diverged_note_is_empty_when_nothing_diverged_and_names_a_value_once() {
         let healthy = vec![point(0.03, &[3.4, 3.5])];
-        assert_eq!(diverged_note(10.0, &[("LMS", "alpha", &healthy)]), "");
-        let twice = vec![point(0.1, &[1e6, 2e6])];
-        let note = diverged_note(100.0, &[("LMS", "alpha", &twice), ("LMS", "alpha", &twice)]);
+        assert_eq!(diverged_note(&[("LMS", "alpha", &healthy)]), "");
+        let at_bound = vec![point(0.09, &[DIVERGED_ABOVE, DIVERGED_ABOVE])];
+        assert_eq!(diverged_note(&[("LMS", "alpha", &at_bound)]), "");
+        let twice = vec![point(0.1, &[1e16, 2e16])];
+        let note = diverged_note(&[("LMS", "alpha", &twice), ("LMS", "alpha", &twice)]);
         assert!(note.starts_with("LMS at alpha 0.1 ran to"), "{note}");
     }
 

@@ -49,7 +49,7 @@ LMS (alpha):
 | 0.05 | 3.673 | 0.04144 | 0 |
 | 0.06 | 4.280 | 0.04713 | 0 |
 | 0.08 | 9.785 | 0.1997 | 0 |
-| 0.1 | 1.328e177 | inf | 0 |
+| 0.1 | 1.328e177 | 1.326e177 | 0 |
 
 IDBD (theta):
 
@@ -83,7 +83,7 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
-LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Task `stationary`
 
@@ -105,7 +105,7 @@ LMS (alpha):
 | 0.05 | 1.504e-39 | 4.099e-40 | 0 |
 | 0.06 | 9.225e-40 | 2.617e-40 | 0 |
 | 0.08 | 1.603e-30 | 7.311e-32 | 0 |
-| 0.1 | 3.449e178 | inf | 0 |
+| 0.1 | 3.449e178 | 3.449e178 | 0 |
 
 IDBD (theta):
 
@@ -139,7 +139,7 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
-LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Task `drifting`
 
@@ -161,7 +161,7 @@ LMS (alpha):
 | 0.05 | 0.2162 | 0.004512 | 0 |
 | 0.06 | 0.2401 | 0.005494 | 0 |
 | 0.08 | 0.5118 | 0.01668 | 0 |
-| 0.1 | 5.324e179 | inf | 0 |
+| 0.1 | 5.324e179 | 5.324e179 | 0 |
 
 IDBD (theta):
 
@@ -195,7 +195,7 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
-LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Task `changing-relevance`
 
@@ -217,7 +217,7 @@ LMS (alpha):
 | 0.05 | 3.696 | 0.03529 | 0 |
 | 0.06 | 4.317 | 0.04856 | 0 |
 | 0.08 | 10.000 | 0.235 | 0 |
-| 0.1 | 1.328e177 | inf | 0 |
+| 0.1 | 1.328e177 | 1.326e177 | 0 |
 
 IDBD (theta):
 
@@ -251,13 +251,13 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
-LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## What these numbers do and do not say
 
 Each row measures one learner, tuned once on five streams, on ten other streams of the same task. The comparison is paired: for a given seed both learners consume the same inputs and targets in the same order.
 
-The measured interval starts after 20000 warm-up samples, so the initial transient is excluded on every task. A learner that recovers slowly from a change but ends in a good place is treated the same as one that never leaves it.
+The measured interval starts after 20000 warm-up samples, so the initial transient is excluded on every task. Every error after the warm-up counts, so a learner that recovers slowly from a change inside the measured interval pays for it.
 
 LMS is tuned to one step size for the whole stream. On a task whose difficulty changes within a run, that single value is a compromise, and the comparison measures that compromise rather than LMS in general. Giving LMS a schedule, or tuning it per interval, would be a different experiment.
 

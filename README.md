@@ -95,8 +95,9 @@ error:
 | LMS | alpha 0.03 | 3.402 +/- 0.017 | about 3.5 |
 | IDBD, initial alpha 0.05 | theta 0.015 | 1.525 +/- 0.007 | about 1.5 |
 
-At theta 0.02, 5 of 20 IDBD runs failed with a step-size overflow. LMS diverged at alpha 0.09
-and above. [Details and plot](docs/results/sutton1992-experiment1/README.md).
+At theta 0.02, 5 of 20 IDBD runs failed with a step-size overflow. LMS at alpha 0.09 reached an
+MSE of 129.7, off the plot, and diverged at alpha 0.1.
+[Details and plot](docs/results/sutton1992-experiment1/README.md).
 
 **Experiment 2 (Figures 4 and 5).** theta 0.001, 250,000 samples, 5 seeds. The relevant inputs'
 step sizes end at 0.129 on average (paper: 0.13 +/- 0.015). The irrelevant inputs end between
@@ -146,9 +147,9 @@ house. Its final step sizes were 0.0786 to 0.137 on the three sensors that matte
 0.012 on the other three. [Method and per-sensor step sizes](docs/results/house/README.md).
 
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
-about 5 ns per feature up to 10,000 features. One `exp` call per input accounts for an estimated
-85 to 97% of that, so SIMD has little to gain. An Autostep update costs 2.37 to 2.69 times an
-IDBD update. [Method and full table](docs/benchmarks.md).
+about 5 ns per feature up to 10,000 features. A standalone loop of one `exp` call per input takes
+85 to 97% as long as the update, a reference cost, not a measured split. An Autostep update costs
+2.37 to 2.69 times an IDBD update. [Method and full table](docs/benchmarks.md).
 
 ## Reproducing the results
 
@@ -162,7 +163,8 @@ cargo run --release -p idbd-lab --bin bench             # core timings
 ```
 
 Each binary writes CSV, SVG and Markdown under `docs/results` (or `--out <dir>`). Reruns on the
-same build and platform reproduce the files byte for byte. [docs/reproduction.md](docs/reproduction.md)
+same build and platform reproduce the files byte for byte, except the timings in
+`docs/benchmarks.md`. [docs/reproduction.md](docs/reproduction.md)
 lists the generator, seeds, grids and sign-flip timing.
 
 ## Building the demo

@@ -409,8 +409,8 @@ fn method_section() -> String {
         "## Method\n\n\
          Timing uses `std::time::Instant` and `std::hint::black_box`, with no benchmark \
          framework.\n\n\
-         {WARM_UP_PASSES} untimed passes over the first configuration run before any row is \
-         recorded, so the first rows are not measured while the CPU clock is still rising. One \
+         Before any row is recorded, the first configuration runs {WARM_UP_PASSES} untimed \
+         passes, so the first rows are not measured while the CPU clock is still rising. One \
          configuration is one input size, one learner and one operation. Both learners \
          start every input at the same step size, and Autostep uses its defaults (mu {mu}, \
          tau {tau}). The `exp only` row calls `f64::exp` once per input of each example \
@@ -481,9 +481,10 @@ fn exp_share_section(measurements: &[Measurement]) -> String {
         "## Where an update's time goes\n\n\
          Both learners call `exp` at most once per input on every update. The share below is \
          the `exp only` median divided by the median of the unbounded IDBD update at the same \
-         size. The timings overlap inside the CPU, so the share is an estimate, not an exact \
-         split. A high share leaves little room for rewriting the remaining arithmetic, for \
-         example with SIMD.\n\n\
+         size. The `exp only` loop calls `exp` on the feature values in a loop of its own, not \
+         on the betas inside an update, and the timings overlap inside the CPU, so the share is \
+         a reference cost, not a measured split. It does not bound what SIMD or other rewrites \
+         of the update could gain.\n\n\
          | features | exp only, ns/call | IDBD update, ns/call | exp share | Autostep update / IDBD update |\n\
          | --- | --- | --- | --- | --- |\n"
             .to_owned(),

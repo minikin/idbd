@@ -52,7 +52,7 @@ Mean MSE over the tuning seeds for each mu. The paper's claim is that one mu wor
 
 19 tuning runs failed, 19 of them at the step-size stage. That stage fails when a step size leaves the finite, strictly positive range. A large mu lets a step size shrink by up to exp(-mu) per update until it underflows to zero, and the crate reports that instead of continuing with a step size that could never grow again.
 
-LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Step sizes on Sutton's task
 

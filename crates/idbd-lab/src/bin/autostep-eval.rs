@@ -436,10 +436,6 @@ fn sensitivity_section(results: &[TaskResult]) -> String {
     parts.concat()
 }
 
-/// Largest mean squared error still treated as a measurement in the tuning sweeps. The
-/// worst tuned setting that still tracks the target stays an order of magnitude below it.
-const DIVERGED_ABOVE: f64 = 100.0;
-
 /// The divergence note for every tuning sweep behind this report, including the LMS and
 /// IDBD sweeps whose rows reach `raw.csv` and `summary.csv` rather than a table here.
 fn tuning_divergence(results: &[TaskResult]) -> String {
@@ -454,7 +450,7 @@ fn tuning_divergence(results: &[TaskResult]) -> String {
             )
         })
         .collect();
-    diverged_note(DIVERGED_ABOVE, &groups)
+    diverged_note(&groups)
 }
 
 /// The learner's name as the prose spells it.

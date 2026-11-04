@@ -335,10 +335,6 @@ fn task_section(result: &TaskResult) -> String {
     parts.concat()
 }
 
-/// Largest mean squared error still treated as a measurement in the tuning tables. The
-/// worst tuned setting that still tracks the target stays an order of magnitude below it.
-const DIVERGED_ABOVE: f64 = 100.0;
-
 /// The divergence note for one task's tuning tables.
 fn tuning_divergence(result: &TaskResult) -> String {
     let names: Vec<String> = result
@@ -352,7 +348,7 @@ fn tuning_divergence(result: &TaskResult) -> String {
         .zip(&names)
         .map(|((family, points), name)| (name.as_str(), family.parameter(), points.as_slice()))
         .collect();
-    diverged_note(DIVERGED_ABOVE, &groups)
+    diverged_note(&groups)
 }
 
 fn description(preset: Preset) -> String {
@@ -435,8 +431,8 @@ fn reading_section() -> String {
      task. The comparison is paired: for a given seed both learners consume the same inputs and \
      targets in the same order.\n\n\
      The measured interval starts after {WARMUP} warm-up samples, so the initial transient is \
-     excluded on every task. A learner that recovers slowly from a change but ends in a good \
-     place is treated the same as one that never leaves it.\n\n\
+     excluded on every task. Every error after the warm-up counts, so a learner that recovers \
+     slowly from a change inside the measured interval pays for it.\n\n\
      LMS is tuned to one step size for the whole stream. On a task whose difficulty changes \
      within a run, that single value is a compromise, and the comparison measures that \
      compromise rather than LMS in general. Giving LMS a schedule, or tuning it per interval, \
