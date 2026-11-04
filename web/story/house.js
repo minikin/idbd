@@ -115,7 +115,8 @@ export function createHouse2d(group, names) {
   }
   sizeChips();
   document.fonts?.ready.then(sizeChips);
-  window.matchMedia(PHONE).addEventListener("change", sizeChips);
+  // WebKit fires the change before it restyles, so measure on the next frame.
+  window.matchMedia(PHONE).addEventListener("change", () => requestAnimationFrame(sizeChips));
 
   return function update({ alphas }) {
     const opacity = ringOpacity(alphas);
