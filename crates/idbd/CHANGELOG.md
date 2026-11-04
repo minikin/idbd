@@ -14,14 +14,15 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 - `Config` and `Bounds`, validated at construction. `Bounds::sutton_safety()` provides the
   optional beta floor of -10 and per-step limit of 2.
 - Typed errors: `ConfigError`, `Error` with the failed `Stage` and coordinate, and `StateError`.
+  `ConfigError::TooManyFeatures` rejects a feature count whose vectors could not be allocated.
 - `autostep::Autostep`, the Autostep learner of Mahmood, Sutton, Degris and Pilarski (2012),
   with its own `Config`, `State`, `StateError` and `Update`, and the stages `Normalizer` and
   `EffectiveStepSize`.
 - `Clone::clone_from` on `Idbd` and `Autostep` reuses the destination's buffers, so a scratch
   copy can be refreshed every sample without allocating.
 - Optional `serde` feature: `Serialize` and `Deserialize` for `Config`, `Bounds`, `State` and
-  `Idbd`, and for the Autostep types. Deserialization validates configurations and learners
-  like their constructors.
+  `Idbd`, and for the Autostep types. Deserialization validates configurations, states and learners
+  like their constructors and `from_state`.
 
 ### Numerical and evaluation limitations
 
