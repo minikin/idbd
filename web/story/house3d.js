@@ -4,7 +4,7 @@
 // three relevant sensors' current state: sunbeam, oven heat and the front door.
 
 import * as THREE from "three";
-import { SENSOR_COLORS, SENSOR_POSITIONS, glowRadius, trust } from "./house.js";
+import { PERIODS, SENSOR_COLORS, SENSOR_POSITIONS, glowRadius, ringOpacity } from "./house.js";
 
 const COLORS = {
   floor: 0x121316,
@@ -29,9 +29,6 @@ const LABEL_OFFSETS = [
   [0, -32, 0.5],
   [6, 56, 0],
 ];
-
-/** Each sensor's own blink period in seconds, so they never pulse in step. */
-const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 2.6];
 
 /**
  * The 3D room is larger than the 8 x 6 floor of the shared sensor layout, so the devices
@@ -106,10 +103,15 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 /**
  * Mounts the scene in `container` with one HTML label per sensor. Throws if WebGL is
- * unavailable, so the caller can keep the 2D drawing.
+ * unavailable, so the caller can keep the 2D drawing. Calls `onLost` if the WebGL context
+ * is lost later, so the caller can switch to 2D then too.
  */
-export function mountHouse3d(container, names) {
+export function mountHouse3d(container, names, onLost) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.domElement.addEventListener("webglcontextlost", (event) => {
+    event.preventDefault();
+    onLost();
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.append(renderer.domElement);
 
@@ -224,7 +226,7 @@ export function mountHouse3d(container, names) {
     label.append(dot, names[i]);
     layer.append(label);
 
-    return { point, led, halo, ring, label, flash: 0, attention: 0.5, size: 1, phase: i * 1.3 };
+    return { point, led, halo, ring, label, flash: 0, attention: 0.7, size: 1, phase: i * 1.3 };
   });
 
   const state = { strong: [1, 1, 1], door: 0, sun: 1, oven: 1 };
@@ -269,18 +271,30 @@ export function mountHouse3d(container, names) {
   resizer.observe(container);
   resize();
 
+  // Frames are scheduled only while the house is on screen and the tab is shown.
   let visible = true;
-  const watcher = new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
-  });
-  watcher.observe(container);
-
-  const screen = new THREE.Vector3();
   let frame = null;
   let last = performance.now();
+  function schedule() {
+    const wanted = visible && !document.hidden;
+    if (wanted && frame === null) {
+      last = performance.now();
+      frame = requestAnimationFrame(draw);
+    } else if (!wanted && frame !== null) {
+      cancelAnimationFrame(frame);
+      frame = null;
+    }
+  }
+  const watcher = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    schedule();
+  });
+  watcher.observe(container);
+  document.addEventListener("visibilitychange", schedule);
+
+  const screen = new THREE.Vector3();
   function draw(now) {
     frame = requestAnimationFrame(draw);
-    if (!visible || document.hidden) return;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     const t = now / 1000;
@@ -317,7 +331,7 @@ export function mountHouse3d(container, names) {
       const haloSize = 0.5 + 0.5 * light;
       sensor.halo.scale.set(haloSize, haloSize, 1);
       sensor.led.scale.setScalar(0.8 + 0.5 * light);
-      sensor.ring.material.opacity = lerp(sensor.ring.material.opacity, 0.15 + 0.75 * sensor.attention, ease);
+      sensor.ring.material.opacity = lerp(sensor.ring.material.opacity, sensor.attention, ease);
       const ringSize = lerp(sensor.ring.scale.x, sensor.size, ease);
       sensor.ring.scale.set(ringSize, ringSize, 1);
 
@@ -346,23 +360,26 @@ export function mountHouse3d(container, names) {
     placed.length = 0;
     renderer.render(scene, camera);
   }
-  frame = requestAnimationFrame(draw);
+  schedule();
 
   return {
     /** Takes IDBD's step sizes, the latest readings and which relevant sensors are strong. */
     update({ alphas, features, strong }) {
-      const t = trust(alphas);
+      const opacity = ringOpacity(alphas);
       sensors.forEach((sensor, i) => {
-        sensor.attention = t[i];
+        sensor.attention = opacity[i];
         sensor.size = (glowRadius(alphas[i]) / 37) * 1.6;
         sensor.flash = Math.min(1, Math.abs(features[i]) / 2.5);
       });
       state.strong = strong.map(Number);
     },
     dispose() {
-      cancelAnimationFrame(frame);
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
+      visible = false;
       resizer.disconnect();
       watcher.disconnect();
+      document.removeEventListener("visibilitychange", schedule);
       renderer.dispose();
       renderer.domElement.remove();
       layer.remove();
