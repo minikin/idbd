@@ -28,6 +28,15 @@ const EXPLORER_SAMPLES = 20000;
 const LOOP_FRAMES = 96;
 const LOOP_FRAME_MS = 75;
 
+const TRANSPARENT_PAGE = `
+  html, body, main, .hero, .hero-visual { background: transparent !important; }
+  body::before, body::after, main::before, main::after { display: none !important; }`;
+// The loop shows the house and the live chart only.
+const LOOP_ONLY = `
+  .hero-cards .legend, #hero-pause, .house-key { display: none !important; }
+  .hero-cards .live { flex: 1 1 100%; }
+  main::before, main::after { display: none !important; }`;
+
 const work = mkdtempSync(join(tmpdir(), "idbd-hero-"));
 const server = spawn(process.execPath, [join(root, "web/serve.mjs"), String(PORT)], { stdio: "ignore" });
 
@@ -53,10 +62,11 @@ async function captureStill(browser) {
   await page.goto(`${BASE}/`);
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 30000 });
   await page.click("#hero-pause");
-  // The page's background glow would show as a lighter box behind the house.
-  await page.addStyleTag({ content: "body::before { display: none !important; }" });
+  // A transparent capture, so the composite's own card colour shows around the house
+  // instead of a box of the page's background and glow.
+  await page.addStyleTag({ content: TRANSPARENT_PAGE });
   await page.waitForTimeout(800);
-  const house = await page.locator("#house").screenshot();
+  const house = await page.locator("#house").screenshot({ omitBackground: true });
   const speeds = await page.locator(".two-up").screenshot();
 
   await page.goto(`${BASE}/explorer.html`);
@@ -128,6 +138,7 @@ async function renderLoop(browser) {
   await page.goto(`${BASE}/`);
   await page.clock.runFor(2000);
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 30000 });
+  await page.addStyleTag({ content: LOOP_ONLY });
   // Let the 3D rings settle onto the learned speeds before the first frame.
   await page.clock.runFor(3000);
   const frames = [];
