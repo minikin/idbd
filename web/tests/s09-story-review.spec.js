@@ -133,8 +133,9 @@ test("S09 on a phone the 2D house names its sensors and the lanes footer fits", 
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.locator("#house-key")).toBeHidden();
-  const widths = await page.$$eval(".house-2d .label-chip", (chips) => chips.map((c) => Number(c.getAttribute("width"))));
-  for (const width of widths) expect(width).toBeGreaterThan(40);
+  await expect
+    .poll(() => page.$$eval(".house-2d .label-chip", (chips) => Math.min(...chips.map((c) => Number(c.getAttribute("width"))))))
+    .toBeGreaterThan(40);
 });
 
 test("S09 the sensor grid and lanes carry their values as text", async ({ page }) => {
