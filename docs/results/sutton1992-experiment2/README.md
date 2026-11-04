@@ -29,7 +29,8 @@ Final step sizes after 250000 samples:
 
 Sutton reports that after 250,000 samples the fifteen irrelevant step sizes were all below 0.007 and the five relevant ones were 0.13 +/- 0.015.
 
-- Measured relevant step size, averaged within a run and then across the 5 seeds: 0.1291 +/- 0.001062. That is inside the reported interval.
+- Measured relevant step size, averaged within a run and then across the 5 seeds: 0.1291 +/- 0.001062.
+- Taken one input at a time, all 25 relevant step sizes are inside the reported interval (0.1195 to 0.1406).
 - Largest irrelevant step size seen in any seed: 0.007828. That is above the reported bound.
 
 The shaded band in the plot marks the reported interval and the dashed lines mark the two reported values. The same protocol differences as Experiment 1 apply: the paper leaves its generator, seed and initial signs unstated, and it reports one run where this records 5.
@@ -49,6 +50,7 @@ Final step sizes after 250000 samples:
 | 3 | 0.1292 +/- 0.005779 | 0.1149 to 0.1418 | 0.001071 +/- 1.499e-5 | 0.001181 | none |
 | 4 | 0.1135 +/- 0.005935 | 0.09888 to 0.1335 | 0.001048 +/- 1.323e-5 | 0.001131 | none |
 | 5 | 0.107 +/- 0.0158 | 0.07151 to 0.1484 | 0.001069 +/- 1.311e-5 | 0.001161 | none |
+
 ## Figure 5 comparison: a fixed step size on the relevant inputs
 
 ![Fixed step size against error](figure5.svg)

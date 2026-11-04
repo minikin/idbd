@@ -7,6 +7,10 @@ use arbitrary::Arbitrary;
 use idbd::{Bounds, Config, Idbd};
 use libfuzzer_sys::fuzz_target;
 
+#[path = "../common/bits.rs"]
+#[allow(dead_code, reason = "each target uses one learner's helper")]
+mod bits;
+
 #[derive(Debug, Arbitrary)]
 struct Input {
     initial_step_size: f64,
@@ -61,11 +65,11 @@ fuzz_target!(|input: Input| {
                 let state = learner.snapshot();
                 let restored = Idbd::from_state(state.clone())
                     .expect("an accepted update leaves a valid state");
-                assert_eq!(restored.snapshot(), state);
+                assert_eq!(bits::idbd(&restored.snapshot()), bits::idbd(&state));
             }
             Err(_) => assert_eq!(
-                learner.snapshot(),
-                before,
+                bits::idbd(&learner.snapshot()),
+                bits::idbd(&before),
                 "a rejected update changes nothing"
             ),
         }

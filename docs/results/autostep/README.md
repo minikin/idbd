@@ -48,9 +48,11 @@ Mean MSE over the tuning seeds for each mu. The paper's claim is that one mu wor
 | 0.03 | 2.136 +/- 0.05918 | 2.924e-31 +/- 5.627e-32 | 0.1431 +/- 0.005508 | 3.430 +/- 0.04035 |
 | 0.1 | 2.037 +/- 0.03535 | 1.102e-32 +/- 1.099e-32 | 0.1272 +/- 0.006183 | 4.068 +/- 0.04126 |
 | 0.3 | 2.066 +/- 0.02689 | 7.445e-6 +/- 7.445e-6 | 0.1288 +/- 0.006908 | 4.114 +/- 0.03048 |
-| 1 | no completed run, 5 failed | no completed run, 5 failed | 8.598 +/- 0.000, 4 failed | no completed run, 5 failed |
+| 1 | no completed run, 5 failed | no completed run, 5 failed | 8.598 (1 seed, no spread), 4 failed | no completed run, 5 failed |
 
 19 tuning runs failed, 19 of them at the step-size stage. That stage fails when a step size leaves the finite, strictly positive range. A large mu lets a step size shrink by up to exp(-mu) per update until it underflows to zero, and the crate reports that instead of continuing with a step size that could never grow again.
+
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean squared error is above 1e10. Treat those rows as divergence, not as a measurement.
 
 ## Step sizes on Sutton's task
 

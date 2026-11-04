@@ -17,7 +17,7 @@
 #   and zero initial weights and traces.
 #   "Unchanged state" means bitwise-identical committed config, weights, betas,
 #   and traces. Internal scratch memory is excluded.
-#   Equation comparisons use abs(a-b) <= 1e-12 + 1e-10 * max(abs(a), abs(b)).
+#   Equation comparisons use abs(a-b) <= 1e-15 + 1e-13 * max(abs(a), abs(b)).
 #   Snapshot copy and identical same-build replay use bitwise comparisons.
 #   Native/WASM fixtures use numerical tolerance; cross-platform bitwise
 #   agreement and arbitrary-stream stability are not promised.
@@ -316,7 +316,7 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And both learners give the same reports for the same remaining examples
       When the serialized form has an invalid configuration, invalid bounds, an unknown field or a state that from_state rejects
       Then deserializing a learner returns the matching error
-      And deserializing only a State accepts it unvalidated
+      And deserializing only a State returns the same error
 
   @autostep
   Rule: Autostep follows Table 1 of Mahmood, Sutton, Degris and Pilarski (2012)

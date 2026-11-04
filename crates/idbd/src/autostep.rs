@@ -4,8 +4,11 @@
 //! changes. Each step-size update `delta * x_i * h_i` is divided by `v_i`, a running
 //! maximum of its absolute value, so the meta step size `mu` has no units and one
 //! value (about `0.01`) works across problems. Then, if the effective step size
-//! `sum(alpha_i * x_i^2)` exceeds one, every step size is divided by it, so an update
-//! never overshoots the target of the current example.
+//! `sum(alpha_i * x_i^2)` exceeds one, every step size is divided by it, so in exact
+//! arithmetic an update never overshoots the target of the current example. In floating
+//! point the guarantee holds up to rounding: when the weights are large and cancel in the
+//! prediction, rounding in `w_i + alpha_i delta x_i` can move the new prediction past the
+//! target.
 //!
 //! [`Autostep`] implements Table 1 of the paper exactly, with the same validation,
 //! atomic updates and allocation-free learning path as [`crate::Idbd`]. For each example
@@ -55,7 +58,7 @@ use std::error;
 use std::fmt;
 use std::mem;
 
-use crate::config::is_valid_step_size;
+use crate::config::{check_num_features, is_valid_step_size};
 use crate::learner::{check_features, dot};
 use crate::{ConfigError, Error, Stage};
 
@@ -92,7 +95,8 @@ impl Config {
     /// Creates a configuration with the paper's default meta step size and time scale.
     ///
     /// The paper reports that performance is nearly insensitive to the initial step
-    /// size, and suggests `0.1` divided by the expected norm of the input vectors.
+    /// size. This repository's runs start at `0.1 / n` for `n` inputs; see
+    /// `docs/results/autostep/README.md`.
     ///
     /// # Errors
     ///
@@ -250,11 +254,11 @@ impl Autostep {
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError::ZeroFeatures`] if `num_features` is zero.
+    /// Returns [`ConfigError::ZeroFeatures`] if `num_features` is zero and
+    /// [`ConfigError::TooManyFeatures`] if one of its vectors could not be allocated at
+    /// any size. An allocation that fails for lack of memory aborts, as for any `Vec`.
     pub fn new(num_features: usize, config: Config) -> Result<Self, ConfigError> {
-        if num_features == 0 {
-            return Err(ConfigError::ZeroFeatures);
-        }
+        check_num_features(num_features)?;
         Ok(Self {
             committed: Vectors::new(num_features, config.initial_step_size()),
             candidate: Vectors::new(num_features, 0.0),
@@ -292,14 +296,15 @@ impl Autostep {
     }
 
     /// Returns a copy of the complete learning state. This allocates four vectors.
+    #[must_use]
     pub fn snapshot(&self) -> State {
-        State::new(
-            self.config,
-            self.committed.weights.clone(),
-            self.committed.step_sizes.clone(),
-            self.committed.traces.clone(),
-            self.committed.normalizers.clone(),
-        )
+        State {
+            config: self.config,
+            weights: self.committed.weights.clone(),
+            step_sizes: self.committed.step_sizes.clone(),
+            traces: self.committed.traces.clone(),
+            normalizers: self.committed.normalizers.clone(),
+        }
     }
 
     /// Returns the prediction `w · x` for `features` without learning.
@@ -329,8 +334,11 @@ impl Autostep {
     ///    [`Stage::StepSize`].
     /// 4. [`Stage::EffectiveStepSize`] if `sum(alpha_i * x_i^2)` is not finite.
     /// 5. For the lowest failing coordinate, the first failing stage among
-    ///    [`Stage::StepSize`] (after the overshoot guard), [`Stage::Weight`] and
-    ///    [`Stage::Trace`].
+    ///    [`Stage::StepSize`] (after the overshoot guard) and [`Stage::Weight`].
+    ///
+    /// The new trace is checked as well, but no input is known to reach that check: the
+    /// guard bounds `alpha_i x_i^2` by one, and a finite meta step `delta x_i h_i` keeps
+    /// `h_i` and the weight step from both nearing `f64::MAX`.
     ///
     /// Products are evaluated left to right as written in the equations.
     pub fn update(&mut self, features: &[f64], target: f64) -> Result<Update, Error> {
@@ -384,6 +392,11 @@ impl Autostep {
     }
 
     /// Returns the step sizes, `alpha_i`.
+    ///
+    /// Autostep stores `alpha_i` directly, so this lends the slice.
+    /// [`Idbd::step_sizes`](crate::Idbd::step_sizes) returns an iterator instead, because
+    /// IDBD stores `beta_i = ln(alpha_i)` and computes each step size on demand.
+    #[must_use]
     pub fn step_sizes(&self) -> &[f64] {
         &self.committed.step_sizes
     }
@@ -422,6 +435,8 @@ fn adapt_step_sizes(
             if !g.is_finite() {
                 return Err(Error::numerical(Stage::MetaStep, i));
             }
+            // When `alpha x^2` overflows, the decayed term is -inf (or NaN if `|g| == v`)
+            // and `max` returns `|g|`, the exact value. An overflow upward still fails below.
             let v = g.abs().max(v + rate * alpha * x * x * (g.abs() - v));
             if !v.is_finite() {
                 return Err(Error::numerical(Stage::Normalizer, i));
@@ -477,6 +492,8 @@ fn learn(
         if !weight.is_finite() {
             return Err(Error::numerical(Stage::Weight, i));
         }
+        // Table 1 has no positive part here: the guard makes `alpha x^2 <= 1`. Rounding can
+        // still leave the factor near -2e-16, which is the paper's arithmetic, not a bug.
         let trace = trace * (1.0 - alpha * x * x) + step;
         if !trace.is_finite() {
             return Err(Error::numerical(Stage::Trace, i));
@@ -511,6 +528,7 @@ impl TryFrom<State> for Autostep {
 ///
 /// [`Autostep::snapshot`] produces one and [`Autostep::from_state`] validates and
 /// restores it. All four vectors are needed to continue the same learning process.
+/// Build one by hand with [`State::new`] and its `with_` methods.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct State {
@@ -527,26 +545,63 @@ pub struct State {
 }
 
 impl State {
-    /// Assembles a state from its parts without validating them.
+    /// Starts a state with these weights and every other value as a fresh learner has
+    /// it: each step size at the configuration's initial step size, and each trace and
+    /// normalizer at zero.
     ///
-    /// [`Autostep::from_state`] validates the state when it restores a learner.
-    pub fn new(
-        config: Config,
-        weights: Vec<f64>,
-        step_sizes: Vec<f64>,
-        traces: Vec<f64>,
-        normalizers: Vec<f64>,
-    ) -> Self {
+    /// Replace the other vectors with [`State::with_step_sizes`], [`State::with_traces`]
+    /// and [`State::with_normalizers`], so every vector is named where it is set.
+    /// Nothing is validated here. [`Autostep::from_state`] validates the state when it
+    /// restores a learner.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use idbd::autostep::{Autostep, Config, State};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let state = State::new(Config::new(0.05)?, vec![1.0, 2.0])
+    ///     .with_step_sizes(vec![0.1, 0.2])
+    ///     .with_normalizers(vec![0.5, 0.5]);
+    /// let learner = Autostep::from_state(state)?;
+    /// assert_eq!(learner.step_sizes(), &[0.1, 0.2]);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn new(config: Config, weights: Vec<f64>) -> Self {
+        let features = weights.len();
         Self {
             config,
             weights,
-            step_sizes,
-            traces,
-            normalizers,
+            step_sizes: vec![config.initial_step_size(); features],
+            traces: vec![0.0; features],
+            normalizers: vec![0.0; features],
         }
     }
 
-    fn validate(&self) -> Result<(), StateError> {
+    /// Replaces the step sizes `alpha_i`, one per feature.
+    #[must_use]
+    pub fn with_step_sizes(self, step_sizes: Vec<f64>) -> Self {
+        Self { step_sizes, ..self }
+    }
+
+    /// Replaces the traces `h_i`, one per feature.
+    #[must_use]
+    pub fn with_traces(self, traces: Vec<f64>) -> Self {
+        Self { traces, ..self }
+    }
+
+    /// Replaces the normalizers `v_i`, one per feature.
+    #[must_use]
+    pub fn with_normalizers(self, normalizers: Vec<f64>) -> Self {
+        Self {
+            normalizers,
+            ..self
+        }
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), StateError> {
         let lengths = [
             self.weights.len(),
             self.step_sizes.len(),

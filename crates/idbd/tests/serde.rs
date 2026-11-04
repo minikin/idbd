@@ -52,11 +52,13 @@ fn c25_a_learner_and_its_snapshot_serialize_the_same_way() {
     let from_learner = serde_json::to_value(&learner).expect("serializes");
     let from_state = serde_json::to_value(learner.snapshot()).expect("serializes");
     assert_eq!(from_learner, from_state);
-    let keys: Vec<&String> = from_learner
+    // Sorted, so the check does not depend on serde_json's map ordering features.
+    let mut keys: Vec<&String> = from_learner
         .as_object()
         .expect("an object")
         .keys()
         .collect();
+    keys.sort();
     assert_eq!(keys, ["betas", "config", "traces", "weights"]);
 }
 
@@ -130,19 +132,34 @@ fn c25_unknown_fields_are_rejected() {
 }
 
 #[test]
-fn c25_an_invalid_checkpoint_deserializes_as_state_but_not_as_a_learner() {
+fn c25_an_invalid_checkpoint_deserializes_neither_as_state_nor_as_a_learner() {
     let mut state = trained().snapshot();
     state.betas[1] = -20.0;
     let json = serde_json::to_string(&state).expect("serializes");
 
-    let parsed: State = serde_json::from_str(&json).expect("State is not validated");
-    assert_eq!(parsed, state);
-
     let expected = Idbd::from_state(state).expect_err("beta below the floor");
-    let message = serde_json::from_str::<Idbd>(&json)
-        .expect_err("Idbd is validated")
+    for message in [
+        serde_json::from_str::<State>(&json)
+            .expect_err("State is validated")
+            .to_string(),
+        serde_json::from_str::<Idbd>(&json)
+            .expect_err("Idbd is validated")
+            .to_string(),
+    ] {
+        assert!(message.starts_with(&expected.to_string()), "{message}");
+    }
+
+    let short = serde_json::json!({
+        "config": serde_json::to_value(trained().config()).expect("serializes"),
+        "weights": [0.0], "betas": [], "traces": [0.0],
+    });
+    let message = serde_json::from_value::<State>(short)
+        .expect_err("lengths differ")
         .to_string();
-    assert!(message.starts_with(&expected.to_string()), "{message}");
+    assert!(
+        message.starts_with("state vectors differ in length"),
+        "{message}"
+    );
 }
 
 #[test]
@@ -194,13 +211,17 @@ fn c25_autostep_round_trips_bit_for_bit_and_rejects_invalid_input() {
     let mut state = original.snapshot();
     state.normalizers[0] = -1.0;
     let invalid = serde_json::to_string(&state).expect("serializes");
-    let parsed: autostep::State = serde_json::from_str(&invalid).expect("State is not validated");
-    assert_eq!(parsed, state);
     let expected = Autostep::from_state(state).expect_err("negative normalizer");
-    let message = serde_json::from_str::<Autostep>(&invalid)
-        .expect_err("Autostep is validated")
-        .to_string();
-    assert!(message.starts_with(&expected.to_string()), "{message}");
+    for message in [
+        serde_json::from_str::<autostep::State>(&invalid)
+            .expect_err("State is validated")
+            .to_string(),
+        serde_json::from_str::<Autostep>(&invalid)
+            .expect_err("Autostep is validated")
+            .to_string(),
+    ] {
+        assert!(message.starts_with(&expected.to_string()), "{message}");
+    }
 
     for (json, expected) in [
         (

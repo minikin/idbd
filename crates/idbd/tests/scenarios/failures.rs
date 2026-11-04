@@ -161,3 +161,14 @@ fn failed_update_then_success_matches_a_learner_that_never_failed() {
     assert_eq!(a, b);
     assert_same_state(&failed.snapshot(), &clean.snapshot());
 }
+
+#[test]
+fn c20_an_overflowing_decay_product_clamps_to_its_exact_value() {
+    // alpha * x * x = 1e400 overflows, and [1 - 1e400]^+ is exactly 0.
+    let mut learner = Idbd::new(1, config(1.0, 0.0)).expect("valid");
+    learner
+        .update(&[1e200], 1.0)
+        .expect("the exact update is finite");
+    assert_eq!(learner.weights(), &[1e200]);
+    assert_eq!(learner.traces(), &[1e200]);
+}

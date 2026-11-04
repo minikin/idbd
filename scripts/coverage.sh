@@ -25,6 +25,6 @@ crap=(cargo crap -p idbd -p idbd-lab --lcov lcov.info --allow 'crates/idbd-lab/s
 if [[ "${1:-}" == "--baseline" ]]; then
   "${crap[@]}" --format json --sort file --output quality/crap-baseline.json
 else
-  "${crap[@]}" --threshold 30 --fail-above
+  "${crap[@]}" --threshold 10 --fail-above
   "${crap[@]}" --baseline quality/crap-baseline.json --fail-regression
 fi

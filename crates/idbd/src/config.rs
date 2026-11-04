@@ -42,6 +42,7 @@ const SAFETY_MAX_BETA_INCREMENT: f64 = 2.0;
 
 impl Bounds {
     /// Returns bounds that leave the IDBD equations unchanged.
+    #[must_use]
     pub const fn none() -> Self {
         Self {
             min_beta: None,
@@ -54,6 +55,7 @@ impl Bounds {
     /// increment limit of 2 and no ceiling.
     ///
     /// Disable these bounds to reproduce the paper's experiments.
+    #[must_use]
     pub const fn sutton_safety() -> Self {
         Self {
             min_beta: Some(SAFETY_MIN_BETA),
@@ -313,6 +315,12 @@ impl fmt::Display for BoundKind {
 pub enum ConfigError {
     /// The learner needs at least one feature.
     ZeroFeatures,
+    /// One vector of this many `f64` values would exceed `isize::MAX` bytes, the most a
+    /// `Vec` can hold.
+    TooManyFeatures {
+        /// The rejected feature count.
+        num_features: usize,
+    },
     /// The initial step size is not finite and strictly positive, or its logarithm
     /// does not map back to a positive finite step size.
     InvalidInitialStepSize {
@@ -355,6 +363,9 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ZeroFeatures => f.write_str("a learner needs at least one feature"),
+            Self::TooManyFeatures { num_features } => {
+                write!(f, "{num_features} features do not fit in one vector")
+            }
             Self::InvalidInitialStepSize { value } => write!(
                 f,
                 "initial step size {value} is not a finite, strictly positive, representable value"
@@ -379,9 +390,35 @@ impl fmt::Display for ConfigError {
 
 impl error::Error for ConfigError {}
 
+/// Checks a learner's feature count before any vector is allocated, so construction
+/// returns an error where `vec!` would panic with "capacity overflow".
+pub(crate) fn check_num_features(num_features: usize) -> Result<(), ConfigError> {
+    let max = isize::MAX.unsigned_abs() / size_of::<f64>();
+    if num_features == 0 {
+        Err(ConfigError::ZeroFeatures)
+    } else if num_features > max {
+        Err(ConfigError::TooManyFeatures { num_features })
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_largest_representable_feature_count_passes_the_check() {
+        // Only the check: allocating this many features would exhaust memory.
+        let max = isize::MAX.unsigned_abs() / size_of::<f64>();
+        assert_eq!(check_num_features(max), Ok(()));
+        assert_eq!(
+            check_num_features(max + 1),
+            Err(ConfigError::TooManyFeatures {
+                num_features: max + 1
+            })
+        );
+    }
 
     #[test]
     #[expect(clippy::float_cmp, reason = "clipping must produce exact values")]

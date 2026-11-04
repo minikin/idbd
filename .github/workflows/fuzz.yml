@@ -1,13 +1,14 @@
 name: Fuzz
 
 on:
-  pull_request:
-    paths:
-      - "crates/idbd/src/**"
-      - "fuzz/**"
-      - ".github/workflows/fuzz.yml"
-  schedule:
-    - cron: "17 3 * * 0"
+  # Automatic triggers are off until the project is ready. Runs start by hand only.
+  # pull_request:
+  #   paths:
+  #     - "crates/idbd/src/**"
+  #     - "fuzz/**"
+  #     - ".github/workflows/fuzz.yml"
+  # schedule:
+  #   - cron: "17 3 * * 0"
   workflow_dispatch:
 
 permissions:

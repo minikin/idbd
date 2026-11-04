@@ -6,13 +6,13 @@
 use std::process::ExitCode;
 
 use idbd::Bounds;
-use idbd_lab::cli::{Invocation, arguments, parse};
+use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::evaluation::{
     EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
     WARMUP, tune_and_evaluate,
 };
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
+use idbd_lab::report::{diverged_note, magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, RELEVANCE_SHIFT_PERIOD, SIGN_FLIP_PERIOD};
@@ -57,12 +57,8 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let options = match parse(arguments(), DEFAULT_OUT)? {
-        Invocation::Help => {
-            println!("evaluate [--out <dir>]\n\ndefault --out {DEFAULT_OUT}");
-            return Ok(());
-        }
-        Invocation::Run(options) => options,
+    let Some(options) = options_or_help("evaluate", arguments(), DEFAULT_OUT)? else {
+        return Ok(());
     };
 
     eprintln!("{}", provenance());
@@ -72,9 +68,14 @@ fn run() -> Result<(), String> {
     }
 
     let out = options.out();
-    write(out, "raw.csv", &raw_csv(&results))?;
-    write(out, "summary.csv", &summary_csv(&results))?;
-    write(out, "README.md", &readme(&results))?;
+    write_all(
+        out,
+        &[
+            ("raw.csv", raw_csv(&results)),
+            ("summary.csv", summary_csv(&results)),
+            ("README.md", readme(&results)),
+        ],
+    )?;
     Ok(())
 }
 
@@ -330,7 +331,24 @@ fn task_section(result: &TaskResult) -> String {
     parts.push(format!(
         "\nFailed evaluation runs: LMS {lms_failures}, IDBD {idbd_failures}.\n\n"
     ));
+    parts.push(tuning_divergence(result));
     parts.concat()
+}
+
+/// The divergence note for one task's tuning tables.
+fn tuning_divergence(result: &TaskResult) -> String {
+    let names: Vec<String> = result
+        .tuning
+        .iter()
+        .map(|(family, _)| family.learner_id().to_uppercase())
+        .collect();
+    let groups: Vec<(&str, &str, &[Point])> = result
+        .tuning
+        .iter()
+        .zip(&names)
+        .map(|((family, points), name)| (name.as_str(), family.parameter(), points.as_slice()))
+        .collect();
+    diverged_note(&groups)
 }
 
 fn description(preset: Preset) -> String {
@@ -407,20 +425,21 @@ fn tuning_table(parameter_name: &str, points: &[Point]) -> String {
 }
 
 fn reading_section() -> String {
-    "## What these numbers do and do not say\n\n\
+    format!(
+        "## What these numbers do and do not say\n\n\
      Each row measures one learner, tuned once on five streams, on ten other streams of the same \
      task. The comparison is paired: for a given seed both learners consume the same inputs and \
      targets in the same order.\n\n\
-     The measured interval starts after 20000 warm-up samples, so the initial transient is \
-     excluded on every task. A learner that recovers slowly from a change but ends in a good \
-     place is treated the same as one that never leaves it.\n\n\
+     The measured interval starts after {WARMUP} warm-up samples, so the initial transient is \
+     excluded on every task. Every error after the warm-up counts, so a learner that recovers \
+     slowly from a change inside the measured interval pays for it.\n\n\
      LMS is tuned to one step size for the whole stream. On a task whose difficulty changes \
      within a run, that single value is a compromise, and the comparison measures that \
      compromise rather than LMS in general. Giving LMS a schedule, or tuning it per interval, \
      would be a different experiment.\n\n\
      `raw.csv` holds every run, including the failures. `summary.csv` holds the per-grid-value \
      aggregates for both phases.\n"
-        .to_owned()
+    )
 }
 
 /// Largest mean squared error still treated as a real measurement. Below it both

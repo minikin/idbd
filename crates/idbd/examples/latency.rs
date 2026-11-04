@@ -124,7 +124,9 @@ impl Service {
 }
 
 /// A complete checkpoint: the learner state and the stream position. Restoring only the
-/// weights would reset the adapted step sizes and traces.
+/// weights would reset the adapted step sizes and traces. This learner has no `Bounds`,
+/// so the file omits them. A bounded learner must save them too, or `load` restores it
+/// unbounded.
 fn save(learner: &Idbd, service: &Service) -> Result<String, std::fmt::Error> {
     let state = learner.snapshot();
     let mut text = String::new();
@@ -182,7 +184,11 @@ fn load(text: &str) -> Result<(Idbd, Service), Box<dyn Error>> {
         sample: stream.get(1).ok_or("missing sample")?.parse()?,
     };
     // from_state validates every value, so a corrupted file is rejected here.
-    let learner = Idbd::from_state(State::new(config, weights, betas, traces))?;
+    let learner = Idbd::from_state(
+        State::new(config, weights)
+            .with_betas(betas)
+            .with_traces(traces),
+    )?;
     Ok((learner, service))
 }
 

@@ -12,7 +12,7 @@ use std::time::Instant;
 use idbd::autostep::{self, Autostep};
 use idbd::{Bounds, Config, Idbd};
 use idbd_lab::cli::{Invocation, arguments, parse};
-use idbd_lab::report::{provenance, write};
+use idbd_lab::report::{parameter, provenance, write};
 use idbd_lab::rng::Rng;
 use idbd_lab::stats::{median, percentile};
 
@@ -150,7 +150,8 @@ impl Fixture {
     /// the learner is stable with the same step size throughout.
     fn new(features: usize, count: usize) -> Self {
         let mut rng = Rng::new(FIXTURE_SEED);
-        let scale = 1.0 / f64::from(u32::try_from(features).unwrap_or(u32::MAX)).sqrt();
+        let scale =
+            1.0 / f64::from(u32::try_from(features).expect("a feature count fits u32")).sqrt();
         let mut inputs = Vec::with_capacity(count);
         let mut targets = Vec::with_capacity(count);
         for _ in 0..count {
@@ -312,7 +313,8 @@ fn time(
         }
         let elapsed = started.elapsed().as_secs_f64() * 1e9;
         if round >= WARMUP_BATCHES {
-            nanos.push(elapsed / f64::from(u32::try_from(batch).unwrap_or(u32::MAX)));
+            let calls = f64::from(u32::try_from(batch).expect("a batch size fits u32"));
+            nanos.push(elapsed / calls);
         }
     }
     nanos.sort_by(|a, b| a.partial_cmp(b).expect("timings are finite"));
@@ -407,11 +409,11 @@ fn method_section() -> String {
         "## Method\n\n\
          Timing uses `std::time::Instant` and `std::hint::black_box`, with no benchmark \
          framework.\n\n\
-         Five untimed passes over the first configuration run before any row is recorded, so \
-         the first rows are not measured while the CPU clock is still rising. One \
+         Before any row is recorded, the first configuration runs {WARM_UP_PASSES} untimed \
+         passes, so the first rows are not measured while the CPU clock is still rising. One \
          configuration is one input size, one learner and one operation. Both learners \
-         start every input at the same step size, and Autostep uses its defaults (mu 0.01, \
-         tau 10,000). The `exp only` row calls `f64::exp` once per input of each example \
+         start every input at the same step size, and Autostep uses its defaults (mu {mu}, \
+         tau {tau}). The `exp only` row calls `f64::exp` once per input of each example \
          and nothing else. It runs \
          {WARMUP_BATCHES} untimed batches and then {SAMPLES} timed batches. A batch calls the \
          operation once per example over a preallocated pool, and the batch's elapsed time \
@@ -427,7 +429,9 @@ fn method_section() -> String {
          of the first {RELEVANT} inputs with random signs. The fixture is drawn from seed \
          {FIXTURE_SEED}, so the same build measures the same work.\n\n\
          Construction, fixture generation and priming are outside every timed region. Allocation \
-         behaviour is covered by scenario C23, not here.\n\n"
+         behaviour is covered by scenario C23, not here.\n\n",
+        mu = parameter(autostep::Config::DEFAULT_META_STEP_SIZE),
+        tau = parameter(autostep::Config::DEFAULT_TIME_SCALE),
     )
 }
 
@@ -477,9 +481,10 @@ fn exp_share_section(measurements: &[Measurement]) -> String {
         "## Where an update's time goes\n\n\
          Both learners call `exp` at most once per input on every update. The share below is \
          the `exp only` median divided by the median of the unbounded IDBD update at the same \
-         size. The timings overlap inside the CPU, so the share is an estimate, not an exact \
-         split. A high share leaves little room for rewriting the remaining arithmetic, for \
-         example with SIMD.\n\n\
+         size. The `exp only` loop calls `exp` on the feature values in a loop of its own, not \
+         on the betas inside an update, and the timings overlap inside the CPU, so the share is \
+         a reference cost, not a measured split. It does not bound what SIMD or other rewrites \
+         of the update could gain.\n\n\
          | features | exp only, ns/call | IDBD update, ns/call | exp share | Autostep update / IDBD update |\n\
          | --- | --- | --- | --- | --- |\n"
             .to_owned(),

@@ -24,6 +24,10 @@ fn config_error_messages() {
             "a learner needs at least one feature",
         ),
         (
+            ConfigError::TooManyFeatures { num_features: 7 },
+            "7 features do not fit in one vector",
+        ),
+        (
             ConfigError::InvalidInitialStepSize { value: -1.0 },
             "initial step size -1 is not a finite, strictly positive, representable value",
         ),

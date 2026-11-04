@@ -55,7 +55,11 @@
 //!
 //! # Guarantees
 //!
-//! - Every operation validates its inputs and every intermediate result. Errors are
+//! - Every operation validates its inputs and every intermediate result that reaches
+//!   the state. Two products may overflow inside a clamp whose exact result is still
+//!   finite, and the clamp then gives that exact result: IDBD's trace decay
+//!   `[1 - alpha_i x_i^2]^+` is `0` when `alpha_i x_i^2` overflows, and Autostep's
+//!   normalizer is `|delta x_i h_i|` when its decayed term overflows downward. Errors are
 //!   typed: [`ConfigError`] for construction, [`Error`] for prediction and update,
 //!   [`StateError`] for restoration.
 //! - A failed update leaves the committed state bit-for-bit unchanged.
@@ -67,16 +71,16 @@
 //! # Autostep
 //!
 //! The [`autostep`] module implements Autostep (Mahmood et al., 2012), an IDBD variant
-//! whose meta step size needs no tuning to the scale of the target, and which never
-//! overshoots the current target. It has the same validation, atomicity and
+//! whose meta step size needs no tuning to the scale of the target, and which, in exact
+//! arithmetic, never overshoots the current target. It has the same validation, atomicity and
 //! allocation guarantees.
 //!
 //! # Features
 //!
 //! - `serde`: implements `Serialize` and `Deserialize` for [`Config`], [`Bounds`],
 //!   [`State`] and [`Idbd`], and for the [`autostep`] types. Deserializing a `Config` or `Bounds` runs the same checks as
-//!   their constructors, and deserializing an `Idbd` runs [`Idbd::from_state`]. A
-//!   deserialized `State` is unvalidated, as with [`State::new`]. Off by default, so the
+//!   their constructors. Deserializing a `State` runs the checks of
+//!   [`Idbd::from_state`], and deserializing an `Idbd` runs that function. Off by default, so the
 //!   default build has no dependencies. A checkpoint resumes bit for bit only if the
 //!   format restores every `f64` exactly. With `serde_json`, enable its
 //!   `float_roundtrip` feature: the default parser can change the last digit.

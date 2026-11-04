@@ -11,7 +11,7 @@ readme = "README.md"
 documentation = "https://docs.rs/idbd"
 keywords = ["online-learning", "meta-learning", "step-size", "lms", "idbd"]
 categories = ["science", "algorithms", "mathematics"]
-include = ["src/**/*.rs", "Cargo.toml", "README.md", "CHANGELOG.md", "LICENSE-MIT", "LICENSE-APACHE"]
+include = ["src/**/*.rs", "examples/**/*.rs", "Cargo.toml", "README.md", "CHANGELOG.md", "LICENSE-MIT", "LICENSE-APACHE"]
 
 [features]
 # Serialize and deserialize `Config`, `Bounds`, `State` and `Idbd` with serde.

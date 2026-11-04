@@ -69,9 +69,9 @@ step sizes.
 
 ## Behavior you can rely on
 
-- **Checked, atomic updates.** Every input, target and intermediate value is validated. A
-  failed update returns a typed error and leaves the configuration, weights, betas and traces
-  bit-for-bit unchanged.
+- **Checked, atomic updates.** Every input and target, and every intermediate value that
+  reaches the state, is validated. A failed update returns a typed error and leaves the
+  configuration, weights, betas and traces bit-for-bit unchanged.
 - **No allocation on the learning path.** `predict`, `update` and the inspection methods do not
   allocate. The learner allocates its candidate buffer once, at construction.
 - **Complete checkpoints.** `snapshot` and `from_state` save and restore all learning state and
@@ -99,8 +99,9 @@ learning. This crate covers one linear output with dense `f64` inputs.
 `idbd::autostep::Autostep` implements Autostep (Mahmood, Sutton, Degris and Pilarski, 2012), an
 IDBD variant designed to need no tuning. It divides each step-size update by a running maximum
 of its size, so the meta step size has no units, and it divides all step sizes by
-`sum(alpha_i * x_i^2)` whenever that sum exceeds one, so an update never overshoots the current
-target. The paper reports near-best results on all of its test problems with `mu = 0.01` and
+`sum(alpha_i * x_i^2)` whenever that sum exceeds one, so in exact arithmetic an update never
+overshoots the current target. In floating point, rounding can break that when large weights
+cancel in the prediction. The paper reports near-best results on all of its test problems with `mu = 0.01` and
 `tau = 10_000`, which are the defaults.
 
 ```rust

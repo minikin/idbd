@@ -4,7 +4,7 @@ use idbd::{Bounds, Config, Idbd, State};
 
 /// The equation tolerance from the BDD specification.
 pub(crate) fn close(a: f64, b: f64) -> bool {
-    (a - b).abs() <= 1e-12 + 1e-10 * a.abs().max(b.abs())
+    (a - b).abs() <= 1e-15 + 1e-13 * a.abs().max(b.abs())
 }
 
 #[track_caller]
@@ -52,12 +52,11 @@ pub(crate) fn safety_config(initial_step_size: f64, meta_step_size: f64) -> Conf
 }
 
 pub(crate) fn restore(config: Config, weights: &[f64], betas: &[f64], traces: &[f64]) -> Idbd {
-    Idbd::from_state(State::new(
-        config,
-        weights.to_vec(),
-        betas.to_vec(),
-        traces.to_vec(),
-    ))
+    Idbd::from_state(
+        State::new(config, weights.to_vec())
+            .with_betas(betas.to_vec())
+            .with_traces(traces.to_vec()),
+    )
     .expect("valid restored state")
 }
 

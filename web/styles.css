@@ -1106,3 +1106,55 @@ main,
     scroll-behavior: auto !important;
   }
 }
+
+/* GitHub and crates.io links as two-part pills, like the README's badges. */
+.project-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.project-badge {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 32px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1;
+  text-decoration: none;
+  transition: border-color 150ms ease;
+}
+
+.project-badge:hover {
+  border-color: rgb(255 255 255 / 0.32);
+}
+
+.project-badge-label,
+.project-badge-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.project-badge-label {
+  background: var(--surface-2);
+  color: var(--ink-2, #a1a7b0);
+}
+
+.project-badge-value {
+  background: var(--surface, #101113);
+  color: var(--ink, #f4f5f6);
+  font-family: var(--mono, ui-monospace, monospace);
+  border-left: 1px solid var(--hairline-strong);
+}
+
+.project-badge:hover .project-badge-label {
+  color: var(--ink, #f4f5f6);
+}
+
+.project-badge svg .badge-solid {
+  fill: currentColor;
+}

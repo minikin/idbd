@@ -6,7 +6,7 @@ use std::iter::FusedIterator;
 use std::mem;
 use std::slice;
 
-use crate::config::{Config, ConfigError, is_valid_step_size};
+use crate::config::{Config, ConfigError, check_num_features, is_valid_step_size};
 use crate::state::{State, StateError};
 
 /// A linear online learner that adapts one step size per input with IDBD.
@@ -122,11 +122,11 @@ impl Idbd {
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError::ZeroFeatures`] if `num_features` is zero.
+    /// Returns [`ConfigError::ZeroFeatures`] if `num_features` is zero and
+    /// [`ConfigError::TooManyFeatures`] if one of its vectors could not be allocated at
+    /// any size. An allocation that fails for lack of memory aborts, as for any `Vec`.
     pub fn new(num_features: usize, config: Config) -> Result<Self, ConfigError> {
-        if num_features == 0 {
-            return Err(ConfigError::ZeroFeatures);
-        }
+        check_num_features(num_features)?;
         Ok(Self {
             committed: Vectors::new(num_features, config.initial_beta()),
             candidate: Vectors::new(num_features, 0.0),
@@ -168,13 +168,14 @@ impl Idbd {
     /// Returns a copy of the complete learning state.
     ///
     /// This allocates three vectors. Pass the result to [`Idbd::from_state`] to resume.
+    #[must_use]
     pub fn snapshot(&self) -> State {
-        State::new(
-            self.config,
-            self.committed.weights.clone(),
-            self.committed.betas.clone(),
-            self.committed.traces.clone(),
-        )
+        State {
+            config: self.config,
+            weights: self.committed.weights.clone(),
+            betas: self.committed.betas.clone(),
+            traces: self.committed.traces.clone(),
+        }
     }
 
     /// Returns the prediction `w · x` for `features` without learning.
@@ -278,7 +279,6 @@ impl Idbd {
     }
 }
 
-/// One coordinate's weight, log step size and trace.
 /// Checks the feature count, then that every feature is finite.
 pub(crate) fn check_features(num_features: usize, features: &[f64]) -> Result<(), Error> {
     if features.len() != num_features {
@@ -309,6 +309,7 @@ pub(crate) fn dot(weights: &[f64], features: &[f64]) -> Result<f64, Error> {
     }
 }
 
+/// One coordinate's weight, log step size and trace.
 #[derive(Clone, Copy)]
 struct Coordinate {
     weight: f64,
@@ -389,6 +390,7 @@ fn next_coordinate(
     if !weight.is_finite() {
         return Err(Stage::Weight);
     }
+    // An overflowing `alpha x^2` gives -inf here, and the positive part is then exactly 0.
     let decay = (1.0 - alpha * x * x).max(0.0);
     let trace = old.trace * decay + step;
     if !trace.is_finite() {
@@ -425,6 +427,7 @@ impl TryFrom<State> for Idbd {
 
 /// Iterator over a learner's step sizes, returned by [`Idbd::step_sizes`].
 #[derive(Debug, Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct StepSizes<'a> {
     betas: slice::Iter<'a, f64>,
 }
@@ -567,7 +570,15 @@ impl error::Error for Error {}
 const _: () = {
     const fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<Idbd>();
+    assert_send_sync::<crate::autostep::Autostep>();
+    assert_send_sync::<State>();
+    assert_send_sync::<crate::autostep::State>();
+    assert_send_sync::<Config>();
+    assert_send_sync::<crate::autostep::Config>();
     assert_send_sync::<Error>();
+    assert_send_sync::<ConfigError>();
+    assert_send_sync::<StateError>();
+    assert_send_sync::<crate::autostep::StateError>();
 };
 
 #[cfg(test)]

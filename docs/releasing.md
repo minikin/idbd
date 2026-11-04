@@ -21,6 +21,8 @@ Nothing is published without step 3.
 
 release-plz proposes the current version, 0.1.0, for a crate that was never published, and changes no files. Before starting the workflow, rename `## [Unreleased]` in `crates/idbd/CHANGELOG.md` to `## [0.1.0] - <date>` in a normal pull request.
 
+The CI `semver` job skips its check until a version is on crates.io, so the API can still change before 0.1.0 ships. From then on it compares every pull request with the newest published version.
+
 ## Before every release
 
 `cargo package -p idbd --list` must show only the crate sources, `README.md`, `CHANGELOG.md`, the two license files and the manifest files Cargo adds. The `publish` job and the `Package the core crate` CI job both check this.

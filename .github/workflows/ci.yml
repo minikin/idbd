@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  # Automatic triggers are off until the project is ready. Runs start by hand only.
+  # pull_request:
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -43,19 +44,33 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+      # Until the first release there is no published API to break, and the unreleased
+      # 0.1.0 may still change shape. After it, the check compares against the newest
+      # version on crates.io, and a version bump must match what it reports.
+      - name: Find the published version
+        id: published
+        run: |
+          status=$(curl -sS --retry 3 --retry-all-errors -o /dev/null -w '%{http_code}' \
+            -A "idbd ci (https://github.com/minikin/idbd)" https://crates.io/api/v1/crates/idbd)
+          case "$status" in
+            200) echo "released=true" >> "$GITHUB_OUTPUT" ;;
+            404) echo "idbd is not on crates.io yet, nothing to compare against" ;;
+            *) echo "crates.io answered $status" >&2; exit 1 ;;
+          esac
+      - if: steps.published.outputs.released == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.published.outputs.released == 'true'
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2
+      - if: steps.published.outputs.released == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - if: steps.published.outputs.released == 'true'
+        uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2
         with:
           tool: cargo-semver-checks
-      # Compares against the PR base until the crate is on crates.io. After the first
-      # release, a version bump in Cargo.toml must match what this check reports.
-      - run: cargo semver-checks -p idbd --baseline-rev "${{ github.event.pull_request.base.sha }}"
+      - if: steps.published.outputs.released == 'true'
+        run: cargo semver-checks -p idbd
 
   lint:
     name: Format and Clippy

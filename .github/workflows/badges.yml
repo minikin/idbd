@@ -1,0 +1,131 @@
+name: Badges
+
+# Renders the README's pill badges into the orphan `badges` branch: after every CI run
+# on main, and daily, so the crates.io version follows a release that landed after the
+# last push. Ported from minikin/cargo-crap.
+on:
+  # Automatic triggers are off until the project is ready. Runs start by hand only.
+  # workflow_run:
+  #   workflows: ["CI"]
+  #   types: [completed]
+  #   branches: [main]
+  # schedule:
+  #   - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: badges
+
+jobs:
+  render:
+    name: Render badges
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Collect values
+        id: values
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Empty until the crate is on crates.io, which leaves that badge out.
+          version=$(curl -fsS -A "idbd badges (https://github.com/minikin/idbd)" \
+            https://crates.io/api/v1/crates/idbd | jq -r '.crate.max_stable_version // empty' || true)
+          conclusion=$(gh run list --workflow ci.yml --branch main --event push \
+            --status completed --limit 20 --json conclusion \
+            --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].conclusion')
+          ci=$([ "$conclusion" = success ] && echo passing || echo failing)
+          # The lcov.info of the newest main run that uploaded one, and the commit it
+          # measured: CRAP is scored against that commit, not the current checkout.
+          coverage_sha=""
+          while read -r id sha; do
+            if gh run download "$id" -n lcov -D artifact; then
+              echo "Coverage from run $id at $sha"
+              coverage_sha=$sha
+              break
+            fi
+          done < <(gh run list --workflow ci.yml --branch main --event push \
+            --status completed --limit 30 --json databaseId,headSha \
+            --jq '.[] | "\(.databaseId) \(.headSha)"')
+          coverage=""
+          if [ -f artifact/lcov.info ]; then
+            # Line coverage of the published crate only, not the lab or the wasm adapter.
+            coverage=$(awk -F: '/^SF:/ { mine = ($2 ~ /crates\/idbd\/src\//) }
+              mine && /^LF:/ { found += $2 } mine && /^LH:/ { hit += $2 }
+              END { if (found) printf "%.1f", 100 * hit / found }' artifact/lcov.info)
+          fi
+          license=$(sed -n 's/^license = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          echo "version=$version ci=$ci coverage=$coverage license=$license msrv=$msrv"
+          {
+            echo "coverage_sha=$coverage_sha"
+            echo "version=$version"
+            echo "ci=$ci"
+            echo "coverage=$coverage"
+            echo "license=$license"
+            echo "msrv=$msrv"
+          } >> "$GITHUB_OUTPUT"
+
+      - if: hashFiles('artifact/lcov.info') != ''
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
+      - if: hashFiles('artifact/lcov.info') != ''
+        uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2
+        with:
+          tool: cargo-crap@0.9.0
+      - name: Score CRAP
+        if: hashFiles('artifact/lcov.info') != ''
+        env:
+          COVERAGE_SHA: ${{ steps.values.outputs.coverage_sha }}
+        run: |
+          git fetch --depth 1 origin "$COVERAGE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/scored" FETCH_HEAD
+          # lcov.info names files by absolute path in the CI checkout, and cargo-crap
+          # matches paths exactly, so they are moved to the worktree or every function
+          # would score as uncovered.
+          sed -i "s#^SF:$GITHUB_WORKSPACE/#SF:$RUNNER_TEMP/scored/#" artifact/lcov.info
+          cd "$RUNNER_TEMP/scored"
+          cargo crap -p idbd --lcov "$GITHUB_WORKSPACE/artifact/lcov.info" --threshold 10 \
+            --format shields --output "$GITHUB_WORKSPACE/crap-badge.json"
+
+      - name: Render
+        env:
+          VERSION: ${{ steps.values.outputs.version }}
+          CI_STATUS: ${{ steps.values.outputs.ci }}
+          COVERAGE: ${{ steps.values.outputs.coverage }}
+          LICENSE_NAME: ${{ steps.values.outputs.license }}
+          MSRV: ${{ steps.values.outputs.msrv }}
+        run: |
+          mkdir out
+          # Start from what is published, so a value this run could not collect keeps
+          # its last badge.
+          if git fetch --depth 1 origin badges; then
+            git archive FETCH_HEAD | tar -x -C out
+          fi
+          args=(out --ci "$CI_STATUS")
+          if [ -n "$VERSION" ]; then args+=(--version "$VERSION"); fi
+          if [ -n "$LICENSE_NAME" ]; then args+=(--license "$LICENSE_NAME"); fi
+          if [ -n "$MSRV" ]; then args+=(--msrv "$MSRV"); fi
+          if [ -n "$COVERAGE" ]; then args+=(--coverage "$COVERAGE"); fi
+          if [ -f crap-badge.json ]; then args+=(--crap crap-badge.json); fi
+          python3 scripts/badges/render.py "${args[@]}"
+          ls -l out
+
+      # One orphan commit with every badge, force-pushed: the branch never accumulates
+      # history.
+      - name: Push to the badges branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          tree=$(for f in $(ls out | sort); do
+            printf '100644 blob %s\t%s\n' "$(git hash-object -w "out/$f")" "$f"
+          done | git mktree)
+          commit=$(git commit-tree "$tree" -m "chore: update badges")
+          git push --force origin "$commit:refs/heads/badges"

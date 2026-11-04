@@ -5,7 +5,7 @@ This script shares no code with the Rust crate. It evaluates Sutton's (1992) IDB
 recurrence (equations 3 to 6) and Table 1 of Mahmood et al. (2012), Autostep, in
 50-digit decimal arithmetic with the Python standard library, then writes
 `reference_data.rs`, which the Rust tests compare against using the
-equation tolerance abs(a - b) <= 1e-12 + 1e-10 * max(|a|, |b|).
+equation tolerance abs(a - b) <= 1e-15 + 1e-13 * max(|a|, |b|).
 
 Regenerate with:
 

@@ -2,25 +2,29 @@
 
 Every number under `docs/results/` and in `docs/benchmarks.md` was produced by a binary in
 `crates/idbd-lab`. Nothing in those files is typed in by hand. Each binary rewrites its whole
-output directory, so a rerun on the same build replaces the files with identical content.
+output directory. A rerun of the experiments on the same build replaces the files with
+identical content. The timings in `docs/benchmarks.md` change from run to run.
 
 ## Commands
 
-Run all four from the repository root. They print progress to standard error and write their
+Run all six from the repository root. They print progress to standard error and write their
 results to the directory shown.
 
 ```sh
 cargo run --release -p idbd-lab --bin sutton1992-exp1   # docs/results/sutton1992-experiment1/
 cargo run --release -p idbd-lab --bin evaluate          # docs/results/evaluation/
 cargo run --release -p idbd-lab --bin sutton1992-exp2   # docs/results/sutton1992-experiment2/
+cargo run --release -p idbd-lab --bin autostep-eval     # docs/results/autostep/
+cargo run --release -p idbd-lab --bin house-eval        # docs/results/house/
 cargo run --release -p idbd-lab --bin bench             # docs/benchmarks.md
 ```
 
 Each accepts `--out <dir>` to write somewhere else, and `--help` to print its default. `bench`
 refuses to run in a debug build.
 
-Wall-clock time on an Apple M4 Max: about 3 seconds for `sutton1992-exp1`, 4 for `evaluate`,
-2 for `sutton1992-exp2` and 7 for `bench`.
+Measured with `/usr/bin/time -p` on the release binaries, an Apple M4 Max runs
+`sutton1992-exp1` in about 3 seconds, `evaluate` in 3, `sutton1992-exp2` in 2,
+`autostep-eval` in 6, `house-eval` in 1 and `bench` in 14.
 
 ## Software
 
@@ -53,8 +57,8 @@ against a Python transcription of the reference C code.
 
 ## Task
 
-All four tasks use 20 inputs drawn independently from a standard normal, with no target noise.
-The target is the dot product of the inputs with the current true coefficients.
+The four `world.rs` presets use 20 inputs drawn independently from a standard normal, with no
+target noise. The target is the dot product of the inputs with the current true coefficients.
 
 The Sutton 1992 preset gives the first five coefficients +1 or -1, drawn from the seed, and
 leaves the other fifteen at zero. Before sample `t`, if `t > 1` and `(t - 1) % 20 == 0`, one of
@@ -71,6 +75,13 @@ The other presets are `stationary` (no changes at all), `drifting` (relevant coe
 independent AR(1) processes, autocorrelation 0.999, unit stationary variance) and
 `changing-relevance` (Sutton's flips plus a move of the relevant group every 5000 samples). The
 last two are extensions, not from the paper.
+
+The thermostat house in `house.rs` is a different task and does not follow that description. It
+has 6 sensors with independent standard normal readings, of which the first 3 move the room
+temperature, and the target carries Gaussian noise with standard deviation 0.5, so the noise
+alone gives an MSE of 0.25. Each relevant sensor switches between a strong and a weak influence
+with probability 1/60 before every reading after the first. Task `still-house` is the same house
+with switching turned off. `house-eval` runs both.
 
 ## Bounds
 
@@ -120,6 +131,8 @@ setting, because a mean over the surviving seeds would hide the risk.
 | `docs/results/sutton1992-experiment1/` | `raw.csv`, `summary.csv`, `figure3.svg`, `README.md` |
 | `docs/results/evaluation/` | `raw.csv`, `summary.csv`, `README.md` |
 | `docs/results/sutton1992-experiment2/` | `trajectories.csv`, `final-step-sizes.csv`, `figure5-sweep.csv`, `figure4.svg`, `adapted-demonstration.svg`, `figure5.svg`, `README.md` |
+| `docs/results/autostep/` | `raw.csv`, `summary.csv`, `step-sizes.csv`, `README.md` |
+| `docs/results/house/` | `raw.csv`, `summary.csv`, `step-sizes.csv`, `README.md` |
 | `docs/` | `benchmarks.md`, this file |
 
 The plots are hand-generated SVG with no plotting dependency. They carry an explicit white

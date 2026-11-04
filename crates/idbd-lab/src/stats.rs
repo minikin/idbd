@@ -24,8 +24,7 @@ impl Summary {
         let standard_error = if count < 2 {
             0.0
         } else {
-            let sum_sq: f64 = values.iter().map(|v| (v - mean) * (v - mean)).sum();
-            (sum_sq / (n - 1.0) / n).sqrt()
+            standard_error(values, mean, n)
         };
         Some(Self {
             count,
@@ -48,6 +47,18 @@ impl Summary {
     pub const fn standard_error(self) -> f64 {
         self.standard_error
     }
+}
+
+/// Bessel-corrected standard error of at least two values. Deviations are divided by the
+/// largest one before squaring, so a run whose error reached 1e186 still gets a finite
+/// spread instead of an overflow.
+fn standard_error(values: &[f64], mean: f64, n: f64) -> f64 {
+    let scale = values.iter().map(|v| (v - mean).abs()).fold(0.0, f64::max);
+    if scale == 0.0 || !scale.is_finite() {
+        return scale;
+    }
+    let sum_sq: f64 = values.iter().map(|v| ((v - mean) / scale).powi(2)).sum();
+    scale * (sum_sq / (n - 1.0) / n).sqrt()
 }
 
 /// Returns the nearest-rank percentile of an ascending slice, or `None` if it is empty.
@@ -102,6 +113,19 @@ fn count_to_u64(count: usize) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn standard_error_stays_finite_when_squared_deviations_would_overflow() {
+        let s = Summary::new(&[1e186, 3e186]).expect("non-empty");
+        assert!((s.standard_error() / 1e186 - 1.0).abs() < 1e-12, "{s:?}");
+        let near_max = Summary::new(&[0.0, 1.5e308]).expect("non-empty");
+        assert!(
+            (near_max.standard_error() / 0.75e308 - 1.0).abs() < 1e-12,
+            "{near_max:?}"
+        );
+        let infinite = Summary::new(&[1.0, f64::INFINITY]).expect("non-empty");
+        assert!(!infinite.standard_error().is_finite(), "{infinite:?}");
+    }
 
     #[test]
     fn summary_reports_mean_and_standard_error() {
