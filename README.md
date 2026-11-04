@@ -100,7 +100,7 @@ and above. [Details and plot](docs/results/sutton1992-experiment1/README.md).
 
 **Experiment 2 (Figures 4 and 5).** theta 0.001, 250,000 samples, 5 seeds. The relevant inputs'
 step sizes end at 0.129 on average (paper: 0.13 +/- 0.015). The irrelevant inputs end between
-0.0073 and 0.0078, slightly above the paper's "all below 0.007". A fixed-rate sweep over the
+0.00726 and 0.00783, slightly above the paper's "all below 0.007". A fixed-rate sweep over the
 relevant inputs has its minimum at alpha 0.13 to 0.14 (paper: 0.13 +/- 0.01).
 [Details and plots](docs/results/sutton1992-experiment2/README.md).
 
@@ -142,12 +142,12 @@ task behind the story page. The noise alone gives an MSE of 0.25.
 | Same house, nothing switches | 0.252 +/- 0.001 | 0.269 +/- 0.001 | 0.262 +/- 0.001 |
 
 IDBD was lower than tuned LMS on all 10 seeds of the switching house and on none of the still
-house. Its final step sizes were 0.079 to 0.137 on the three sensors that matter and about 0.012
-on the other three. [Method and per-sensor step sizes](docs/results/house/README.md).
+house. Its final step sizes were 0.0786 to 0.137 on the three sensors that matter and about
+0.012 on the other three. [Method and per-sensor step sizes](docs/results/house/README.md).
 
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
 about 5 ns per feature up to 10,000 features. One `exp` call per input accounts for an estimated
-85 to 97% of that, so SIMD has little to gain. An Autostep update costs about 2.4 to 2.7 times an
+85 to 97% of that, so SIMD has little to gain. An Autostep update costs 2.37 to 2.69 times an
 IDBD update. [Method and full table](docs/benchmarks.md).
 
 ## Reproducing the results
@@ -156,6 +156,7 @@ IDBD update. [Method and full table](docs/benchmarks.md).
 cargo run --release -p idbd-lab --bin sutton1992-exp1   # Experiment 1, about 3 s (see docs/reproduction.md)
 cargo run --release -p idbd-lab --bin sutton1992-exp2   # Experiment 2 and the Figure 5 sweep
 cargo run --release -p idbd-lab --bin evaluate          # IDBD against LMS on four tasks
+cargo run --release -p idbd-lab --bin autostep-eval     # untuned Autostep against both
 cargo run --release -p idbd-lab --bin house-eval        # the thermostat house
 cargo run --release -p idbd-lab --bin bench             # core timings
 ```

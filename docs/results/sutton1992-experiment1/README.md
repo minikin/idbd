@@ -17,7 +17,7 @@ idbd-lab 0.1.0, generator xoshiro256** seeded by SplitMix64, Box-Muller normals 
 
 ![LMS and IDBD error against their step-size parameters](figure3.svg)
 
-A grid value whose mean exceeds 12 is drawn as a caret at the top edge of the plot, with its value in the table below.
+A grid value whose mean exceeds 10, the top of the y axis, is drawn as a caret at the top edge of the plot, with its value in the table below.
 
 LMS, fixed step size:
 
@@ -74,6 +74,7 @@ Differences in protocol:
 - The paper averages one long run per setting. This sweep uses 20 independent seeds per setting, so the standard error measures spread across streams rather than within one.
 - The grids above are not the paper's sample points, which are unpublished. A minimum read off eleven grid values is located to within one grid spacing.
 - Arithmetic is IEEE 754 binary64 in Rust, summed in index order. The paper states neither its precision nor its summation order.
+- The paper's Figure 3 puts the LMS alpha axis on top and the IDBD theta axis at the bottom. The figure above swaps them.
 
 These numbers are not expected to match the paper's samples digit for digit, and no claim is made that they do.
 
@@ -81,7 +82,7 @@ These numbers are not expected to match the paper's samples digit for digit, and
 
 5 of 440 runs stopped on a numerical failure. `raw.csv` records the sample index and the learner's message for each one, and `summary.csv` counts them per grid value. A grid value with any failure is not selectable as a best setting, because a mean over the surviving seeds would hide the risk.
 
-LMS at alpha 0.09 and LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound. Treat those rows as divergence, not as a measurement.
+LMS at alpha 0.09 and LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 10 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
 
 ## Files
 

@@ -12,7 +12,7 @@ use idbd_lab::evaluation::{
     EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
     WARMUP, tune_and_evaluate,
 };
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
+use idbd_lab::report::{diverged_note, magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, RELEVANCE_SHIFT_PERIOD, SIGN_FLIP_PERIOD};
@@ -331,7 +331,28 @@ fn task_section(result: &TaskResult) -> String {
     parts.push(format!(
         "\nFailed evaluation runs: LMS {lms_failures}, IDBD {idbd_failures}.\n\n"
     ));
+    parts.push(tuning_divergence(result));
     parts.concat()
+}
+
+/// Largest mean squared error still treated as a measurement in the tuning tables. The
+/// worst tuned setting that still tracks the target stays an order of magnitude below it.
+const DIVERGED_ABOVE: f64 = 100.0;
+
+/// The divergence note for one task's tuning tables.
+fn tuning_divergence(result: &TaskResult) -> String {
+    let names: Vec<String> = result
+        .tuning
+        .iter()
+        .map(|(family, _)| family.learner_id().to_uppercase())
+        .collect();
+    let groups: Vec<(&str, &str, &[Point])> = result
+        .tuning
+        .iter()
+        .zip(&names)
+        .map(|((family, points), name)| (name.as_str(), family.parameter(), points.as_slice()))
+        .collect();
+    diverged_note(DIVERGED_ABOVE, &groups)
 }
 
 fn description(preset: Preset) -> String {
@@ -408,11 +429,12 @@ fn tuning_table(parameter_name: &str, points: &[Point]) -> String {
 }
 
 fn reading_section() -> String {
-    "## What these numbers do and do not say\n\n\
+    format!(
+        "## What these numbers do and do not say\n\n\
      Each row measures one learner, tuned once on five streams, on ten other streams of the same \
      task. The comparison is paired: for a given seed both learners consume the same inputs and \
      targets in the same order.\n\n\
-     The measured interval starts after 20000 warm-up samples, so the initial transient is \
+     The measured interval starts after {WARMUP} warm-up samples, so the initial transient is \
      excluded on every task. A learner that recovers slowly from a change but ends in a good \
      place is treated the same as one that never leaves it.\n\n\
      LMS is tuned to one step size for the whole stream. On a task whose difficulty changes \
@@ -421,7 +443,7 @@ fn reading_section() -> String {
      would be a different experiment.\n\n\
      `raw.csv` holds every run, including the failures. `summary.csv` holds the per-grid-value \
      aggregates for both phases.\n"
-        .to_owned()
+    )
 }
 
 /// Largest mean squared error still treated as a real measurement. Below it both

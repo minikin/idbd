@@ -17,7 +17,7 @@ use idbd_lab::evaluation::{
     EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
     Tuned, WARMUP, protocol, tune_and_evaluate,
 };
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
+use idbd_lab::report::{diverged_note, magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, measure, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, World};
@@ -152,21 +152,15 @@ fn step_sizes(seed: u64) -> StepSizes {
     }
 }
 
-fn learners(result: &TaskResult) -> [(&'static str, &Point); 4] {
+/// Each evaluated learner with the name of its free parameter, carried beside the label
+/// so no row can pick up a parameter name that does not belong to it.
+fn learners(result: &TaskResult) -> [(&'static str, &'static str, &Point); 4] {
     [
-        ("lms", &result.lms.evaluation),
-        ("idbd", &result.idbd.evaluation),
-        ("autostep-tuned", &result.autostep.evaluation),
-        ("autostep-default", &result.default),
+        ("lms", "alpha", &result.lms.evaluation),
+        ("idbd", "theta", &result.idbd.evaluation),
+        ("autostep-tuned", "mu", &result.autostep.evaluation),
+        ("autostep-default", "mu", &result.default),
     ]
-}
-
-fn parameter_name(label: &str) -> &'static str {
-    match label {
-        "lms" => "alpha",
-        "idbd" => "theta",
-        _ => "mu",
-    }
 }
 
 fn raw_csv(results: &[TaskResult]) -> String {
@@ -192,24 +186,25 @@ fn raw_csv(results: &[TaskResult]) -> String {
                     "tuning",
                     result.preset,
                     tuned.family.learner_id(),
+                    tuned.family.parameter(),
                     point,
                 );
             }
         }
-        for (label, point) in learners(result) {
-            rows(&mut csv, "evaluation", result.preset, label, point);
+        for (label, name, point) in learners(result) {
+            rows(&mut csv, "evaluation", result.preset, label, name, point);
         }
     }
     csv.into_string()
 }
 
-fn rows(csv: &mut Csv, phase: &str, preset: Preset, label: &str, point: &Point) {
+fn rows(csv: &mut Csv, phase: &str, preset: Preset, label: &str, name: &str, point: &Point) {
     for run in &point.runs {
         csv.row([
             phase.to_owned(),
             preset.id().to_owned(),
             label.to_owned(),
-            parameter_name(label).to_owned(),
+            name.to_owned(),
             number(Some(point.value)),
             run.seed.to_string(),
             WARMUP.to_string(),
@@ -247,24 +242,25 @@ fn summary_csv(results: &[TaskResult]) -> String {
                     "tuning",
                     result.preset,
                     tuned.family.learner_id(),
+                    tuned.family.parameter(),
                     point,
                 );
             }
         }
-        for (label, point) in learners(result) {
-            summary_row(&mut csv, "evaluation", result.preset, label, point);
+        for (label, name, point) in learners(result) {
+            summary_row(&mut csv, "evaluation", result.preset, label, name, point);
         }
     }
     csv.into_string()
 }
 
-fn summary_row(csv: &mut Csv, phase: &str, preset: Preset, label: &str, point: &Point) {
+fn summary_row(csv: &mut Csv, phase: &str, preset: Preset, label: &str, name: &str, point: &Point) {
     let summary = point.summary();
     csv.row([
         phase.to_owned(),
         preset.id().to_owned(),
         label.to_owned(),
-        parameter_name(label).to_owned(),
+        name.to_owned(),
         number(Some(point.value)),
         point.runs.len().to_string(),
         point.completed().len().to_string(),
@@ -436,7 +432,38 @@ fn sensitivity_section(results: &[TaskResult]) -> String {
          again.\n\n",
         failed.len()
     ));
+    parts.push(tuning_divergence(results));
     parts.concat()
+}
+
+/// Largest mean squared error still treated as a measurement in the tuning sweeps. The
+/// worst tuned setting that still tracks the target stays an order of magnitude below it.
+const DIVERGED_ABOVE: f64 = 100.0;
+
+/// The divergence note for every tuning sweep behind this report, including the LMS and
+/// IDBD sweeps whose rows reach `raw.csv` and `summary.csv` rather than a table here.
+fn tuning_divergence(results: &[TaskResult]) -> String {
+    let groups: Vec<(&str, &str, &[Point])> = results
+        .iter()
+        .flat_map(|result| [&result.lms, &result.idbd, &result.autostep])
+        .map(|tuned| {
+            (
+                learner_label(tuned.family),
+                tuned.family.parameter(),
+                tuned.tuning.as_slice(),
+            )
+        })
+        .collect();
+    diverged_note(DIVERGED_ABOVE, &groups)
+}
+
+/// The learner's name as the prose spells it.
+const fn learner_label(family: Family) -> &'static str {
+    match family {
+        Family::Lms => "LMS",
+        Family::Idbd { .. } => "IDBD",
+        Family::Autostep { .. } => "Autostep",
+    }
 }
 
 fn step_size_section(runs: &[StepSizes]) -> String {
@@ -480,11 +507,12 @@ fn range(values: &[f64]) -> String {
 }
 
 fn reading_section() -> String {
-    "## Reading these results\n\n\
+    format!(
+        "## Reading these results\n\n\
      Each number belongs to this protocol, these grids and these synthetic tasks, which have \
-     20 standard normal inputs and a noise-free target. Autostep's initial step size and \
-     tau were not tuned. Nothing here establishes that one learner is better in general.\n"
-        .to_owned()
+     {NUM_FEATURES} standard normal inputs and a noise-free target. Autostep's initial step size \
+     and tau were not tuned. Nothing here establishes that one learner is better in general.\n"
+    )
 }
 
 fn grid_list(grid: &[f64]) -> String {

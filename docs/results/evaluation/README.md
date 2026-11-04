@@ -83,6 +83,8 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+
 ## Task `stationary`
 
 The first 5 coefficients are +1 or -1 drawn from the seed and never change. Nothing in the task is nonstationary, so a small fixed step size can keep shrinking its error.
@@ -136,6 +138,8 @@ Evaluation, one row per seed:
 | mean +/- SE | 2.116e-39 +/- 5.542e-40 | 9.611e-40 +/- 2.702e-40 |
 
 Failed evaluation runs: LMS 0, IDBD 0.
+
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
 
 ## Task `drifting`
 
@@ -191,6 +195,8 @@ Evaluation, one row per seed:
 
 Failed evaluation runs: LMS 0, IDBD 0.
 
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
+
 ## Task `changing-relevance`
 
 An extension, not from the paper. Sutton's sign flips every 20 samples, plus every 5000 samples the relevant group moves to the next 5 inputs. The previously relevant coefficients become zero and the new group gets fresh signs. Over the measured interval this happens twice.
@@ -244,6 +250,8 @@ Evaluation, one row per seed:
 | mean +/- SE | 3.428 +/- 0.02711 | 2.519 +/- 0.02381 |
 
 Failed evaluation runs: LMS 0, IDBD 0.
+
+LMS at alpha 0.1 ran to the end of the stream without a non-finite value, so the runs are recorded as completed, but the error grew without bound: the mean is above 100 or the standard error is not finite. Treat those rows as divergence, not as a measurement.
 
 ## What these numbers do and do not say
 

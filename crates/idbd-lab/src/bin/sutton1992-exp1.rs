@@ -10,7 +10,7 @@ use idbd::Bounds;
 use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis, tick_label};
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
+use idbd_lab::report::{diverged_note, magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, Protocol, best, measure, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, SIGN_FLIP_PERIOD};
@@ -44,9 +44,9 @@ const PAPER_LMS_MSE: f64 = 3.5;
 /// Mean MSE Sutton reports for IDBD over a broad range of theta in Experiment 1.
 const PAPER_IDBD_MSE: f64 = 1.5;
 
-/// Largest mean the plot's y axis covers. A grid value above it is drawn as a caret at
-/// the top edge and read from the table instead, so one diverging step size cannot
-/// flatten the rest of the figure.
+/// Largest mean the plot's y axis may cover. A grid value whose error bar reaches higher
+/// is left out of the axis calculation, so one diverging step size cannot flatten the
+/// rest of the figure.
 const DISPLAY_MAX: f64 = 12.0;
 
 const IDBD_COLOR: &str = "#ff6f61";
@@ -217,15 +217,26 @@ struct Curve<'a> {
     label: String,
 }
 
-fn figure(lms: &[Point], idbd: &[Point]) -> String {
-    let highest = [lms, idbd]
+/// Highest point the axis has to cover: the largest mean plus standard error that fits
+/// under [`DISPLAY_MAX`].
+fn highest_displayable(lms: &[Point], idbd: &[Point]) -> f64 {
+    [lms, idbd]
         .into_iter()
         .flatten()
         .filter_map(|p| p.summary().map(|s| s.mean() + s.standard_error()))
         .filter(|&top| top.is_finite() && top <= DISPLAY_MAX)
         .reduce(f64::max)
-        .unwrap_or(1.0);
-    let (y_upper, y_step) = nice_axis(highest);
+        .unwrap_or(1.0)
+}
+
+/// The y-axis upper bound. The figure clips at it, the results text names it as the
+/// caret threshold and the divergence note uses it as its bound, so all three agree.
+fn axis_upper(lms: &[Point], idbd: &[Point]) -> f64 {
+    nice_axis(highest_displayable(lms, idbd)).0
+}
+
+fn figure(lms: &[Point], idbd: &[Point]) -> String {
+    let (y_upper, y_step) = nice_axis(highest_displayable(lms, idbd));
     let y = Scale::new((0.0, y_upper), (BOTTOM, TOP + 16.0));
 
     let mut svg = Svg::new(WIDTH, HEIGHT);
@@ -277,7 +288,8 @@ fn figure(lms: &[Point], idbd: &[Point]) -> String {
     .into_iter()
     .enumerate()
     {
-        let offset = 62.0 - 18.0 * f64::from(u32::try_from(row).unwrap_or(0));
+        let offset =
+            62.0 - 18.0 * f64::from(u32::try_from(row).expect("a footnote row index fits u32"));
         svg.text((LEFT, HEIGHT - offset), Anchor::Start, 11.5, MUTED, note);
     }
     svg.into_string()
@@ -365,17 +377,23 @@ fn draw_curve(svg: &mut Svg, curve: &Curve<'_>, y: &Scale, legend_row: usize) {
             svg.line((px + 5.0, top + 9.0), (px, top + 1.0), curve.color, 2.0, "");
             continue;
         }
+        let top = summary.mean() + summary.standard_error();
+        let clipped = !top.is_finite() || top > upper;
         let low = y.at(summary.mean() - summary.standard_error());
-        let high = y.at((summary.mean() + summary.standard_error()).min(upper));
+        let high = y.at(top.min(upper));
         svg.line((px, low), (px, high), curve.color, 1.4, "");
         svg.line((px - 3.0, low), (px + 3.0, low), curve.color, 1.4, "");
-        svg.line((px - 3.0, high), (px + 3.0, high), curve.color, 1.4, "");
+        // A cap at the axis edge would read as a measured upper bound, so a bar the axis
+        // cuts off is drawn open.
+        if !clipped {
+            svg.line((px - 3.0, high), (px + 3.0, high), curve.color, 1.4, "");
+        }
         svg.circle((px, y.at(summary.mean())), 4.0, curve.color);
         if point.failures() > 0 {
             svg.circle((px, y.at(summary.mean())), 2.0, "#ffffff");
         }
     }
-    let row = f64::from(u32::try_from(legend_row).unwrap_or(0));
+    let row = f64::from(u32::try_from(legend_row).expect("a legend row index fits u32"));
     let legend_y = TOP + 22.0 + 20.0 * row;
     svg.circle((LEFT + 18.0, legend_y - 4.0), 4.5, curve.color);
     svg.text(
@@ -471,11 +489,12 @@ fn results_section(lms: &[Point], idbd: &[Point]) -> String {
     format!(
         "## Measured results\n\n\
          ![LMS and IDBD error against their step-size parameters](figure3.svg)\n\n\
-         A grid value whose mean exceeds {DISPLAY_MAX} is drawn as a caret at the top edge of \
-         the plot, with its value in the table below.\n\n\
+         A grid value whose mean exceeds {upper}, the top of the y axis, is drawn as a caret at \
+         the top edge of the plot, with its value in the table below.\n\n\
          LMS, fixed step size:\n\n{}\nIDBD, meta step size:\n\n{}\n",
         table("alpha", lms),
-        table("theta", idbd)
+        table("theta", idbd),
+        upper = parameter(axis_upper(lms, idbd)),
     )
 }
 
@@ -547,7 +566,9 @@ fn paper_section() -> String {
          - The grids above are not the paper's sample points, which are unpublished. A minimum \
          read off eleven grid values is located to within one grid spacing.\n\
          - Arithmetic is IEEE 754 binary64 in Rust, summed in index order. The paper states \
-         neither its precision nor its summation order.\n\n\
+         neither its precision nor its summation order.\n\
+         - The paper's Figure 3 puts the LMS alpha axis on top and the IDBD theta axis at the \
+         bottom. The figure above swaps them.\n\n\
          These numbers are not expected to match the paper's samples digit for digit, and no \
          claim is made that they do.\n\n",
         seeds = SEEDS.len(),
@@ -568,32 +589,11 @@ fn failure_section(lms: &[Point], idbd: &[Point]) -> String {
              the risk.\n\n"
         )
     };
-    [counted, diverged_note(lms, idbd)].concat()
-}
-
-/// Names the grid values whose arithmetic stayed finite while the error grew without
-/// bound, since they are not failures and not comparable either.
-fn diverged_note(lms: &[Point], idbd: &[Point]) -> String {
-    let mut named = Vec::new();
-    for (learner, parameter_name, points) in [("LMS", "alpha", lms), ("IDBD", "theta", idbd)] {
-        for point in points {
-            if point.summary().is_some_and(|s| s.mean() > DISPLAY_MAX) {
-                named.push(format!(
-                    "{learner} at {parameter_name} {}",
-                    parameter(point.value)
-                ));
-            }
-        }
-    }
-    if named.is_empty() {
-        return String::new();
-    }
-    format!(
-        "{} ran to the end of the stream without a non-finite value, so the runs are recorded as \
-         completed, but the error grew without bound. Treat those rows as divergence, not as a \
-         measurement.\n\n",
-        named.join(" and ")
-    )
+    let note = diverged_note(
+        axis_upper(lms, idbd),
+        &[("LMS", "alpha", lms), ("IDBD", "theta", idbd)],
+    );
+    [counted, note].concat()
 }
 
 fn files_section() -> String {

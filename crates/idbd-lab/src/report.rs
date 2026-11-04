@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::rng::GENERATOR;
 use crate::stats::Summary;
+use crate::sweep::Point;
 
 /// Version of this crate, recorded in every report so a number can be traced to a build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,8 +42,12 @@ pub fn provenance() -> String {
 }
 
 /// Formats a summary as `mean +/- standard error`.
+///
+/// A single measurement has no spread to report, and `+/- 0.000` would read as a
+/// measured zero, so it is named instead.
 pub fn plus_minus(summary: Option<Summary>) -> String {
     match summary {
+        Some(s) if s.count() < 2 => format!("{} (1 seed, no spread)", magnitude(s.mean())),
         Some(s) => format!(
             "{} +/- {}",
             magnitude(s.mean()),
@@ -50,6 +55,45 @@ pub fn plus_minus(summary: Option<Summary>) -> String {
         ),
         None => "no completed run".to_owned(),
     }
+}
+
+/// Names the grid values whose runs completed while the error grew without bound, so a
+/// reader does not take a row like `1.328e177` for a measurement.
+///
+/// Each group is a learner name, the name of its swept parameter and its points. A point
+/// has diverged when its standard error is not finite or its mean is above `threshold`.
+/// A value named by more than one group appears once. Returns an empty string when
+/// nothing diverged.
+pub fn diverged_note(threshold: f64, groups: &[(&str, &str, &[Point])]) -> String {
+    let mut named: Vec<String> = Vec::new();
+    for (learner, parameter_name, points) in groups {
+        for point in *points {
+            if !diverged(point, threshold) {
+                continue;
+            }
+            let name = format!("{learner} at {parameter_name} {}", parameter(point.value));
+            if !named.contains(&name) {
+                named.push(name);
+            }
+        }
+    }
+    if named.is_empty() {
+        return String::new();
+    }
+    format!(
+        "{} ran to the end of the stream without a non-finite value, so the runs are \
+         recorded as completed, but the error grew without bound: the mean is above \
+         {bound} or the standard error is not finite. Treat those rows as divergence, not \
+         as a measurement.\n\n",
+        named.join(" and "),
+        bound = parameter(threshold),
+    )
+}
+
+fn diverged(point: &Point, threshold: f64) -> bool {
+    point
+        .summary()
+        .is_some_and(|s| !s.standard_error().is_finite() || s.mean() > threshold)
 }
 
 /// Formats a measured value with about four significant digits and at least three
@@ -130,6 +174,50 @@ mod tests {
         let summary = Summary::new(&[1.0, 2.0, 3.0]);
         assert_eq!(plus_minus(summary), "2.000 +/- 0.5774");
         assert_eq!(plus_minus(None), "no completed run");
+    }
+
+    #[test]
+    fn plus_minus_names_a_single_measurement_instead_of_a_zero_spread() {
+        let one = Summary::new(&[8.598]);
+        assert_eq!(plus_minus(one), "8.598 (1 seed, no spread)");
+    }
+
+    fn point(value: f64, mses: &[f64]) -> Point {
+        Point {
+            value,
+            runs: mses
+                .iter()
+                .enumerate()
+                .map(|(index, &mse)| crate::sweep::SeedRun {
+                    seed: u64::try_from(index).expect("a test index fits u64") + 1,
+                    mse: Some(mse),
+                    failure: None,
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn diverged_note_names_a_mean_above_the_bound_and_a_non_finite_spread() {
+        let above = point(0.09, &[100.0, 200.0]);
+        let unbounded = point(0.1, &[1e300, f64::MAX]);
+        let fine = point(0.03, &[3.4, 3.5]);
+        let points = vec![fine, above, unbounded];
+        let note = diverged_note(10.0, &[("LMS", "alpha", &points)]);
+        assert!(
+            note.starts_with("LMS at alpha 0.09 and LMS at alpha 0.1 ran to the end"),
+            "{note}"
+        );
+        assert!(note.contains("the mean is above 10 or"), "{note}");
+    }
+
+    #[test]
+    fn diverged_note_is_empty_when_nothing_diverged_and_names_a_value_once() {
+        let healthy = vec![point(0.03, &[3.4, 3.5])];
+        assert_eq!(diverged_note(10.0, &[("LMS", "alpha", &healthy)]), "");
+        let twice = vec![point(0.1, &[1e6, 2e6])];
+        let note = diverged_note(100.0, &[("LMS", "alpha", &twice), ("LMS", "alpha", &twice)]);
+        assert!(note.starts_with("LMS at alpha 0.1 ran to"), "{note}");
     }
 
     #[test]

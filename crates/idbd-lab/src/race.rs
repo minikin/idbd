@@ -3,7 +3,8 @@
 //!
 //! Both learners use the parameters that scenario E06 selected on the tuning seeds
 //! (`docs/results/house/README.md`), so the fixed-step learner is as well tuned for the
-//! house as IDBD is.
+//! house as IDBD is. The `house-eval` binary fails its run when its selections no longer
+//! match the constants below, so the page cannot drift from the evidence it cites.
 
 use idbd::{Config, Idbd};
 

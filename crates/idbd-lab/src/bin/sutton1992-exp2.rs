@@ -60,6 +60,9 @@ const PAPER_IRRELEVANT_MAX: f64 = 0.007;
 /// Minimum Sutton reports for the Figure 5 fixed-rate sweep.
 const PAPER_FIGURE5_MINIMUM: f64 = 0.13;
 
+/// Half-width Sutton reports around that minimum.
+const PAPER_FIGURE5_SPREAD: f64 = 0.01;
+
 const DEFAULT_OUT: &str = "docs/results/sutton1992-experiment2";
 
 const RELEVANT_COLOR: &str = "#ff6f61";
@@ -583,7 +586,7 @@ fn series_definitions() -> [(&'static str, &'static str, &'static str, SeriesPic
         (
             IRRELEVANT_COLOR,
             "5 4",
-            "Largest step size among the irrelevant inputs",
+            "Largest irrelevant step size, mean over seeds",
             |a| a.irrelevant_max,
         ),
     ]
@@ -772,6 +775,8 @@ fn long_run_section(long_run: &LongRun) -> String {
 
     if long_run.from_paper {
         rows.push(figure4_comparison(long_run));
+    } else {
+        rows.push("\n".to_owned());
     }
     rows.concat()
 }
@@ -789,8 +794,6 @@ fn figure4_comparison(long_run: &LongRun) -> String {
         .collect();
     let across_seeds = Summary::new(&relevant);
     let worst_irrelevant = irrelevant_max.iter().copied().reduce(f64::max);
-    let within_spread =
-        across_seeds.is_some_and(|s| (s.mean() - PAPER_RELEVANT).abs() <= PAPER_RELEVANT_SPREAD);
     let under_bound = worst_irrelevant.is_some_and(|m| m < PAPER_IRRELEVANT_MAX);
 
     format!(
@@ -799,7 +802,8 @@ fn figure4_comparison(long_run: &LongRun) -> String {
          below {PAPER_IRRELEVANT_MAX} and the five relevant ones were {PAPER_RELEVANT} +/- \
          {PAPER_RELEVANT_SPREAD}.\n\n\
          - Measured relevant step size, averaged within a run and then across the {seeds} seeds: \
-         {measured_relevant}. That is {relevant_verdict} the reported interval.\n\
+         {measured_relevant}.\n\
+         - Taken one input at a time, {relevant_verdict}.\n\
          - Largest irrelevant step size seen in any seed: {measured_irrelevant}. That is \
          {irrelevant_verdict} the reported bound.\n\n\
          The shaded band in the plot marks the reported interval and the dashed lines mark the \
@@ -808,9 +812,47 @@ fn figure4_comparison(long_run: &LongRun) -> String {
          this records {seeds}.\n\n",
         seeds = long_run.trajectories.len(),
         measured_relevant = plus_minus(across_seeds),
-        relevant_verdict = if within_spread { "inside" } else { "outside" },
+        relevant_verdict = relevant_verdict(&relevant_step_sizes(long_run)),
         measured_irrelevant = worst_irrelevant.map_or_else(|| "-".to_owned(), magnitude),
         irrelevant_verdict = if under_bound { "under" } else { "above" },
+    )
+}
+
+/// Every relevant input's final step size, from every seed.
+fn relevant_step_sizes(long_run: &LongRun) -> Vec<f64> {
+    long_run
+        .trajectories
+        .iter()
+        .flat_map(|t| t.final_step_sizes[..GROUP_SIZE].iter().copied())
+        .collect()
+}
+
+/// Checks the interval Sutton reports against every relevant step size of every seed,
+/// not against their mean. The paper reports the rates themselves, so a mean inside the
+/// interval would leave the claim untested.
+fn relevant_verdict(values: &[f64]) -> String {
+    let low = PAPER_RELEVANT - PAPER_RELEVANT_SPREAD;
+    let high = PAPER_RELEVANT + PAPER_RELEVANT_SPREAD;
+    let (Some(min), Some(max)) = (
+        values.iter().copied().reduce(f64::min),
+        values.iter().copied().reduce(f64::max),
+    ) else {
+        return "no relevant step size was recorded".to_owned();
+    };
+    let outside = values.iter().filter(|&&v| v < low || v > high).count();
+    let count = values.len();
+    if outside == 0 {
+        return format!(
+            "all {count} relevant step sizes are inside the reported interval ({} to {})",
+            magnitude(min),
+            magnitude(max)
+        );
+    }
+    format!(
+        "{outside} of {count} relevant step sizes are outside the reported interval. The \
+         measured values run from {} to {}",
+        magnitude(min),
+        magnitude(max)
     )
 }
 
@@ -821,9 +863,9 @@ fn sweep_section(sweep: &[Point]) -> String {
          ![Fixed step size against error](figure5.svg)\n\n\
          Sutton's Figure 5 sweeps a fixed learning rate for the relevant inputs while the \
          irrelevant ones are held at zero, and reports a minimum near {PAPER_FIGURE5_MINIMUM} \
-         +/- 0.01. The run below reproduces that setup directly: LMS over the {GROUP_SIZE} \
-         relevant inputs only, with {SWEEP_WARMUP} warm-up and {SWEEP_MEASURED} measured \
-         samples on seeds {first}..={last}.\n\n\
+         +/- {PAPER_FIGURE5_SPREAD}. The run below reproduces that setup directly: LMS over the \
+         {GROUP_SIZE} relevant inputs only, with {SWEEP_WARMUP} warm-up and {SWEEP_MEASURED} \
+         measured samples on seeds {first}..={last}.\n\n\
          | alpha | mean MSE | standard error | failed |\n| --- | --- | --- | --- |\n",
         first = SWEEP_SEEDS.first().copied().unwrap_or_default(),
         last = SWEEP_SEEDS.last().copied().unwrap_or_default(),

@@ -18,6 +18,7 @@ use idbd_lab::evaluation::{
 };
 use idbd_lab::experiment::{RunSpec, run as run_once};
 use idbd_lab::house::{LEVELS, NOISE, NUM_SENSORS, RELEVANT, SENSORS, SWITCH_PROBABILITY};
+use idbd_lab::race::{RACE_LMS_STEP_SIZE, RACE_THETA, STILL_RACE_LMS_STEP_SIZE};
 use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, measure, paired_difference};
@@ -68,6 +69,7 @@ fn run() -> Result<(), String> {
         eprintln!("evaluating {}", task.id());
         results.push(evaluate(task)?);
     }
+    check_race_constants(&results)?;
     let theta = results
         .first()
         .map(|r| r.idbd.selected)
@@ -87,6 +89,42 @@ fn run() -> Result<(), String> {
             ("README.md", readme(&results, theta, &step_sizes)),
         ],
     )?;
+    Ok(())
+}
+
+/// Fails the run if this sweep no longer selects the parameters `race.rs` hardcodes for
+/// the story page, which cites this scenario as its evidence. Without the check the page
+/// could keep claiming a tuned opponent while the tuning moved on.
+fn check_race_constants(results: &[TaskResult]) -> Result<(), String> {
+    type Pick = fn(&TaskResult) -> f64;
+    let expected: [(Task, &str, f64, Pick); 3] = [
+        (Task::House, "IDBD theta", RACE_THETA, |r| r.idbd.selected),
+        (Task::House, "LMS alpha", RACE_LMS_STEP_SIZE, |r| {
+            r.lms.selected
+        }),
+        (
+            Task::StillHouse,
+            "LMS alpha",
+            STILL_RACE_LMS_STEP_SIZE,
+            |r| r.lms.selected,
+        ),
+    ];
+    for (task, what, constant, pick) in expected {
+        let result = results
+            .iter()
+            .find(|r| r.task == task)
+            .ok_or_else(|| format!("no result for task {}", task.id()))?;
+        let selected = pick(result);
+        if (selected - constant).abs() > f64::EPSILON {
+            return Err(format!(
+                "{what} selected on {} is {}, but idbd_lab::race hardcodes {}. The story page \
+                 cites this scenario, so update the constant in race.rs or explain the gap.",
+                task.id(),
+                parameter(selected),
+                parameter(constant)
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -339,14 +377,14 @@ fn method_section() -> String {
 }
 
 fn results_section(results: &[TaskResult]) -> String {
-    let mut parts = vec![
+    let mut parts = vec![format!(
         "## Results\n\n\
          Mean MSE +/- standard error over the evaluation seeds. The selected parameter is in \
-         parentheses. The noise alone gives an MSE of 0.25.\n\n\
+         parentheses. The noise alone gives an MSE of {}.\n\n\
          | task | LMS | IDBD | Autostep, default |\n\
-         | --- | --- | --- | --- |\n"
-            .to_owned(),
-    ];
+         | --- | --- | --- | --- |\n",
+        parameter(NOISE * NOISE)
+    )];
     for result in results {
         parts.push(format!(
             "| `{}` | {} ({}) | {} ({}) | {} |\n",
@@ -452,4 +490,80 @@ fn reading_section() -> String {
      thermostat. Each number belongs to this protocol, these grids and this task. Nothing \
      here establishes that one learner is better in general.\n"
         .to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tuned(family: Family, selected: f64) -> Tuned {
+        Tuned {
+            family,
+            tuning: Vec::new(),
+            selected,
+            evaluation: Point {
+                value: selected,
+                runs: Vec::new(),
+            },
+        }
+    }
+
+    fn result(task: Task, theta: f64, alpha: f64) -> TaskResult {
+        TaskResult {
+            task,
+            lms: tuned(Family::Lms, alpha),
+            idbd: tuned(idbd_family(), theta),
+            autostep: Point {
+                value: 0.0,
+                runs: Vec::new(),
+            },
+        }
+    }
+
+    fn selections(theta: f64, alpha: f64, still_alpha: f64) -> Vec<TaskResult> {
+        vec![
+            result(Task::House, theta, alpha),
+            result(Task::StillHouse, theta, still_alpha),
+        ]
+    }
+
+    #[test]
+    fn the_race_constants_match_the_selections_they_cite() {
+        let matching = selections(RACE_THETA, RACE_LMS_STEP_SIZE, STILL_RACE_LMS_STEP_SIZE);
+        assert_eq!(check_race_constants(&matching), Ok(()));
+    }
+
+    #[test]
+    fn a_moved_selection_fails_the_run_and_names_the_constant() {
+        let moved = selections(0.004, RACE_LMS_STEP_SIZE, STILL_RACE_LMS_STEP_SIZE);
+        let message = check_race_constants(&moved).expect_err("theta moved");
+        assert!(
+            message.starts_with("IDBD theta selected on house is 0.004,"),
+            "{message}"
+        );
+        assert!(message.contains("race.rs"), "{message}");
+
+        let moved = selections(RACE_THETA, 0.02, STILL_RACE_LMS_STEP_SIZE);
+        let message = check_race_constants(&moved).expect_err("alpha moved");
+        assert!(
+            message.starts_with("LMS alpha selected on house is 0.02,"),
+            "{message}"
+        );
+
+        let moved = selections(RACE_THETA, RACE_LMS_STEP_SIZE, 0.002);
+        let message = check_race_constants(&moved).expect_err("still alpha moved");
+        assert!(
+            message.starts_with("LMS alpha selected on still-house is 0.002,"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn a_missing_task_fails_the_run() {
+        let only_house = vec![result(Task::House, RACE_THETA, RACE_LMS_STEP_SIZE)];
+        assert_eq!(
+            check_race_constants(&only_house),
+            Err("no result for task still-house".to_owned())
+        );
+    }
 }
