@@ -77,7 +77,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "autostep_family",
-      "line": 96,
+      "line": 97,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -86,7 +86,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "cell",
-      "line": 389,
+      "line": 390,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -95,26 +95,26 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "evaluate",
-      "line": 103,
+      "line": 104,
       "cyclomatic": 5.0,
       "coverage": 91.66666666666666,
       "crap": 5.014467592592593,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 112,
-          "end": 112
+          "start": 113,
+          "end": 113
         },
         {
-          "start": 119,
-          "end": 119
+          "start": 120,
+          "end": 120
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "grid_list",
-      "line": 489,
+      "line": 490,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -123,7 +123,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "header",
-      "line": 307,
+      "line": 308,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -132,7 +132,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "learners",
-      "line": 154,
+      "line": 155,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -156,7 +156,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "mean",
-      "line": 468,
+      "line": 469,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -165,7 +165,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "method_section",
-      "line": 316,
+      "line": 317,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -174,7 +174,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "overview_section",
-      "line": 344,
+      "line": 345,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -183,7 +183,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "parameter_name",
-      "line": 163,
+      "line": 164,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -192,22 +192,22 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "range",
-      "line": 472,
+      "line": 473,
       "cyclomatic": 3.0,
       "coverage": 85.71428571428571,
       "crap": 3.0262390670553936,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 477,
-          "end": 477
+          "start": 478,
+          "end": 478
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "raw_csv",
-      "line": 171,
+      "line": 172,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -216,7 +216,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "reading_section",
-      "line": 481,
+      "line": 482,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -225,7 +225,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "readme",
-      "line": 295,
+      "line": 296,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -234,7 +234,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "rows",
-      "line": 205,
+      "line": 206,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -244,21 +244,25 @@
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "run",
       "line": 72,
-      "cyclomatic": 10.0,
-      "coverage": 88.88888888888889,
-      "crap": 10.137174211248286,
+      "cyclomatic": 5.0,
+      "coverage": 90.47619047619048,
+      "crap": 5.021595939963287,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 75,
-          "end": 76
+          "start": 74,
+          "end": 74
+        },
+        {
+          "start": 93,
+          "end": 93
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "sensitivity_section",
-      "line": 398,
+      "line": 399,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -267,37 +271,37 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "step_size_section",
-      "line": 441,
+      "line": 442,
       "cyclomatic": 3.0,
       "coverage": 86.66666666666667,
       "crap": 3.021333333333333,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 452,
-          "end": 453
+          "start": 453,
+          "end": 454
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "step_sizes",
-      "line": 129,
+      "line": 130,
       "cyclomatic": 3.0,
       "coverage": 91.30434782608695,
       "crap": 3.0059176460918877,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 141,
-          "end": 142
+          "start": 142,
+          "end": 143
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "step_sizes_csv",
-      "line": 276,
+      "line": 277,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -306,7 +310,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "summary_csv",
-      "line": 227,
+      "line": 228,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -315,7 +319,7 @@
     {
       "file": "crates/idbd-lab/src/bin/autostep-eval.rs",
       "function": "summary_row",
-      "line": 260,
+      "line": 261,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -342,41 +346,41 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "cell",
-      "line": 381,
+      "line": 382,
       "cyclomatic": 4.0,
       "coverage": 62.5,
       "crap": 4.84375,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 383,
-          "end": 383
+          "start": 384,
+          "end": 384
         },
         {
-          "start": 387,
-          "end": 388
+          "start": 388,
+          "end": 389
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "converged_note",
-      "line": 432,
+      "line": 433,
       "cyclomatic": 2.0,
       "coverage": 94.73684210526315,
       "crap": 2.0005831753899987,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 446,
-          "end": 446
+          "start": 447,
+          "end": 447
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "description",
-      "line": 336,
+      "line": 337,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -385,7 +389,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "evaluate",
-      "line": 94,
+      "line": 95,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -394,7 +398,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "families",
-      "line": 81,
+      "line": 82,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -403,7 +407,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "grid_list",
-      "line": 463,
+      "line": 464,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -412,7 +416,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "header",
-      "line": 231,
+      "line": 232,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -421,7 +425,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "idbd_family",
-      "line": 456,
+      "line": 457,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -445,7 +449,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "method_section",
-      "line": 240,
+      "line": 241,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -454,22 +458,22 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "overview_section",
-      "line": 269,
+      "line": 270,
       "cyclomatic": 4.0,
       "coverage": 96.66666666666667,
       "crap": 4.000592592592593,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 282,
-          "end": 282
+          "start": 283,
+          "end": 283
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "raw_csv",
-      "line": 121,
+      "line": 122,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -478,7 +482,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "reading_section",
-      "line": 409,
+      "line": 410,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -487,7 +491,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "readme",
-      "line": 221,
+      "line": 222,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -496,7 +500,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "rows",
-      "line": 149,
+      "line": 150,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -506,21 +510,25 @@
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "run",
       "line": 59,
-      "cyclomatic": 9.0,
-      "coverage": 86.66666666666667,
-      "crap": 9.192,
+      "cyclomatic": 5.0,
+      "coverage": 88.88888888888889,
+      "crap": 5.034293552812072,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 62,
-          "end": 63
+          "start": 61,
+          "end": 61
+        },
+        {
+          "start": 78,
+          "end": 78
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "seed_table",
-      "line": 364,
+      "line": 365,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -529,7 +537,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "summary_csv",
-      "line": 173,
+      "line": 174,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -538,7 +546,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "summary_row",
-      "line": 202,
+      "line": 203,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -547,7 +555,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "task_section",
-      "line": 307,
+      "line": 308,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -556,7 +564,7 @@
     {
       "file": "crates/idbd-lab/src/bin/evaluate.rs",
       "function": "tuning_table",
-      "line": 392,
+      "line": 393,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -565,37 +573,37 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "cell",
-      "line": 396,
+      "line": 397,
       "cyclomatic": 2.0,
       "coverage": 83.33333333333334,
       "crap": 2.0185185185185186,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 401,
-          "end": 401
+          "start": 402,
+          "end": 402
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "evaluate",
-      "line": 99,
+      "line": 100,
       "cyclomatic": 4.0,
       "coverage": 94.44444444444444,
       "crap": 4.002743484224966,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 110,
-          "end": 110
+          "start": 111,
+          "end": 111
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "header",
-      "line": 291,
+      "line": 292,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -604,7 +612,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "idbd_family",
-      "line": 92,
+      "line": 93,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -613,7 +621,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "learners",
-      "line": 136,
+      "line": 137,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -622,7 +630,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "lower_on",
-      "line": 385,
+      "line": 386,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -646,7 +654,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "method_section",
-      "line": 300,
+      "line": 301,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -655,22 +663,22 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "range",
-      "line": 439,
+      "line": 440,
       "cyclomatic": 3.0,
       "coverage": 85.71428571428571,
       "crap": 3.0262390670553936,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 444,
-          "end": 444
+          "start": 445,
+          "end": 445
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "raw_csv",
-      "line": 144,
+      "line": 145,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -679,7 +687,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "reading_section",
-      "line": 448,
+      "line": 449,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -688,7 +696,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "readme",
-      "line": 280,
+      "line": 281,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -697,7 +705,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "results_section",
-      "line": 340,
+      "line": 341,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -706,7 +714,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "rows",
-      "line": 180,
+      "line": 181,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -716,51 +724,55 @@
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "run",
       "line": 61,
-      "cyclomatic": 12.0,
-      "coverage": 92.0,
-      "crap": 12.073728,
+      "cyclomatic": 7.0,
+      "coverage": 92.85714285714286,
+      "crap": 7.017857142857143,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 64,
-          "end": 65
+          "start": 63,
+          "end": 63
+        },
+        {
+          "start": 89,
+          "end": 89
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "step_size_section",
-      "line": 405,
+      "line": 406,
       "cyclomatic": 3.0,
       "coverage": 95.83333333333334,
       "crap": 3.0006510416666665,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 433,
-          "end": 433
+          "start": 434,
+          "end": 434
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "step_sizes",
-      "line": 119,
+      "line": 120,
       "cyclomatic": 3.0,
       "coverage": 91.66666666666666,
       "crap": 3.0052083333333335,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 126,
-          "end": 126
+          "start": 127,
+          "end": 127
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "step_sizes_csv",
-      "line": 253,
+      "line": 254,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -769,7 +781,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "summary_csv",
-      "line": 202,
+      "line": 203,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -778,7 +790,7 @@
     {
       "file": "crates/idbd-lab/src/bin/house-eval.rs",
       "function": "summary_row",
-      "line": 237,
+      "line": 238,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -787,37 +799,37 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "best_section",
-      "line": 481,
+      "line": 482,
       "cyclomatic": 1.0,
       "coverage": 80.0,
       "crap": 1.008,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 483,
-          "end": 485
+          "start": 484,
+          "end": 486
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "diverged_note",
-      "line": 575,
+      "line": 576,
       "cyclomatic": 5.0,
       "coverage": 93.75,
       "crap": 5.006103515625,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 588,
-          "end": 588
+          "start": 589,
+          "end": 589
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "draw_axis",
-      "line": 395,
+      "line": 396,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -826,22 +838,22 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "draw_curve",
-      "line": 344,
+      "line": 345,
       "cyclomatic": 4.0,
       "coverage": 97.5,
       "crap": 4.00025,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 358,
-          "end": 358
+          "start": 359,
+          "end": 359
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "draw_frame",
-      "line": 285,
+      "line": 286,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -850,22 +862,22 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "failure_section",
-      "line": 556,
+      "line": 557,
       "cyclomatic": 2.0,
       "coverage": 87.5,
       "crap": 2.0078125,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 560,
-          "end": 560
+          "start": 561,
+          "end": 561
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "figure",
-      "line": 219,
+      "line": 220,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -874,7 +886,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "files_section",
-      "line": 598,
+      "line": 599,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -883,7 +895,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "grid_list",
-      "line": 609,
+      "line": 610,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -892,7 +904,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "header",
-      "line": 435,
+      "line": 436,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -916,7 +928,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "paper_section",
-      "line": 531,
+      "line": 532,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -925,7 +937,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "protocol_section",
-      "line": 444,
+      "line": 445,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -934,7 +946,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "raw_csv",
-      "line": 131,
+      "line": 132,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -943,7 +955,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "readme",
-      "line": 422,
+      "line": 423,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -952,7 +964,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "results_section",
-      "line": 469,
+      "line": 470,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -962,40 +974,44 @@
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "run",
       "line": 76,
-      "cyclomatic": 10.0,
-      "coverage": 92.3076923076923,
-      "crap": 10.04551661356395,
+      "cyclomatic": 5.0,
+      "coverage": 93.10344827586206,
+      "crap": 5.008200418221329,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 79,
-          "end": 80
+          "start": 78,
+          "end": 78
+        },
+        {
+          "start": 109,
+          "end": 109
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "runner_up_note",
-      "line": 511,
+      "line": 512,
       "cyclomatic": 1.0,
       "coverage": 86.66666666666667,
       "crap": 1.0023703703703704,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 519,
-          "end": 519
+          "start": 520,
+          "end": 520
         },
         {
-          "start": 522,
-          "end": 522
+          "start": 523,
+          "end": 523
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "summary_csv",
-      "line": 176,
+      "line": 177,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1004,7 +1020,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "sweep",
-      "line": 112,
+      "line": 113,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1013,7 +1029,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp1.rs",
       "function": "table",
-      "line": 616,
+      "line": 617,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1022,7 +1038,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "aggregate",
-      "line": 347,
+      "line": 374,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1031,7 +1047,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "draw_sample_axis",
-      "line": 487,
+      "line": 514,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1040,7 +1056,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "draw_value_axis",
-      "line": 517,
+      "line": 544,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1048,8 +1064,17 @@
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
+      "function": "failed",
+      "line": 236,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "figure4_comparison",
-      "line": 752,
+      "line": 779,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1058,7 +1083,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "files_section",
-      "line": 825,
+      "line": 852,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1067,7 +1092,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "final_step_sizes_csv",
-      "line": 266,
+      "line": 293,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -1076,7 +1101,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "header",
-      "line": 669,
+      "line": 696,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1084,8 +1109,17 @@
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
+      "function": "long_run",
+      "line": 152,
+      "cyclomatic": 3.0,
+      "coverage": 100.0,
+      "crap": 3.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "long_run_section",
-      "line": 697,
+      "line": 724,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -1108,8 +1142,17 @@
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
+      "function": "measured_mean",
+      "line": 243,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "protocol_section",
-      "line": 678,
+      "line": 705,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1118,7 +1161,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "readme",
-      "line": 659,
+      "line": 686,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1127,19 +1170,24 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "relevant_only_lms",
-      "line": 185,
-      "cyclomatic": 7.0,
-      "coverage": 48.64864864864865,
-      "crap": 13.635164748386076,
+      "line": 218,
+      "cyclomatic": 6.0,
+      "coverage": 100.0,
+      "crap": 6.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
+      "function": "report_seed",
+      "line": 180,
+      "cyclomatic": 2.0,
+      "coverage": 90.9090909090909,
+      "crap": 2.0030052592036065,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 200,
-          "end": 207
-        },
-        {
-          "start": 214,
-          "end": 226
+          "start": 190,
+          "end": 190
         }
       ]
     },
@@ -1147,40 +1195,36 @@
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "run",
       "line": 101,
-      "cyclomatic": 19.0,
+      "cyclomatic": 4.0,
       "coverage": 95.45454545454545,
-      "crap": 19.033903080390683,
+      "crap": 4.001502629601803,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 104,
-          "end": 105
-        },
-        {
-          "start": 137,
-          "end": 137
+          "start": 103,
+          "end": 103
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "seed_count_phrase",
-      "line": 374,
+      "line": 401,
       "cyclomatic": 2.0,
       "coverage": 85.71428571428571,
       "crap": 2.011661807580175,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 380,
-          "end": 380
+          "start": 407,
+          "end": 407
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "series_definitions",
-      "line": 542,
+      "line": 569,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1189,7 +1233,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "sweep_csv",
-      "line": 303,
+      "line": 330,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1198,37 +1242,46 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "sweep_figure",
-      "line": 565,
+      "line": 592,
       "cyclomatic": 3.0,
       "coverage": 98.66666666666667,
       "crap": 3.000021333333333,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 624,
-          "end": 624
+          "start": 651,
+          "end": 651
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
+      "function": "sweep_point",
+      "line": 195,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "sweep_section",
-      "line": 790,
+      "line": 817,
       "cyclomatic": 4.0,
       "coverage": 94.73684210526315,
       "crap": 4.002332701559994,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 820,
-          "end": 820
+          "start": 847,
+          "end": 847
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "trajectories_csv",
-      "line": 229,
+      "line": 256,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -1237,7 +1290,7 @@
     {
       "file": "crates/idbd-lab/src/bin/sutton1992-exp2.rs",
       "function": "trajectory_figure",
-      "line": 384,
+      "line": 411,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -1255,10 +1308,19 @@
     {
       "file": "crates/idbd-lab/src/cli.rs",
       "function": "arguments",
-      "line": 61,
+      "line": 90,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/cli.rs",
+      "function": "options_or_help",
+      "line": 66,
+      "cyclomatic": 4.0,
+      "coverage": 100.0,
+      "crap": 4.0,
       "crate": "idbd-lab"
     },
     {
@@ -1268,6 +1330,15 @@
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/cli.rs",
+      "function": "usage",
+      "line": 85,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
       "crate": "idbd-lab"
     },
     {
@@ -1852,7 +1923,7 @@
     {
       "file": "crates/idbd-lab/src/report.rs",
       "function": "magnitude",
-      "line": 47,
+      "line": 58,
       "cyclomatic": 8.0,
       "coverage": 100.0,
       "crap": 8.0,
@@ -1861,7 +1932,7 @@
     {
       "file": "crates/idbd-lab/src/report.rs",
       "function": "parameter",
-      "line": 83,
+      "line": 94,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1870,7 +1941,7 @@
     {
       "file": "crates/idbd-lab/src/report.rs",
       "function": "plus_minus",
-      "line": 33,
+      "line": 44,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1879,7 +1950,7 @@
     {
       "file": "crates/idbd-lab/src/report.rs",
       "function": "provenance",
-      "line": 28,
+      "line": 39,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1888,15 +1959,15 @@
     {
       "file": "crates/idbd-lab/src/report.rs",
       "function": "trim_trailing_zeros",
-      "line": 69,
+      "line": 80,
       "cyclomatic": 3.0,
       "coverage": 90.0,
       "crap": 3.009,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 71,
-          "end": 71
+          "start": 82,
+          "end": 82
         }
       ]
     },
@@ -1907,6 +1978,15 @@
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/report.rs",
+      "function": "write_all",
+      "line": 32,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
       "crate": "idbd-lab"
     },
     {

@@ -11,13 +11,13 @@ use std::process::ExitCode;
 
 use idbd::Bounds;
 use idbd::autostep::{self, Autostep};
-use idbd_lab::cli::{Invocation, arguments, parse};
+use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::evaluation::{
     EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
     Tuned, WARMUP, protocol, tune_and_evaluate,
 };
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
+use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, measure, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, World};
@@ -70,12 +70,8 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let options = match parse(arguments(), DEFAULT_OUT)? {
-        Invocation::Help => {
-            println!("autostep-eval [--out <dir>]\n\ndefault --out {DEFAULT_OUT}");
-            return Ok(());
-        }
-        Invocation::Run(options) => options,
+    let Some(options) = options_or_help("autostep-eval", arguments(), DEFAULT_OUT)? else {
+        return Ok(());
     };
     eprintln!("{}", provenance());
     let mut results = Vec::new();
@@ -86,10 +82,15 @@ fn run() -> Result<(), String> {
     let step_sizes: Vec<StepSizes> = STEP_SIZE_SEEDS.iter().map(|&s| step_sizes(s)).collect();
 
     let out = options.out();
-    write(out, "raw.csv", &raw_csv(&results))?;
-    write(out, "summary.csv", &summary_csv(&results))?;
-    write(out, "step-sizes.csv", &step_sizes_csv(&step_sizes))?;
-    write(out, "README.md", &readme(&results, &step_sizes))?;
+    write_all(
+        out,
+        &[
+            ("raw.csv", raw_csv(&results)),
+            ("summary.csv", summary_csv(&results)),
+            ("step-sizes.csv", step_sizes_csv(&step_sizes)),
+            ("README.md", readme(&results, &step_sizes)),
+        ],
+    )?;
     Ok(())
 }
 

@@ -57,6 +57,35 @@ where
     }))
 }
 
+/// Parses `args` for the binary `name`. Prints the usage line and returns `None` for
+/// `--help`, so a binary's `run` stops there without a branch of its own.
+///
+/// # Errors
+///
+/// Returns the message from [`parse`] for an invalid command line.
+pub fn options_or_help<I, S>(
+    name: &str,
+    args: I,
+    default_out: &str,
+) -> Result<Option<Options>, String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    match parse(args, default_out)? {
+        Invocation::Help => {
+            println!("{}", usage(name, default_out));
+            Ok(None)
+        }
+        Invocation::Run(options) => Ok(Some(options)),
+    }
+}
+
+/// The usage text every lab binary prints for `--help`.
+pub fn usage(name: &str, default_out: &str) -> String {
+    format!("{name} [--out <dir>]\n\ndefault --out {default_out}")
+}
+
 /// Returns the arguments of the current process, excluding the program name.
 pub fn arguments() -> Vec<String> {
     std::env::args().skip(1).collect()
@@ -90,6 +119,17 @@ mod tests {
     fn help_wins_over_other_arguments() {
         assert_eq!(run(&["--help"]), Ok(Invocation::Help));
         assert_eq!(run(&["-h", "--out", "x"]), Ok(Invocation::Help));
+    }
+
+    #[test]
+    fn options_or_help_stops_on_help_and_passes_options_through() {
+        assert_eq!(options_or_help("bin", ["--help"], "d"), Ok(None));
+        let Ok(Some(options)) = options_or_help("bin", ["--out", "x"], "d") else {
+            panic!("--out with a value is valid");
+        };
+        assert_eq!(options.out(), Path::new("x"));
+        assert!(options_or_help("bin", ["--bad"], "d").is_err());
+        assert_eq!(usage("bin", "d"), "bin [--out <dir>]\n\ndefault --out d");
     }
 
     #[test]

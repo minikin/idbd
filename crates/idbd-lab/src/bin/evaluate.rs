@@ -6,13 +6,13 @@
 use std::process::ExitCode;
 
 use idbd::Bounds;
-use idbd_lab::cli::{Invocation, arguments, parse};
+use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::evaluation::{
     EVALUATION_SEEDS, IDBD_GRID, IDBD_INITIAL_STEP_SIZE, LMS_GRID, MEASURED, TASKS, TUNING_SEEDS,
     WARMUP, tune_and_evaluate,
 };
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
+use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, RELEVANCE_SHIFT_PERIOD, SIGN_FLIP_PERIOD};
@@ -57,12 +57,8 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let options = match parse(arguments(), DEFAULT_OUT)? {
-        Invocation::Help => {
-            println!("evaluate [--out <dir>]\n\ndefault --out {DEFAULT_OUT}");
-            return Ok(());
-        }
-        Invocation::Run(options) => options,
+    let Some(options) = options_or_help("evaluate", arguments(), DEFAULT_OUT)? else {
+        return Ok(());
     };
 
     eprintln!("{}", provenance());
@@ -72,9 +68,14 @@ fn run() -> Result<(), String> {
     }
 
     let out = options.out();
-    write(out, "raw.csv", &raw_csv(&results))?;
-    write(out, "summary.csv", &summary_csv(&results))?;
-    write(out, "README.md", &readme(&results))?;
+    write_all(
+        out,
+        &[
+            ("raw.csv", raw_csv(&results)),
+            ("summary.csv", summary_csv(&results)),
+            ("README.md", readme(&results)),
+        ],
+    )?;
     Ok(())
 }
 

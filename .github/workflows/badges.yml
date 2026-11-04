@@ -76,7 +76,7 @@ jobs:
           tool: cargo-crap@0.9.0
       - name: Score CRAP
         if: hashFiles('artifact/lcov.info') != ''
-        run: cargo crap -p idbd --lcov artifact/lcov.info --format shields --output crap-badge.json
+        run: cargo crap -p idbd --lcov artifact/lcov.info --threshold 10 --format shields --output crap-badge.json
 
       - name: Render
         env:

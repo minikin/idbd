@@ -7,10 +7,10 @@
 use std::process::ExitCode;
 
 use idbd::Bounds;
-use idbd_lab::cli::{Invocation, arguments, parse};
+use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis, tick_label};
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
+use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::Summary;
 use idbd_lab::sweep::{Family, Point, Protocol, best, measure, paired_difference};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, SIGN_FLIP_PERIOD};
@@ -74,12 +74,8 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let options = match parse(arguments(), DEFAULT_OUT)? {
-        Invocation::Help => {
-            println!("sutton1992-exp1 [--out <dir>]\n\ndefault --out {DEFAULT_OUT}");
-            return Ok(());
-        }
-        Invocation::Run(options) => options,
+    let Some(options) = options_or_help("sutton1992-exp1", arguments(), DEFAULT_OUT)? else {
+        return Ok(());
     };
 
     let protocol = Protocol {
@@ -102,10 +98,15 @@ fn run() -> Result<(), String> {
     let idbd = sweep(idbd_family, &protocol, &IDBD_GRID)?;
 
     let out = options.out();
-    write(out, "raw.csv", &raw_csv(&lms, &idbd))?;
-    write(out, "summary.csv", &summary_csv(&lms, &idbd))?;
-    write(out, "figure3.svg", &figure(&lms, &idbd))?;
-    write(out, "README.md", &readme(&lms, &idbd))?;
+    write_all(
+        out,
+        &[
+            ("raw.csv", raw_csv(&lms, &idbd)),
+            ("summary.csv", summary_csv(&lms, &idbd)),
+            ("figure3.svg", figure(&lms, &idbd)),
+            ("README.md", readme(&lms, &idbd)),
+        ],
+    )?;
     Ok(())
 }
 

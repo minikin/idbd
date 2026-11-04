@@ -197,7 +197,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo doc --workspace --no-deps
-scripts/coverage.sh                      # coverage and CRAP gates
+scripts/coverage.sh                      # coverage and CRAP gates: no function above CRAP 10
 cargo mutants -p idbd                    # mutation testing of the core
 ```
 

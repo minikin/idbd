@@ -24,6 +24,17 @@ pub fn write(dir: &Path, name: &str, contents: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Writes every `(name, contents)` pair into `dir` with [`write`], in order.
+///
+/// # Errors
+///
+/// Returns the first failure from [`write`]. Files before it stay written.
+pub fn write_all(dir: &Path, files: &[(&str, String)]) -> Result<(), String> {
+    files
+        .iter()
+        .try_for_each(|(name, contents)| write(dir, name, contents))
+}
+
 /// Returns the line every report carries: crate version and generator identity.
 pub fn provenance() -> String {
     format!("idbd-lab {VERSION}, generator {GENERATOR}")
@@ -98,6 +109,20 @@ mod tests {
         let read = fs::read_to_string(nested.join("out.txt")).expect("file exists");
         fs::remove_dir_all(&dir).expect("clean up");
         assert_eq!(read, "contents");
+    }
+
+    #[test]
+    fn write_all_writes_every_file() {
+        let dir = std::env::temp_dir().join(format!("idbd-lab-report-all-{}", std::process::id()));
+        write_all(
+            &dir,
+            &[("a.txt", "a".to_owned()), ("b.txt", "b".to_owned())],
+        )
+        .expect("writable temp directory");
+        let read =
+            ["a.txt", "b.txt"].map(|name| fs::read_to_string(dir.join(name)).expect("file exists"));
+        fs::remove_dir_all(&dir).expect("clean up");
+        assert_eq!(read, ["a", "b"]);
     }
 
     #[test]

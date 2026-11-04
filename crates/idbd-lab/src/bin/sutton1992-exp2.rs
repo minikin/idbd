@@ -8,11 +8,11 @@ use std::process::ExitCode;
 
 use idbd::{Bounds, Config};
 use idbd_lab::alphas::{Checkpoint, Trajectory, record};
-use idbd_lab::cli::{Invocation, arguments, parse};
+use idbd_lab::cli::{arguments, options_or_help};
 use idbd_lab::csv::{Csv, number};
 use idbd_lab::lms::Lms;
 use idbd_lab::plot::{Anchor, Scale, Svg, nice_axis, tick_label};
-use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write};
+use idbd_lab::report::{magnitude, parameter, plus_minus, provenance, write_all};
 use idbd_lab::stats::{Summary, exact_f64};
 use idbd_lab::sweep::{Failure, Point, SeedRun, best};
 use idbd_lab::world::{GROUP_SIZE, NUM_FEATURES, Preset, SIGN_FLIP_PERIOD, World};
@@ -99,85 +99,118 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let options = match parse(arguments(), DEFAULT_OUT)? {
-        Invocation::Help => {
-            println!("sutton1992-exp2 [--out <dir>]\n\ndefault --out {DEFAULT_OUT}");
-            return Ok(());
-        }
-        Invocation::Run(options) => options,
+    let Some(options) = options_or_help("sutton1992-exp2", arguments(), DEFAULT_OUT)? else {
+        return Ok(());
     };
     eprintln!("{}", provenance());
-
-    let mut runs = Vec::new();
-    for (label, file, theta, from_paper) in [
-        ("paper configuration", "figure4.svg", PAPER_THETA, true),
-        (
-            "adapted demonstration, not in the paper",
-            "adapted-demonstration.svg",
-            ADAPTED_THETA,
-            false,
-        ),
-    ] {
-        eprintln!("{label}: theta {}, {SAMPLES} samples", parameter(theta));
-        let config = Config::new(INITIAL_STEP_SIZE, theta)
-            .and_then(|c| c.with_bounds(Bounds::none()))
-            .map_err(|e| e.to_string())?;
-        let mut trajectories = Vec::with_capacity(SEEDS.len());
-        for &seed in &SEEDS {
-            let trajectory = record(Preset::Sutton1992, seed, SAMPLES, INTERVAL, config)?;
-            eprintln!(
-                "  seed {seed}: relevant alpha {}, irrelevant alpha {}, largest irrelevant {}",
-                plus_minus(trajectory.final_relevant()),
-                plus_minus(trajectory.final_irrelevant()),
-                trajectory
-                    .final_irrelevant_max()
-                    .map_or_else(|| "-".to_owned(), magnitude)
-            );
-            if let Some(failure) = &trajectory.failure {
-                eprintln!("  seed {seed} failed at sample {}", failure.sample);
-            }
-            trajectories.push(trajectory);
-        }
-        runs.push(LongRun {
-            label,
-            file,
-            theta,
-            from_paper,
-            trajectories,
-        });
-    }
+    let runs = LONG_RUNS
+        .iter()
+        .map(long_run)
+        .collect::<Result<Vec<_>, _>>()?;
 
     eprintln!("fixed-rate sweep over the relevant inputs only");
-    let mut sweep = Vec::with_capacity(FIXED_RATE_GRID.len());
-    for &step_size in &FIXED_RATE_GRID {
-        let mut runs = Vec::with_capacity(SWEEP_SEEDS.len());
-        for &seed in &SWEEP_SEEDS {
-            let (mse, failure) = relevant_only_lms(step_size, seed)?;
-            runs.push(SeedRun { seed, mse, failure });
-        }
-        let point = Point {
-            value: step_size,
-            runs,
-        };
-        eprintln!(
-            "  alpha {} -> MSE {}, {} failed",
-            parameter(step_size),
-            plus_minus(point.summary()),
-            point.failures()
-        );
-        sweep.push(point);
-    }
+    let sweep = FIXED_RATE_GRID
+        .iter()
+        .map(|&step_size| sweep_point(step_size))
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let out = options.out();
-    write(out, "trajectories.csv", &trajectories_csv(&runs))?;
-    write(out, "final-step-sizes.csv", &final_step_sizes_csv(&runs))?;
-    write(out, "figure5-sweep.csv", &sweep_csv(&sweep))?;
-    for long_run in &runs {
-        write(out, long_run.file, &trajectory_figure(long_run))?;
+    let mut files = vec![
+        ("trajectories.csv", trajectories_csv(&runs)),
+        ("final-step-sizes.csv", final_step_sizes_csv(&runs)),
+        ("figure5-sweep.csv", sweep_csv(&sweep)),
+    ];
+    files.extend(runs.iter().map(|run| (run.file, trajectory_figure(run))));
+    files.push(("figure5.svg", sweep_figure(&sweep)));
+    files.push(("README.md", readme(&runs, &sweep)));
+    write_all(options.out(), &files)
+}
+
+/// One long run of Figure 4: what it is called, where its figure goes, and its theta.
+struct LongRunSpec {
+    label: &'static str,
+    file: &'static str,
+    theta: f64,
+    from_paper: bool,
+}
+
+const LONG_RUNS: [LongRunSpec; 2] = [
+    LongRunSpec {
+        label: "paper configuration",
+        file: "figure4.svg",
+        theta: PAPER_THETA,
+        from_paper: true,
+    },
+    LongRunSpec {
+        label: "adapted demonstration, not in the paper",
+        file: "adapted-demonstration.svg",
+        theta: ADAPTED_THETA,
+        from_paper: false,
+    },
+];
+
+/// Records the step-size trajectories of every seed at one theta.
+fn long_run(spec: &LongRunSpec) -> Result<LongRun, String> {
+    let LongRunSpec {
+        label,
+        file,
+        theta,
+        from_paper,
+    } = *spec;
+    eprintln!("{label}: theta {}, {SAMPLES} samples", parameter(theta));
+    let config = Config::new(INITIAL_STEP_SIZE, theta)
+        .and_then(|c| c.with_bounds(Bounds::none()))
+        .map_err(|e| e.to_string())?;
+    let trajectories = SEEDS
+        .iter()
+        .map(|&seed| {
+            let trajectory = record(Preset::Sutton1992, seed, SAMPLES, INTERVAL, config)?;
+            report_seed(seed, &trajectory);
+            Ok(trajectory)
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(LongRun {
+        label,
+        file,
+        theta,
+        from_paper,
+        trajectories,
+    })
+}
+
+fn report_seed(seed: u64, trajectory: &Trajectory) {
+    eprintln!(
+        "  seed {seed}: relevant alpha {}, irrelevant alpha {}, largest irrelevant {}",
+        plus_minus(trajectory.final_relevant()),
+        plus_minus(trajectory.final_irrelevant()),
+        trajectory
+            .final_irrelevant_max()
+            .map_or_else(|| "-".to_owned(), magnitude)
+    );
+    if let Some(failure) = &trajectory.failure {
+        eprintln!("  seed {seed} failed at sample {}", failure.sample);
     }
-    write(out, "figure5.svg", &sweep_figure(&sweep))?;
-    write(out, "README.md", &readme(&runs, &sweep))?;
-    Ok(())
+}
+
+/// One point of the Figure 5 sweep: fixed-step LMS on the relevant inputs, every seed.
+fn sweep_point(step_size: f64) -> Result<Point, String> {
+    let runs = SWEEP_SEEDS
+        .iter()
+        .map(|&seed| {
+            let (mse, failure) = relevant_only_lms(step_size, seed)?;
+            Ok(SeedRun { seed, mse, failure })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let point = Point {
+        value: step_size,
+        runs,
+    };
+    eprintln!(
+        "  alpha {} -> MSE {}, {} failed",
+        parameter(step_size),
+        plus_minus(point.summary()),
+        point.failures()
+    );
+    Ok(point)
 }
 
 /// Runs fixed-step LMS on the five relevant inputs alone, which is the Figure 5 setup:
@@ -192,38 +225,32 @@ fn relevant_only_lms(step_size: f64, seed: u64) -> Result<(Option<f64>, Option<F
     for t in 1..=samples {
         let target = world.next_sample(&mut features, &mut events);
         match lms.update(&features[..GROUP_SIZE], target) {
-            Ok(outcome) => {
-                if t > SWEEP_WARMUP {
-                    sum += outcome.error * outcome.error;
-                }
-            }
-            Err(error) => {
-                return Ok((
-                    None,
-                    Some(Failure {
-                        sample: t,
-                        reason: error.to_string(),
-                    }),
-                ));
-            }
+            Ok(outcome) if t > SWEEP_WARMUP => sum += outcome.error * outcome.error,
+            Ok(_) => {}
+            Err(error) => return Ok(failed(t, error.to_string())),
         }
     }
+    Ok(measured_mean(sum, samples))
+}
+
+fn failed(sample: u64, reason: String) -> (Option<f64>, Option<Failure>) {
+    (None, Some(Failure { sample, reason }))
+}
+
+/// The mean of the measured squared errors. As in `experiment::run`, a sum that
+/// overflowed while the weights stayed finite is a failure of the measurement, not a
+/// missing value.
+fn measured_mean(sum: f64, samples: u64) -> (Option<f64>, Option<Failure>) {
     let mse = sum / exact_f64(SWEEP_MEASURED);
     if mse.is_finite() {
-        return Ok((Some(mse), None));
+        return (Some(mse), None);
     }
-    // As in `experiment::run`: a sum that overflowed while the weights stayed finite is a
-    // failure of the measurement, not a missing value.
-    Ok((
-        None,
-        Some(Failure {
-            sample: samples,
-            reason: format!(
-                "no finite mean over {SWEEP_MEASURED} measured samples: squared errors sum to \
-                 {sum}"
-            ),
-        }),
-    ))
+    failed(
+        samples,
+        format!(
+            "no finite mean over {SWEEP_MEASURED} measured samples: squared errors sum to {sum}"
+        ),
+    )
 }
 
 fn trajectories_csv(runs: &[LongRun]) -> String {
@@ -831,4 +858,35 @@ fn files_section() -> String {
      - `figure5-sweep.csv`: one row per fixed step size and seed.\n\
      - `figure4.svg`, `adapted-demonstration.svg`, `figure5.svg`: the plots above.\n"
         .to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_diverging_step_size_is_a_failure_with_its_sample() {
+        let (mse, failure) = relevant_only_lms(1e6, 1).expect("valid step size");
+        assert_eq!(mse, None);
+        let failure = failure.expect("LMS diverges");
+        assert!(
+            failure.sample <= SWEEP_WARMUP + SWEEP_MEASURED,
+            "{}",
+            failure.sample
+        );
+    }
+
+    #[test]
+    fn an_overflowing_sum_is_a_failure_not_a_missing_value() {
+        let (mse, failure) = measured_mean(f64::INFINITY, 7);
+        assert_eq!(mse, None);
+        let failure = failure.expect("a failure");
+        assert_eq!(failure.sample, 7);
+        assert!(
+            failure.reason.contains("no finite mean"),
+            "{}",
+            failure.reason
+        );
+        assert_eq!(measured_mean(0.0, 7).0, Some(0.0));
+    }
 }
