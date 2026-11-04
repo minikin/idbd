@@ -49,7 +49,7 @@ jobs:
       - name: Find the published version
         id: published
         run: |
-          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+          status=$(curl -sS --retry 3 --retry-all-errors -o /dev/null -w '%{http_code}' \
             -A "idbd ci (https://github.com/minikin/idbd)" https://crates.io/api/v1/crates/idbd)
           case "$status" in
             200) echo "released=true" >> "$GITHUB_OUTPUT" ;;

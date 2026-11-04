@@ -86,6 +86,10 @@ jobs:
         run: |
           git fetch --depth 1 origin "$COVERAGE_SHA"
           git worktree add --detach "$RUNNER_TEMP/scored" FETCH_HEAD
+          # lcov.info names files by absolute path in the CI checkout, and cargo-crap
+          # matches paths exactly, so they are moved to the worktree or every function
+          # would score as uncovered.
+          sed -i "s#^SF:$GITHUB_WORKSPACE/#SF:$RUNNER_TEMP/scored/#" artifact/lcov.info
           cd "$RUNNER_TEMP/scored"
           cargo crap -p idbd --lcov "$GITHUB_WORKSPACE/artifact/lcov.info" --threshold 10 \
             --format shields --output "$GITHUB_WORKSPACE/crap-badge.json"
