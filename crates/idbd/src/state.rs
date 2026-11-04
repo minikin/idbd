@@ -10,7 +10,8 @@ use crate::config::{Config, is_valid_step_size};
 /// A state holds everything needed to continue learning: the configuration and, per
 /// feature, the weight, the log step size beta and the adaptation trace. Create one with
 /// [`Idbd::snapshot`](crate::Idbd::snapshot) and restore it with
-/// [`Idbd::from_state`](crate::Idbd::from_state), which validates every field.
+/// [`Idbd::from_state`](crate::Idbd::from_state), which validates every field. Build one
+/// by hand with [`State::new`] and its `with_` methods.
 ///
 /// # Examples
 ///
@@ -41,17 +42,49 @@ pub struct State {
 }
 
 impl State {
-    /// Assembles a state from its parts without validating them.
+    /// Starts a state with these weights and every other value as a fresh learner has
+    /// it: each beta at the configuration's initial beta and each trace at zero.
     ///
+    /// Replace the other vectors with [`State::with_betas`] and [`State::with_traces`],
+    /// so every vector is named where it is set. Nothing is validated here.
     /// [`Idbd::from_state`](crate::Idbd::from_state) validates the state when it
     /// restores a learner.
-    pub fn new(config: Config, weights: Vec<f64>, betas: Vec<f64>, traces: Vec<f64>) -> Self {
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use idbd::{Config, Idbd, State};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let state = State::new(Config::new(0.05, 0.01)?, vec![0.5, -0.25])
+    ///     .with_betas(vec![-3.0, -2.0])
+    ///     .with_traces(vec![0.1, 0.0]);
+    /// let learner = Idbd::from_state(state)?;
+    /// assert_eq!(learner.weights(), &[0.5, -0.25]);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn new(config: Config, weights: Vec<f64>) -> Self {
+        let features = weights.len();
         Self {
             config,
             weights,
-            betas,
-            traces,
+            betas: vec![config.initial_beta(); features],
+            traces: vec![0.0; features],
         }
+    }
+
+    /// Replaces the log step sizes, one per feature.
+    #[must_use]
+    pub fn with_betas(self, betas: Vec<f64>) -> Self {
+        Self { betas, ..self }
+    }
+
+    /// Replaces the adaptation traces, one per feature.
+    #[must_use]
+    pub fn with_traces(self, traces: Vec<f64>) -> Self {
+        Self { traces, ..self }
     }
 
     pub(crate) fn validate(&self) -> Result<(), StateError> {

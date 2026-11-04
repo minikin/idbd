@@ -3,7 +3,9 @@
 //! [`Bounds`], [`Config`] and [`autostep::Config`] deserialize through their validating
 //! constructors, and [`Idbd`] and [`Autostep`] deserialize through their `from_state`, so
 //! invalid input is an error, never a learner that breaks an invariant. [`State`] and
-//! [`autostep::State`] stay unvalidated, as with their `new` functions.
+//! [`autostep::State`] run the same checks, so an invalid checkpoint fails when it is
+//! read rather than when it is restored. Only a `State` built in code with its `new`
+//! function is unvalidated until `from_state`.
 
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -125,12 +127,14 @@ impl Serialize for State {
 impl<'de> Deserialize<'de> for State {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let repr = StateRepr::deserialize(deserializer)?;
-        Ok(State::new(
-            repr.config,
-            repr.weights,
-            repr.betas,
-            repr.traces,
-        ))
+        let state = State {
+            config: repr.config,
+            weights: repr.weights,
+            betas: repr.betas,
+            traces: repr.traces,
+        };
+        state.validate().map_err(D::Error::custom)?;
+        Ok(state)
     }
 }
 
@@ -220,13 +224,15 @@ impl Serialize for autostep::State {
 impl<'de> Deserialize<'de> for autostep::State {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let repr = AutostepStateRepr::deserialize(deserializer)?;
-        Ok(autostep::State::new(
-            repr.config,
-            repr.weights,
-            repr.step_sizes,
-            repr.traces,
-            repr.normalizers,
-        ))
+        let state = autostep::State {
+            config: repr.config,
+            weights: repr.weights,
+            step_sizes: repr.step_sizes,
+            traces: repr.traces,
+            normalizers: repr.normalizers,
+        };
+        state.validate().map_err(D::Error::custom)?;
+        Ok(state)
     }
 }
 

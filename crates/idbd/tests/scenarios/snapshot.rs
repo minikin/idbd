@@ -63,7 +63,9 @@ fn c21_weights_only_restoration_is_not_equivalent() {
 }
 
 fn valid_state(config: Config) -> State {
-    State::new(config, vec![0.5, -0.25], vec![-3.0, -2.0], vec![0.1, 0.0])
+    State::new(config, vec![0.5, -0.25])
+        .with_betas(vec![-3.0, -2.0])
+        .with_traces(vec![0.1, 0.0])
 }
 
 fn with(mut state: State, change: impl FnOnce(&mut State)) -> State {
@@ -180,4 +182,18 @@ fn c21_clone_from_copies_a_learner_of_any_size() {
         .expect("the candidate buffer was resized");
     assert_eq!(a, b);
     assert_same_state(&target.snapshot(), &source.snapshot());
+}
+
+#[test]
+fn c21_a_hand_built_state_names_every_vector() {
+    let config = config(0.05, 0.01);
+    let fresh = Idbd::new(2, config).expect("valid").snapshot();
+    assert_eq!(State::new(config, vec![0.0, 0.0]), fresh);
+
+    let state = valid_state(config);
+    assert_eq!(state.weights, [0.5, -0.25]);
+    assert_eq!(state.betas, [-3.0, -2.0]);
+    assert_eq!(state.traces, [0.1, 0.0]);
+    let learner = Idbd::from_state(state).expect("valid");
+    assert_eq!(learner.log_step_sizes(), &[-3.0, -2.0]);
 }

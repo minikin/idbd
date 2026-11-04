@@ -9,6 +9,10 @@ use arbitrary::Arbitrary;
 use idbd::autostep::{Autostep, Config, State};
 use libfuzzer_sys::fuzz_target;
 
+#[path = "../common/bits.rs"]
+#[allow(dead_code, reason = "each target uses one learner's helper")]
+mod bits;
+
 #[derive(Debug, Arbitrary)]
 struct Input {
     initial_step_size: f64,
@@ -30,11 +34,14 @@ fuzz_target!(|input: Input| {
     };
 
     let (weights, step_sizes, traces, normalizers) = input.checkpoint;
-    let state = State::new(config, weights, step_sizes, traces, normalizers);
+    let state = State::new(config, weights)
+        .with_step_sizes(step_sizes)
+        .with_traces(traces)
+        .with_normalizers(normalizers);
     if let Ok(restored) = Autostep::from_state(state.clone()) {
         assert_eq!(
-            restored.snapshot(),
-            state,
+            bits::autostep(&restored.snapshot()),
+            bits::autostep(&state),
             "a restored learner keeps its checkpoint"
         );
     }
@@ -55,11 +62,11 @@ fuzz_target!(|input: Input| {
                 let state = learner.snapshot();
                 let restored = Autostep::from_state(state.clone())
                     .expect("an accepted update leaves a valid state");
-                assert_eq!(restored.snapshot(), state);
+                assert_eq!(bits::autostep(&restored.snapshot()), bits::autostep(&state));
             }
             Err(_) => assert_eq!(
-                learner.snapshot(),
-                before,
+                bits::autostep(&learner.snapshot()),
+                bits::autostep(&before),
                 "a rejected update changes nothing"
             ),
         }

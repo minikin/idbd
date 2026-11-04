@@ -212,3 +212,20 @@ fn c02_accept_boundary_configuration() {
         "smallest normal step size"
     );
 }
+
+#[test]
+fn c01_reject_a_feature_count_no_vector_can_hold() {
+    let max = isize::MAX.unsigned_abs() / size_of::<f64>();
+    for num_features in [max + 1, usize::MAX] {
+        let expected = Err(ConfigError::TooManyFeatures { num_features });
+        assert_eq!(
+            Idbd::new(num_features, config(0.05, 0.01)).map(|_| ()),
+            expected
+        );
+        let autostep = idbd::autostep::Config::new(0.1).expect("valid");
+        assert_eq!(
+            idbd::autostep::Autostep::new(num_features, autostep).map(|_| ()),
+            expected
+        );
+    }
+}

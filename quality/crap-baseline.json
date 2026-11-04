@@ -1381,7 +1381,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::coefficients",
-      "line": 104,
+      "line": 98,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1390,7 +1390,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::generated",
-      "line": 90,
+      "line": 84,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1399,7 +1399,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::is_strong",
-      "line": 99,
+      "line": 93,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1408,7 +1408,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::new",
-      "line": 62,
+      "line": 56,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1417,7 +1417,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::next_sample",
-      "line": 121,
+      "line": 115,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -1426,7 +1426,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::seed",
-      "line": 85,
+      "line": 79,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1435,7 +1435,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::still",
-      "line": 68,
+      "line": 62,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1444,7 +1444,7 @@
     {
       "file": "crates/idbd-lab/src/house.rs",
       "function": "House::with_switch_probability",
-      "line": 72,
+      "line": 66,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1667,6 +1667,186 @@
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::coefficients",
+      "line": 188,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::completed",
+      "line": 139,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::failure",
+      "line": 203,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::features",
+      "line": 148,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::idbd_prediction",
+      "line": 158,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::idbd_step_sizes",
+      "line": 173,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::idbd_weights",
+      "line": 178,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::lms",
+      "line": 62,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::lms_prediction",
+      "line": 163,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::lms_step_size",
+      "line": 168,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::lms_weights",
+      "line": 183,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::new",
+      "line": 39,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::on",
+      "line": 66,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::run",
+      "line": 129,
+      "cyclomatic": 4.0,
+      "coverage": 100.0,
+      "crap": 4.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::step",
+      "line": 88,
+      "cyclomatic": 4.0,
+      "coverage": 100.0,
+      "crap": 4.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::still",
+      "line": 58,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::strong",
+      "line": 193,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::switched",
+      "line": 198,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::target",
+      "line": 153,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/race.rs",
+      "function": "Race::with_lms_step_size",
+      "line": 49,
+      "cyclomatic": 2.0,
+      "coverage": 100.0,
+      "crap": 2.0,
       "crate": "idbd-lab"
     },
     {
@@ -2602,7 +2782,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::clone",
-      "line": 205,
+      "line": 209,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2611,7 +2791,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::clone_from",
-      "line": 214,
+      "line": 218,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2620,7 +2800,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::config",
-      "line": 377,
+      "line": 385,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2629,7 +2809,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::fmt",
-      "line": 491,
+      "line": 508,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2638,7 +2818,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::from_state",
-      "line": 272,
+      "line": 276,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2647,7 +2827,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::new",
-      "line": 254,
+      "line": 260,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2656,7 +2836,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::normalizers",
-      "line": 397,
+      "line": 410,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2665,7 +2845,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::num_features",
-      "line": 372,
+      "line": 380,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2674,7 +2854,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::predict",
-      "line": 312,
+      "line": 317,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2683,7 +2863,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::snapshot",
-      "line": 295,
+      "line": 300,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2692,7 +2872,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::step_sizes",
-      "line": 387,
+      "line": 400,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2701,7 +2881,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::traces",
-      "line": 392,
+      "line": 405,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2710,7 +2890,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::try_from",
-      "line": 505,
+      "line": 522,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2719,22 +2899,16 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::update",
-      "line": 336,
+      "line": 344,
       "cyclomatic": 7.0,
-      "coverage": 88.23529411764706,
-      "crap": 7.079788316710768,
-      "crate": "idbd",
-      "uncovered": [
-        {
-          "start": 344,
-          "end": 347
-        }
-      ]
+      "coverage": 100.0,
+      "crap": 7.0,
+      "crate": "idbd"
     },
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Autostep::weights",
-      "line": 382,
+      "line": 390,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2743,7 +2917,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::initial_step_size",
-      "line": 147,
+      "line": 151,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2752,7 +2926,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::meta_step_size",
-      "line": 152,
+      "line": 156,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2761,7 +2935,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::new",
-      "line": 101,
+      "line": 105,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2770,7 +2944,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::time_scale",
-      "line": 157,
+      "line": 161,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2779,7 +2953,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::with_meta_step_size",
-      "line": 121,
+      "line": 125,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2788,7 +2962,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Config::with_time_scale",
-      "line": 139,
+      "line": 143,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2797,7 +2971,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "State::new",
-      "line": 533,
+      "line": 572,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2806,7 +2980,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "State::validate",
-      "line": 549,
+      "line": 604,
       "cyclomatic": 9.0,
       "coverage": 100.0,
       "crap": 9.0,
@@ -2814,8 +2988,35 @@
     },
     {
       "file": "crates/idbd/src/autostep.rs",
+      "function": "State::with_normalizers",
+      "line": 597,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/autostep.rs",
+      "function": "State::with_step_sizes",
+      "line": 585,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/autostep.rs",
+      "function": "State::with_traces",
+      "line": 591,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/autostep.rs",
       "function": "StateError::fmt",
-      "line": 635,
+      "line": 690,
       "cyclomatic": 7.0,
       "coverage": 100.0,
       "crap": 7.0,
@@ -2824,7 +3025,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Vectors::clone",
-      "line": 187,
+      "line": 191,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2833,7 +3034,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Vectors::clone_from",
-      "line": 196,
+      "line": 200,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2842,7 +3043,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "Vectors::new",
-      "line": 224,
+      "line": 228,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2851,7 +3052,7 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "adapt_step_sizes",
-      "line": 404,
+      "line": 417,
       "cyclomatic": 8.0,
       "coverage": 100.0,
       "crap": 8.0,
@@ -2860,26 +3061,22 @@
     {
       "file": "crates/idbd/src/autostep.rs",
       "function": "learn",
-      "line": 455,
+      "line": 470,
       "cyclomatic": 6.0,
-      "coverage": 93.75,
-      "crap": 6.0087890625,
+      "coverage": 96.875,
+      "crap": 6.0010986328125,
       "crate": "idbd",
       "uncovered": [
         {
-          "start": 465,
-          "end": 465
-        },
-        {
-          "start": 482,
-          "end": 482
+          "start": 499,
+          "end": 499
         }
       ]
     },
     {
       "file": "crates/idbd/src/config.rs",
       "function": "BoundKind::fmt",
-      "line": 301,
+      "line": 303,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -2888,7 +3085,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::apply",
-      "line": 143,
+      "line": 145,
       "cyclomatic": 5.0,
       "coverage": 100.0,
       "crap": 5.0,
@@ -2897,7 +3094,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::contains",
-      "line": 138,
+      "line": 140,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -2906,7 +3103,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::is_none",
-      "line": 133,
+      "line": 135,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2915,7 +3112,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::max_beta",
-      "line": 123,
+      "line": 125,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2924,7 +3121,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::max_beta_increment",
-      "line": 128,
+      "line": 130,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2933,7 +3130,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::min_beta",
-      "line": 118,
+      "line": 120,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2942,7 +3139,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::none",
-      "line": 45,
+      "line": 46,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2951,7 +3148,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::sutton_safety",
-      "line": 57,
+      "line": 59,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2960,7 +3157,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::with_max_beta",
-      "line": 88,
+      "line": 90,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2969,7 +3166,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::with_max_beta_increment",
-      "line": 103,
+      "line": 105,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2978,7 +3175,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Bounds::with_min_beta",
-      "line": 72,
+      "line": 74,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -2987,7 +3184,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::bounds",
-      "line": 278,
+      "line": 280,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -2996,7 +3193,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::initial_beta",
-      "line": 273,
+      "line": 275,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3005,7 +3202,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::initial_step_size",
-      "line": 263,
+      "line": 265,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3014,7 +3211,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::meta_step_size",
-      "line": 268,
+      "line": 270,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3023,7 +3220,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::new",
-      "line": 224,
+      "line": 226,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -3032,7 +3229,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "Config::with_bounds",
-      "line": 253,
+      "line": 255,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3041,16 +3238,16 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "ConfigError::fmt",
-      "line": 355,
-      "cyclomatic": 8.0,
+      "line": 363,
+      "cyclomatic": 9.0,
       "coverage": 100.0,
-      "crap": 8.0,
+      "crap": 9.0,
       "crate": "idbd"
     },
     {
       "file": "crates/idbd/src/config.rs",
       "function": "beta_bound",
-      "line": 169,
+      "line": 171,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3058,8 +3255,17 @@
     },
     {
       "file": "crates/idbd/src/config.rs",
+      "function": "check_num_features",
+      "line": 395,
+      "cyclomatic": 3.0,
+      "coverage": 100.0,
+      "crap": 3.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/config.rs",
       "function": "check_order",
-      "line": 177,
+      "line": 179,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -3068,7 +3274,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "finite_bound",
-      "line": 159,
+      "line": 161,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3077,7 +3283,7 @@
     {
       "file": "crates/idbd/src/config.rs",
       "function": "is_valid_step_size",
-      "line": 284,
+      "line": 286,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3086,7 +3292,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Error::fmt",
-      "line": 543,
+      "line": 546,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -3095,7 +3301,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Error::numerical",
-      "line": 534,
+      "line": 537,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3104,7 +3310,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::check_features",
-      "line": 238,
+      "line": 239,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3131,7 +3337,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::config",
-      "line": 252,
+      "line": 253,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3140,7 +3346,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::dot",
-      "line": 242,
+      "line": 243,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3149,7 +3355,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::fmt",
-      "line": 408,
+      "line": 410,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3167,7 +3373,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::log_step_sizes",
-      "line": 262,
+      "line": 263,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3176,7 +3382,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::new",
-      "line": 126,
+      "line": 128,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3185,7 +3391,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::num_features",
-      "line": 247,
+      "line": 248,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3194,7 +3400,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::predict",
-      "line": 187,
+      "line": 188,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3203,7 +3409,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::snapshot",
-      "line": 171,
+      "line": 172,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3212,7 +3418,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::step_sizes",
-      "line": 274,
+      "line": 275,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3221,7 +3427,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::traces",
-      "line": 267,
+      "line": 268,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3230,7 +3436,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::try_from",
-      "line": 421,
+      "line": 423,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3239,7 +3445,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::update",
-      "line": 210,
+      "line": 211,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -3248,7 +3454,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Idbd::weights",
-      "line": 257,
+      "line": 258,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3257,7 +3463,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "Stage::fmt",
-      "line": 490,
+      "line": 493,
       "cyclomatic": 9.0,
       "coverage": 100.0,
       "crap": 9.0,
@@ -3266,7 +3472,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "StepSizes::next",
-      "line": 435,
+      "line": 438,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3275,7 +3481,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "StepSizes::next_back",
-      "line": 445,
+      "line": 448,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3284,7 +3490,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "StepSizes::size_hint",
-      "line": 439,
+      "line": 442,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3320,15 +3526,15 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "assert_send_sync",
-      "line": 568,
+      "line": 571,
       "cyclomatic": 1.0,
       "coverage": 0.0,
       "crap": 2.0,
       "crate": "idbd",
       "uncovered": [
         {
-          "start": 568,
-          "end": 568
+          "start": 571,
+          "end": 571
         }
       ]
     },
@@ -3353,7 +3559,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "next_coordinate",
-      "line": 359,
+      "line": 360,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -3362,7 +3568,7 @@
     {
       "file": "crates/idbd/src/learner.rs",
       "function": "propose",
-      "line": 321,
+      "line": 322,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -3371,7 +3577,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Autostep::deserialize",
-      "line": 249,
+      "line": 255,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3380,7 +3586,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Autostep::serialize",
-      "line": 235,
+      "line": 241,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3389,7 +3595,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Bounds::deserialize",
-      "line": 85,
+      "line": 87,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3398,7 +3604,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Bounds::serialize",
-      "line": 79,
+      "line": 81,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3407,7 +3613,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "BoundsRepr::from",
-      "line": 53,
+      "line": 55,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3416,7 +3622,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "BoundsRepr::validate",
-      "line": 63,
+      "line": 65,
       "cyclomatic": 7.0,
       "coverage": 100.0,
       "crap": 7.0,
@@ -3425,7 +3631,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Config::deserialize",
-      "line": 104,
+      "line": 106,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -3434,7 +3640,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Config::deserialize",
-      "line": 198,
+      "line": 202,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3443,7 +3649,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Config::serialize",
-      "line": 93,
+      "line": 95,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3452,7 +3658,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Config::serialize",
-      "line": 187,
+      "line": 191,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3461,7 +3667,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Idbd::deserialize",
-      "line": 153,
+      "line": 157,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -3470,7 +3676,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "Idbd::serialize",
-      "line": 139,
+      "line": 143,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3479,25 +3685,25 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "State::deserialize",
-      "line": 126,
-      "cyclomatic": 2.0,
+      "line": 128,
+      "cyclomatic": 3.0,
       "coverage": 100.0,
-      "crap": 2.0,
+      "crap": 3.0,
       "crate": "idbd"
     },
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "State::deserialize",
-      "line": 221,
-      "cyclomatic": 2.0,
+      "line": 225,
+      "cyclomatic": 3.0,
       "coverage": 100.0,
-      "crap": 2.0,
+      "crap": 3.0,
       "crate": "idbd"
     },
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "State::serialize",
-      "line": 114,
+      "line": 116,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3506,7 +3712,7 @@
     {
       "file": "crates/idbd/src/serialization.rs",
       "function": "State::serialize",
-      "line": 208,
+      "line": 212,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3515,7 +3721,7 @@
     {
       "file": "crates/idbd/src/state.rs",
       "function": "State::new",
-      "line": 48,
+      "line": 68,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -3524,7 +3730,7 @@
     {
       "file": "crates/idbd/src/state.rs",
       "function": "State::validate",
-      "line": 57,
+      "line": 90,
       "cyclomatic": 10.0,
       "coverage": 100.0,
       "crap": 10.0,
@@ -3532,8 +3738,26 @@
     },
     {
       "file": "crates/idbd/src/state.rs",
+      "function": "State::with_betas",
+      "line": 80,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/state.rs",
+      "function": "State::with_traces",
+      "line": 86,
+      "cyclomatic": 1.0,
+      "coverage": 100.0,
+      "crap": 1.0,
+      "crate": "idbd"
+    },
+    {
+      "file": "crates/idbd/src/state.rs",
       "function": "StateError::fmt",
-      "line": 142,
+      "line": 175,
       "cyclomatic": 8.0,
       "coverage": 100.0,
       "crap": 8.0,
@@ -3541,9 +3765,9 @@
     }
   ],
   "diagnostics": {
-    "analyzed_files": 28,
-    "lcov_files": 28,
-    "matched_files": 28,
+    "analyzed_files": 29,
+    "lcov_files": 29,
+    "matched_files": 29,
     "source_only": {
       "count": 0,
       "examples": []

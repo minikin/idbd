@@ -167,13 +167,11 @@ fn restored(mu: f64, step_size: f64, trace: f64) -> Autostep {
     let config = Config::new(0.1)
         .and_then(|c| c.with_meta_step_size(mu))
         .expect("valid");
-    Autostep::from_state(State::new(
-        config,
-        vec![0.0, 0.0],
-        vec![step_size, 0.1],
-        vec![trace, 0.0],
-        vec![0.0, 0.0],
-    ))
+    Autostep::from_state(
+        State::new(config, vec![0.0, 0.0])
+            .with_step_sizes(vec![step_size, 0.1])
+            .with_traces(vec![trace, 0.0]),
+    )
     .expect("valid state")
 }
 
@@ -209,13 +207,10 @@ fn a04_invalid_input_fails_without_changing_state() {
     for (features, target, expected) in cases {
         assert_fails_unchanged(trained.clone(), features, target, expected);
     }
-    let unit_weights = Autostep::from_state(State::new(
-        Config::new(0.1).expect("valid"),
-        vec![1.0, 1.0],
-        vec![0.1, 0.1],
-        vec![0.0, 0.0],
-        vec![0.0, 0.0],
-    ))
+    let unit_weights = Autostep::from_state(
+        State::new(Config::new(0.1).expect("valid"), vec![1.0, 1.0])
+            .with_step_sizes(vec![0.1, 0.1]),
+    )
     .expect("valid state");
     assert_fails_unchanged(
         unit_weights,
@@ -254,6 +249,26 @@ fn a04_each_numerical_stage_fails_without_changing_state() {
         &[1e10, 0.0],
         0.0,
         at(Stage::EffectiveStepSize, None),
+    );
+    // delta = -f64::MAX - f64::MAX overflows.
+    let unit_weight = Autostep::from_state(State::new(Config::new(0.1).expect("valid"), vec![1.0]))
+        .expect("valid state");
+    assert_fails_unchanged(
+        unit_weight,
+        &[f64::MAX],
+        -f64::MAX,
+        at(Stage::Residual, None),
+    );
+    // The guard divides by M = 1e300, so alpha_1 = 1e-300 / 1e300 underflows to zero.
+    assert_fails_unchanged(
+        Autostep::from_state(
+            State::new(Config::new(0.1).expect("valid"), vec![0.0, 0.0])
+                .with_step_sizes(vec![1e300, 1e-300]),
+        )
+        .expect("valid state"),
+        &[1.0, 1.0],
+        0.0,
+        at(Stage::StepSize, Some(1)),
     );
     // sum(alpha x^2) = 1e10 * 1e-20 stays below one, but alpha_0 * delta overflows.
     assert_fails_unchanged(
@@ -296,7 +311,13 @@ fn a05_reject_an_invalid_snapshot() {
         )
     };
     let state = |(w, a, h, v): (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>)| {
-        Autostep::from_state(State::new(config, w, a, h, v)).map(|_| ())
+        Autostep::from_state(
+            State::new(config, w)
+                .with_step_sizes(a)
+                .with_traces(h)
+                .with_normalizers(v),
+        )
+        .map(|_| ())
     };
     assert_eq!(state(valid()), Ok(()));
     assert_eq!(
@@ -412,4 +433,38 @@ fn a05_clone_from_copies_a_learner_of_any_size() {
         .expect("the candidate buffer was resized");
     assert_eq!(a, b);
     assert_eq!(bits(&target), bits(&source));
+}
+
+#[test]
+fn a04_an_overflowing_normalizer_term_gives_its_exact_value() {
+    // |g| = 1e154 < v = 1e308, so the decayed term is 1e308 * (1e154 - 1e308), which
+    // overflows to -inf, and the normalizer is exactly max(|g|, that) = |g|.
+    let config = Config::new(0.1)
+        .and_then(|c| c.with_time_scale(1.0))
+        .expect("valid");
+    let mut learner = Autostep::from_state(
+        State::new(config, vec![0.0])
+            .with_step_sizes(vec![1.0])
+            .with_traces(vec![-1.0])
+            .with_normalizers(vec![1e308]),
+    )
+    .expect("valid state");
+    learner
+        .update(&[1e154], 1.0)
+        .expect("the exact update is finite");
+    assert_eq!(learner.normalizers(), &[1e154]);
+}
+
+#[test]
+fn a05_a_hand_built_state_names_every_vector() {
+    let config = Config::new(0.05).expect("valid");
+    let fresh = Autostep::new(2, config).expect("valid").snapshot();
+    assert_eq!(State::new(config, vec![0.0, 0.0]), fresh);
+    let state = State::new(config, vec![1.0, 2.0])
+        .with_step_sizes(vec![0.1, 0.2])
+        .with_traces(vec![0.3, 0.4])
+        .with_normalizers(vec![0.5, 0.6]);
+    assert_eq!(state.step_sizes, [0.1, 0.2]);
+    assert_eq!(state.traces, [0.3, 0.4]);
+    assert_eq!(state.normalizers, [0.5, 0.6]);
 }

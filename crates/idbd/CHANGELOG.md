@@ -26,7 +26,7 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 ### Numerical and evaluation limitations
 
 - Equation fixtures agree with an independent 50-digit decimal reference within
-  `1e-12 + 1e-10 * max(|a|, |b|)`. Bitwise agreement is promised only for identical replay on
+  `1e-15 + 1e-13 * max(|a|, |b|)`. Bitwise agreement is promised only for identical replay on
   the same build and target.
 - The paper's experiments are reproduced approximately with recorded seeds and a documented
   generator. The paper's own random draws are unpublished, so exact numbers are not reproduced.
