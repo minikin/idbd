@@ -1,7 +1,7 @@
-// Renders the README hero from the real demo:
-//   node docs/assets/hero/render.mjs
-// Writes docs/assets/hero-dark.webp, docs/assets/hero-light.webp and
-// docs/assets/demo-loop.webp.
+// Renders the README images from the real demo:
+//   node docs/assets/hero/render.mjs          writes docs/assets/demo-loop.webp
+//   node docs/assets/hero/render.mjs --hero   also writes hero-dark.webp and hero-light.webp
+// The hero still is out of the README until it is redesigned, so it is opt-in.
 //
 // The still is one composite of three captures: the story page's house, chapter 2's
 // measured fixed-speed traces and the Explorer's step-size chart after 20,000 samples.
@@ -155,11 +155,13 @@ async function renderLoop(browser) {
 
 try {
   await waitForServer();
+  const hero = process.argv.includes("--hero");
   const browser = await chromium.launch();
-  await renderStill(browser, await captureStill(browser));
+  if (hero) await renderStill(browser, await captureStill(browser));
   await renderLoop(browser);
   await browser.close();
-  for (const name of ["hero-dark.webp", "hero-light.webp", "demo-loop.webp"]) {
+  const written = hero ? ["hero-dark.webp", "hero-light.webp", "demo-loop.webp"] : ["demo-loop.webp"];
+  for (const name of written) {
     const bytes = readFileSync(join(assets, name)).length;
     process.stdout.write(`${name}: ${(bytes / 1024).toFixed(0)} KiB\n`);
   }

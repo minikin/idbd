@@ -42,6 +42,6 @@ web-screenshots: web-build
     sleep 1
     cd web && node screenshots.mjs
 
-# Re-render the README's hero still and demo loop from the built demo.
-readme-assets: web-build
-    node docs/assets/hero/render.mjs
+# Re-render the README's demo loop from the built demo. Add --hero for the hero still.
+readme-assets *args: web-build
+    node docs/assets/hero/render.mjs {{args}}
