@@ -8,13 +8,6 @@
   <a href="#license"><img src="https://github.com/minikin/idbd/raw/badges/license.svg" alt="license"></a>
 </p>
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.webp">
-    <img src="docs/assets/hero-light.webp" alt="The idbd demo: an isometric house whose six sensors carry amber rings sized by the step size IDBD learned for each, two measured traces of a fixed-step learner that is either late or nervous when the oven switches on, and the Explorer's step-size chart with five relevant inputs near 0.1 and fifteen irrelevant ones near 0.01">
-  </picture>
-</p>
-
 IDBD (Sutton, 1992) is the LMS rule with one learning rate per input. It keeps
 `beta_i = ln(alpha_i)` for every input and moves it by gradient descent on the squared error,
 so an input whose corrections keep pointing the same way gets a larger step and an input whose
