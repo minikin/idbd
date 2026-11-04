@@ -5,7 +5,7 @@
 //! readings this type returns, computed on the page.
 
 use idbd_lab::evaluation::IDBD_INITIAL_STEP_SIZE;
-use idbd_lab::house::{LEVELS, NUM_SENSORS, RELEVANT, SENSORS, SWITCH_PROBABILITY};
+use idbd_lab::house::{LEVELS, NOISE, NUM_SENSORS, RELEVANT, SENSORS, SWITCH_PROBABILITY};
 use idbd_lab::race::{RACE_LMS_STEP_SIZE, RACE_THETA, Race, STILL_RACE_LMS_STEP_SIZE};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -28,9 +28,10 @@ pub fn house_json() -> String {
         .join(",");
     format!(
         "{{\"sensors\":[{names}],\"relevant\":{RELEVANT},\"levels\":[{levels}],\
-         \"switchProbability\":{},\"initialStepSize\":{},\"theta\":{},\"lmsStepSize\":{},\
-         \"stillLmsStepSize\":{}}}",
+         \"switchProbability\":{},\"noise\":{},\"initialStepSize\":{},\"theta\":{},\
+         \"lmsStepSize\":{},\"stillLmsStepSize\":{}}}",
         json_number(SWITCH_PROBABILITY),
+        json_number(NOISE),
         json_number(IDBD_INITIAL_STEP_SIZE),
         json_number(RACE_THETA),
         json_number(RACE_LMS_STEP_SIZE),
@@ -49,6 +50,13 @@ impl HouseRace {
     fn create(seed: f64) -> Result<Self, String> {
         Ok(Self {
             inner: Race::new(seed_from_number(seed)?),
+        })
+    }
+
+    fn create_with_lms_step_size(seed: f64, lms_step_size: f64) -> Result<Self, String> {
+        Ok(Self {
+            inner: Race::with_lms_step_size(seed_from_number(seed)?, lms_step_size)
+                .map_err(|error| error.to_string())?,
         })
     }
 
@@ -78,6 +86,18 @@ impl HouseRace {
     /// Returns an error unless `seed` is a whole number in `0..2^53`.
     pub fn still(seed: f64) -> Result<Self, JsError> {
         Self::create_still(seed).map_err(|message| js(&message))
+    }
+
+    /// Starts a race on the switching house with a fixed LMS step size of the caller's
+    /// choice. The readings and IDBD match `new` for the same seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless `seed` is a whole number in `0..2^53` and `lms_step_size`
+    /// is finite and positive.
+    #[wasm_bindgen(js_name = withLmsStepSize)]
+    pub fn with_lms_step_size(seed: f64, lms_step_size: f64) -> Result<Self, JsError> {
+        Self::create_with_lms_step_size(seed, lms_step_size).map_err(|message| js(&message))
     }
 
     /// Returns the fixed LMS step size this race uses.
@@ -220,6 +240,7 @@ mod tests {
             "{json}"
         );
         assert!(json.contains("\"theta\":0.015"), "{json}");
+        assert!(json.contains("\"noise\":0.5"), "{json}");
         assert!(json.contains("\"lmsStepSize\":0.06"), "{json}");
         assert!(json.contains("\"stillLmsStepSize\":0.001"), "{json}");
         assert_eq!(json.matches("\",\"").count() + 1, NUM_SENSORS, "{json}");
@@ -253,6 +274,14 @@ mod tests {
     fn a_still_race_reports_its_own_step_size() {
         let race = HouseRace::create_still(1.0).expect("valid seed");
         assert!((race.lms_step_size() - STILL_RACE_LMS_STEP_SIZE).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn a_custom_lms_race_uses_its_step_size() {
+        let race = HouseRace::create_with_lms_step_size(1.0, 0.2).expect("valid");
+        assert!((race.lms_step_size() - 0.2).abs() < f64::EPSILON);
+        assert!(HouseRace::create_with_lms_step_size(1.0, 0.0).is_err());
+        assert!(HouseRace::create_with_lms_step_size(-1.0, 0.2).is_err());
     }
 
     #[test]

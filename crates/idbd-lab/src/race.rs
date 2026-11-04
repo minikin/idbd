@@ -9,7 +9,7 @@ use idbd::{Config, Idbd};
 
 use crate::evaluation::IDBD_INITIAL_STEP_SIZE;
 use crate::house::{House, NUM_SENSORS, RELEVANT};
-use crate::lms::Lms;
+use crate::lms::{Lms, LmsError};
 
 /// IDBD's meta step size, selected by scenario E06 on the switching house.
 pub const RACE_THETA: f64 = 0.015;
@@ -37,22 +37,39 @@ pub struct Race {
 impl Race {
     /// Starts a race on the switching house with this seed, before any reading.
     pub fn new(seed: u64) -> Self {
-        Self::on(House::new(seed), RACE_LMS_STEP_SIZE)
+        Self::on(House::new(seed), Self::lms(RACE_LMS_STEP_SIZE))
+    }
+
+    /// Starts a race on the switching house with a fixed LMS step size of the caller's
+    /// choice. The house and IDBD match [`Race::new`] for the same seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LmsError::InvalidStepSize`] unless `lms_step_size` is finite and positive.
+    pub fn with_lms_step_size(seed: u64, lms_step_size: f64) -> Result<Self, LmsError> {
+        Ok(Self::on(
+            House::new(seed),
+            Lms::new(NUM_SENSORS, lms_step_size)?,
+        ))
     }
 
     /// Starts a race on the still house, where nothing switches, with the LMS step size
     /// E06 selected for it.
     pub fn still(seed: u64) -> Self {
-        Self::on(House::still(seed), STILL_RACE_LMS_STEP_SIZE)
+        Self::on(House::still(seed), Self::lms(STILL_RACE_LMS_STEP_SIZE))
     }
 
-    fn on(house: House, lms_step_size: f64) -> Self {
+    fn lms(step_size: f64) -> Lms {
+        Lms::new(NUM_SENSORS, step_size).expect("the race LMS step sizes are positive")
+    }
+
+    fn on(house: House, lms: Lms) -> Self {
         let config = Config::new(IDBD_INITIAL_STEP_SIZE, RACE_THETA)
             .expect("the race constants form a valid IDBD configuration");
         Self {
             house,
             idbd: Idbd::new(NUM_SENSORS, config).expect("the house has sensors"),
-            lms: Lms::new(NUM_SENSORS, lms_step_size).expect("the race LMS step size is positive"),
+            lms,
             features: [0.0; NUM_SENSORS],
             target: 0.0,
             idbd_prediction: None,
@@ -297,6 +314,27 @@ mod tests {
         assert_eq!(race.failure(), Some(message.as_str()));
         assert_eq!(race.step(), Err(message.clone()));
         assert_eq!(race.run(5), Err(message));
+    }
+
+    #[test]
+    fn a_custom_lms_step_size_keeps_the_house_and_idbd() {
+        let mut custom = Race::with_lms_step_size(7, 0.2).expect("positive");
+        let mut standard = Race::new(7);
+        assert_eq!(custom.lms_step_size(), 0.2);
+        for _ in 0..300 {
+            custom.step().expect("finite readings");
+            standard.step().expect("finite readings");
+        }
+        assert_eq!(custom.features(), standard.features());
+        assert_eq!(custom.target(), standard.target());
+        assert_eq!(custom.idbd_weights(), standard.idbd_weights());
+        assert_ne!(custom.lms_weights(), standard.lms_weights());
+        for step_size in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert_eq!(
+                Race::with_lms_step_size(7, step_size).err(),
+                Some(LmsError::InvalidStepSize)
+            );
+        }
     }
 
     #[test]
