@@ -20,7 +20,7 @@ impl Summary {
             return None;
         }
         let n = exact_f64(count_to_u64(count));
-        let mean = values.iter().sum::<f64>() / n;
+        let mean = mean(values, n);
         let standard_error = if count < 2 {
             0.0
         } else {
@@ -49,11 +49,31 @@ impl Summary {
     }
 }
 
+/// Keeps ordinary measurements bitwise unchanged, scaling only if their sum overflows.
+fn mean(values: &[f64], n: f64) -> f64 {
+    let mean = values.iter().sum::<f64>() / n;
+    if mean.is_finite() || !values.iter().all(|value| value.is_finite()) {
+        return mean;
+    }
+    let scale = values.iter().map(|value| value.abs()).fold(0.0, f64::max);
+    (values.iter().map(|value| value / scale).sum::<f64>() / n) * scale
+}
+
 /// Bessel-corrected standard error of at least two values. Deviations are divided by the
 /// largest one before squaring, so a run whose error reached 1e186 still gets a finite
 /// spread instead of an overflow.
 fn standard_error(values: &[f64], mean: f64, n: f64) -> f64 {
     let scale = values.iter().map(|v| (v - mean).abs()).fold(0.0, f64::max);
+    if scale.is_infinite() && mean.is_finite() && values.iter().all(|value| value.is_finite()) {
+        // Opposite-sign values can overflow even the subtraction. Normalize before it.
+        let scale = values.iter().map(|value| value.abs()).fold(0.0, f64::max);
+        let normalized_mean = mean / scale;
+        let sum_sq: f64 = values
+            .iter()
+            .map(|value| (value / scale - normalized_mean).powi(2))
+            .sum();
+        return scale * (sum_sq / (n - 1.0) / n).sqrt();
+    }
     if scale == 0.0 || !scale.is_finite() {
         return scale;
     }
@@ -113,6 +133,34 @@ fn count_to_u64(count: usize) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn summaries_of_large_finite_values_stay_representable() {
+        for values in [[1e308, 1e308], [-1e308, -1e308], [0.0, 0.0]] {
+            let summary = Summary::new(&values).expect("non-empty");
+            assert_eq!(summary.mean().to_bits(), values[0].to_bits(), "{values:?}");
+            assert_eq!(
+                summary.standard_error().to_bits(),
+                0.0_f64.to_bits(),
+                "{values:?}"
+            );
+        }
+        let summary = Summary::new(&[-f64::MAX, f64::MAX]).expect("non-empty");
+        assert_eq!(summary.mean().to_bits(), 0.0_f64.to_bits(), "{summary:?}");
+        assert!(
+            (summary.standard_error() / f64::MAX - 1.0).abs() < 1e-12,
+            "{summary:?}"
+        );
+        let summary = Summary::new(&[-f64::MAX, f64::MAX, f64::MAX]).expect("non-empty");
+        assert!(
+            (summary.mean() / (f64::MAX / 3.0) - 1.0).abs() < 1e-12,
+            "{summary:?}"
+        );
+        assert!(
+            (summary.standard_error() / (f64::MAX * (2.0 / 3.0)) - 1.0).abs() < 1e-12,
+            "{summary:?}"
+        );
+    }
 
     #[test]
     fn standard_error_stays_finite_when_squared_deviations_would_overflow() {

@@ -897,6 +897,33 @@ mod tests {
     }
 
     #[test]
+    fn d06_incremental_replay_can_exceed_the_pending_schedule_capacity() {
+        let mut settings = settings(Preset::Sutton1992, 1);
+        settings.lms_step_size = 0.03;
+        let mut original = Session::new(settings).expect("valid");
+        for _ in 0..=SCHEDULE_CAPACITY {
+            original.change_the_world();
+            original.step().expect("completed sample");
+        }
+        assert_eq!(original.requested_changes().len(), SCHEDULE_CAPACITY + 1);
+
+        let mut replay = Session::new(settings).expect("valid");
+        for &sample in original.requested_changes() {
+            replay.schedule_change(sample).expect("one future change");
+            replay
+                .run(sample - replay.completed())
+                .expect("completed sample");
+        }
+        assert_eq!(state_bits(&replay), state_bits(&original));
+        assert_eq!(replay.requested_changes(), original.requested_changes());
+        assert_eq!(replay.totals(), original.totals());
+        assert_eq!(
+            replay.history().collect::<Vec<_>>(),
+            original.history().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn d06_a_change_scheduled_for_the_next_sample_applies_to_it() {
         let mut session = Session::new(settings(Preset::Stationary, 2)).expect("valid");
         session.run(10).expect("run");

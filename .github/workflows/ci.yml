@@ -218,7 +218,7 @@ jobs:
           ! cargo tree -p idbd -e normal | grep -E 'wasm-bindgen|js-sys'
       - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: web
-      - run: npx playwright test
+      - run: npm test
         working-directory: web
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
