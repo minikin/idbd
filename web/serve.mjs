@@ -36,7 +36,13 @@ function resolvePath(url) {
 }
 
 const server = createServer(async (request, response) => {
-  const target = resolvePath(request.url ?? "/");
+  let target;
+  try {
+    target = resolvePath(request.url ?? "/");
+  } catch {
+    response.writeHead(400, { "content-type": "text/plain; charset=utf-8" }).end("bad request");
+    return;
+  }
   if (!target) {
     response.writeHead(403).end("forbidden");
     return;
@@ -57,5 +63,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(PORT, HOST, () => {
-  process.stdout.write(`IDBD Explorer on http://${HOST}:${PORT}\n`);
+  process.stdout.write(`IDBD Explorer on http://${HOST}:${server.address().port}\n`);
 });

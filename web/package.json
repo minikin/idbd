@@ -6,7 +6,7 @@
   "description": "Static browser demo for the idbd Rust crate, tested with Playwright",
   "scripts": {
     "serve": "node serve.mjs",
-    "test": "playwright test"
+    "test": "node --test node-tests/*.test.js && playwright test"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

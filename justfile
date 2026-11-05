@@ -31,7 +31,7 @@ web-setup:
 
 # Run the browser tests against a freshly built module.
 web-test: web-build
-    cd web && npx playwright test
+    cd web && npm test
 
 # Capture the demo at 390 px and 1440 px into internal/screenshots.
 web-screenshots: web-build

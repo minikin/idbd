@@ -25,11 +25,11 @@ pub fn write(dir: &Path, name: &str, contents: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Writes every `(name, contents)` pair into `dir` with [`write`], in order.
+/// Writes every `(name, contents)` pair into `dir` with [`write()`], in order.
 ///
 /// # Errors
 ///
-/// Returns the first failure from [`write`]. Files before it stay written.
+/// Returns the first failure from [`write()`]. Files before it stay written.
 pub fn write_all(dir: &Path, files: &[(&str, String)]) -> Result<(), String> {
     files
         .iter()

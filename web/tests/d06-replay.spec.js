@@ -61,7 +61,7 @@ test("D06 a reloaded run replays to the same state at two speeds", async ({ page
   const loaded = await page.evaluate(() => window.idbdExplorer.experiment());
   expect(loaded.sample).toBe(0);
   expect(loaded.historyLength).toBe(0);
-  expect(loaded.scheduledChanges).toEqual(original.requestedChanges);
+  expect(loaded.scheduledChanges).toEqual([]);
   expect(loaded.changePending).toBe(false);
   await expect(page.locator("#replay-note")).toContainText(
     `pauses at sample ${original.sample.toLocaleString("en-US")}`,
@@ -75,7 +75,7 @@ test("D06 a reloaded run replays to the same state at two speeds", async ({ page
   await page.click("#replay");
   const rebuilt = await page.evaluate(() => window.idbdExplorer.experiment());
   expect(rebuilt.sample).toBe(0);
-  expect(rebuilt.scheduledChanges).toEqual(original.requestedChanges);
+  expect(rebuilt.scheduledChanges).toEqual([]);
   const fast = await playReplay(page, "20000");
   expect(replayed(fast)).toEqual(replayed(original));
 
@@ -104,6 +104,56 @@ test("D06 an invalid run file leaves the current run unchanged", async ({ page }
   expect(after.sample).toBe(before.sample);
   expect(after.idbdWeights).toEqual(before.idbdWeights);
   expect(after.replay).toBe(null);
+});
+
+test("D06 an exported history exceeding the pending schedule limit replays", async ({ page }) => {
+  test.setTimeout(90000);
+  await openApp(page);
+  const { run, expected } = await page.evaluate(() => {
+    const run = window.idbdExplorer.exportRun();
+    const { settings } = run;
+    const original = new window.idbdExplorer.wasm.Explorer(
+      settings.preset, settings.seed, settings.idbd.initialStepSize,
+      settings.idbd.theta, settings.lms.stepSize,
+    );
+    try {
+      for (let i = 0; i < 10001; i += 1) {
+        original.changeTheWorld();
+        original.step();
+      }
+      run.settings.requestedChanges = Array.from(original.requestedChanges());
+      run.samples.completed = original.completed();
+      return {
+        run,
+        expected: {
+          idbdWeights: Array.from(original.idbdWeights()),
+          lmsWeights: Array.from(original.lmsWeights()),
+          autostepWeights: Array.from(original.autostepWeights()),
+          idbdMse: original.idbdMeanSquaredError(),
+          lmsMse: original.lmsMeanSquaredError(),
+          autostepMse: original.autostepMeanSquaredError(),
+        },
+      };
+    } finally {
+      original.free();
+    }
+  });
+  await page.setInputFiles("#load-run", {
+    name: "long-run.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(run)),
+  });
+  await page.waitForFunction(() => window.idbdExplorer.experiment().replay !== null);
+  for (const speed of ["20000", "1000"]) {
+    const state = await playReplay(page, speed);
+    expect(state.sample).toBe(10001);
+    expect(state.requestedChanges).toEqual(run.settings.requestedChanges);
+    for (const [key, value] of Object.entries(expected)) expect(state[key]).toEqual(value);
+    // Exercise a real export and the replay button, not just loading the fixture.
+    const exported = await page.evaluate(() => window.idbdExplorer.exportRun());
+    expect(exported.settings.requestedChanges).toEqual(run.settings.requestedChanges);
+    if (speed === "20000") await page.click("#replay");
+  }
 });
 
 test("D06 changing a hyperparameter starts a new labeled run", async ({ page }) => {

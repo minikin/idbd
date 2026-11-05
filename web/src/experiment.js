@@ -12,6 +12,7 @@ import {
 } from "./charts.js";
 import { clear, el, fillLegend, fillPairs, onResize, tooltip } from "./dom.js";
 import { NO_SAMPLE, featureName, fmtAlpha, fmtCount, fmtMse, fmtSetting, fmtSigned, signWord } from "./format.js";
+import { advanceReplay } from "./replay.js";
 import {
   AUTOSTEP_NOTE,
   DEFAULT_INITIAL_STEP_SIZE,
@@ -202,20 +203,12 @@ export function createExperiment(wasm) {
       candidate.theta,
       candidate.lmsStepSize,
     );
-    try {
-      for (const sample of plan ? plan.changes : []) {
-        next.scheduleChange(sample);
-      }
-    } catch (error) {
-      next.free();
-      throw error;
-    }
     if (explorer) {
       explorer.free();
     }
     explorer = next;
     settings = candidate;
-    replay = plan ? { ...plan, reached: false } : null;
+    replay = plan ? { ...plan, reached: false, nextChange: 0 } : null;
     loadError = null;
     backlog = 0;
     if (!endReplayIfReached()) {
@@ -325,7 +318,11 @@ export function createExperiment(wasm) {
 
   function advance(samples) {
     try {
-      explorer.run(samples);
+      if (replay && !replay.reached) {
+        advanceReplay(explorer, replay, samples);
+      } else {
+        explorer.run(samples);
+      }
     } catch {
       onFailure();
       return false;
@@ -943,7 +940,12 @@ export function createExperiment(wasm) {
   });
   nodes.export.addEventListener("click", downloadRun);
   nodes.replay.addEventListener("click", () => {
-    build(replayCurrentRun());
+    try {
+      build(replayCurrentRun());
+    } catch (error) {
+      loadError = error instanceof Error ? error.message : String(error);
+      renderReplayNote();
+    }
   });
   nodes.loadRunButton.addEventListener("click", () => {
     nodes.loadRun.click();
