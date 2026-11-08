@@ -195,25 +195,6 @@ after `wrangler login` or with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID
 workflow does the same on any manual run, and on every push to `main` once the repository
 variable `DEPLOY_DEMO` is `true`. It needs both values as repository secrets.
 
-## Development
-
-```sh
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
-cargo doc --workspace --no-deps
-scripts/coverage.sh                      # coverage and CRAP gates: no function above CRAP 10
-cargo mutants -p idbd                    # mutation testing of the core
-```
-
-The lint policy follows [BeautifulRust](https://github.com/morganlinton/BeautifulRust). Core
-scenario tests carry their IDs from `features/idbd.feature`, for example
-`c07_use_old_traces_and_one_shared_pre_update_error`. Numerical fixtures come from an
-independent 50-digit decimal implementation in
-[`reference.py`](crates/idbd/tests/scenarios/fixtures/reference.py).
-[docs/acceptance.md](docs/acceptance.md) maps every scenario to its test or recorded result and
-lists what remains open.
-
 ## Reference
 
 Richard S. Sutton. *Adapting Bias by Gradient Descent: An Incremental Version of
