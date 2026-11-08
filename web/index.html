@@ -100,7 +100,7 @@
           <div class="hero-cards">
             <div class="card legend">
               <span><span class="dot dot-idbd" aria-hidden="true"></span>Amber ring: how closely IDBD watches a sensor</span>
-              <span class="muted legend-note">Bigger ring, faster learning per unit of reading. Nobody told it which sensors matter: it watched this home for <span id="hero-warmup">7 days</span> one reading a minute before you arrived.</span>
+              <span class="muted legend-note">Bigger ring, faster learning per typical swing of a reading. Nobody told it which sensors matter: it watched this home for <span id="hero-warmup">7 days</span> one reading a minute before you arrived.</span>
             </div>
             <div class="card live">
               <div class="card-head"><span>Power meter above the base, live</span><span class="mono" id="live-count">day 1, 00:00</span></div>
@@ -231,6 +231,12 @@
               Next to give it one reading. Press Run three days to skip ahead through all
               <span id="slow-run-count">4,320</span> readings and watch the speeds spread apart.
             </p>
+            <p>
+              Every number is per typical swing of that sensor's reading, so the sensors compare
+              directly: a reading of +1.00 is one typical swing above its usual value, and the
+              guess is each reading times its trust, added up.
+            </p>
+            <p class="muted" id="slow-hidden">Sensor names stay hidden until you have played the game in chapter 4.</p>
           </div>
           <div class="actions">
             <button type="button" class="button primary" id="slow-next">Next reading</button>
@@ -255,9 +261,9 @@
               <thead>
                 <tr>
                   <th scope="col">Sensor</th>
-                  <th scope="col">Reading</th>
-                  <th scope="col">Trust</th>
-                  <th scope="col">Speed per unit of reading</th>
+                  <th scope="col">Reading, in typical swings</th>
+                  <th scope="col">Trust, kW per swing</th>
+                  <th scope="col">Speed per typical swing</th>
                   <th scope="col">Speed so far</th>
                 </tr>
               </thead>
@@ -359,10 +365,9 @@
             <h2 id="learned-title">After three days, IDBD listens closely to four sensors and lets eight go quiet.</h2>
           </div>
           <div class="chapter-copy">
-            <p>
-              Nobody told it which sensors matter. The speeds for the water heater, the wall, the oven
-              and the Wi-Fi data use grew because their corrections kept agreeing. The others shrank
-              because theirs kept cancelling out.
+            <p id="learned-why">
+              Nobody told it which sensors matter. The corrections for the water heater, the wall, the
+              oven and the Wi-Fi data use kept agreeing, and the others kept cancelling out.
             </p>
             <p>
               Speeds rise a little in the hours a sensor is busy, but not enough to tell those hours
@@ -373,7 +378,7 @@
         </div>
         <figure class="card instrument">
           <div class="card-head">
-            <span>Speed per unit of reading IDBD learned for each sensor after <span id="desk-readings">4,320</span> readings, the game's first run</span>
+            <span>Speed per typical swing IDBD learned for each sensor after <span id="desk-readings">4,320</span> readings, the game's first run</span>
             <span class="mono faint">simulated home, computed by the idbd crate</span>
           </div>
           <ul class="desk" id="desk" aria-label="Learned speed per sensor"></ul>

@@ -1,7 +1,7 @@
 // The hero house in three.js. Loaded only when WebGL works and the visitor has not asked
 // for reduced motion. Each of the twelve sensors is a small device whose light follows its
-// live reading. IDBD's attention is an amber ring sized by its learning speed per unit of
-// reading. The room does not act out which sensors matter or when: that is the game's
+// live reading. IDBD's attention is an amber ring sized by its learning speed per typical
+// swing of a reading. The room does not act out which sensors matter or when: that is the game's
 // question.
 
 import * as THREE from "three";
@@ -355,7 +355,7 @@ export function mountHouse3d(container, names, onLost, scales = []) {
   schedule();
 
   return {
-    /** Takes IDBD's learning speeds per unit of reading and the latest readings. */
+    /** Takes IDBD's learning speeds per typical swing of each reading and the latest readings. */
     update({ speeds, features }) {
       const opacity = ringOpacity(speeds);
       sensors.forEach((sensor, i) => {

@@ -24,8 +24,8 @@ export const SENSOR_POSITIONS = [
 const LABELS = new Map([
   [0, { dx: 40, dy: -34 }],
   [1, { dx: -30, dy: -72, end: true }],
-  [2, { dx: -23, dy: 62, end: true }],
-  [3, { dx: -119, dy: -8, end: true }],
+  [2, { dx: -5, dy: 62, end: true }],
+  [3, { dx: -101, dy: -8, end: true }],
   [4, { dx: -95, dy: -13, end: true }],
   [5, { dx: -10, dy: 60, end: true }],
   [6, { dx: -95, dy: 9, end: true }],
@@ -67,7 +67,7 @@ export function project([x, y, z]) {
 }
 
 /**
- * Glow radius in drawing units for a learning speed per unit of reading. The radius grows
+ * Glow radius in drawing units for a learning speed per typical swing of a reading. The radius grows
  * with the square root, so a sensor with four times the speed glows twice as wide.
  */
 export function glowRadius(speed) {

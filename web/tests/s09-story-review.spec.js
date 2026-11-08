@@ -115,8 +115,28 @@ test("S09 the speed sparklines share one scale", async ({ page }) => {
     lines.map((line) => Number(line.getAttribute("points").split(" ").at(-1).split(",")[1])),
   );
   // A smaller y is higher on screen: every sensor that matters ends above every other one.
+  const { order } = await slow(page);
   const matters = await page.evaluate(() => window.idbdStory.home.sensors.map((s) => s.hours !== 0));
-  expect(Math.max(...ends.filter((_, i) => matters[i]))).toBeLessThan(Math.min(...ends.filter((_, i) => !matters[i])));
+  const ofRow = (_, row) => matters[order[row]];
+  expect(Math.max(...ends.filter(ofRow))).toBeLessThan(Math.min(...ends.filter((e, row) => !ofRow(e, row))));
+});
+
+test("S09 slow motion letters its sensors until the game is played", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openStory(page);
+  const names = await page.evaluate(() => window.idbdStory.home.sensors.map((s) => s.name));
+  const heads = () => page.$$eval("#slow-rows th", (cells) => cells.map((c) => c.textContent));
+  expect(await heads()).toEqual([..."ABCDEFGHIJKL"].map((l) => `Sensor ${l}`));
+  await page.click("#slow-run");
+  for (const name of names) await expect(page.locator("#slow-summary")).not.toContainText(name);
+  await expect(page.locator("#slow-hidden")).toBeVisible();
+
+  await page.click("#family-run");
+  await expect(page.locator("#family-result")).toBeVisible();
+  const { order, named } = await slow(page);
+  expect(named).toBe(true);
+  expect(await heads()).toEqual(order.map((s) => names[s]));
+  await expect(page.locator("#slow-hidden")).toBeHidden();
 });
 
 test("S09 the slow-motion explanation is announced", async ({ page }) => {

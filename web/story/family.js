@@ -246,6 +246,7 @@ export function createFamily(wasm, ui) {
       lane.note.textContent = `${when}${pace}`;
     });
     ui.root.classList.add("revealed");
+    ui.onReveal?.();
     ui.view.hidden = false;
     ui.reset.hidden = true;
     ui.hint.hidden = true;

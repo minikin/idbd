@@ -1,12 +1,18 @@
 // Slow motion: one reading at a time from a fresh FamilyDay, with every change IDBD makes
-// read from the crate before and after the update. Speeds are per unit of reading, so
-// sensors whose readings swing differently compare directly.
+// read from the crate before and after the update. Readings, trust and speeds are all per
+// typical swing of each sensor's reading (its standard deviation), so sensors that read on
+// different scales compare directly and reading times trust adds up to the guess.
+//
+// The rows are lettered and shuffled until the visitor has played the game, so this
+// chapter does not give away which sensors matter.
 
 import { svg } from "../src/dom.js";
 import { fmtSigned } from "../src/format.js";
 
 const SEED = 3;
 const HISTORY = 600;
+/** The sensor shown in each row, a fixed shuffle so row letters do not follow chapter 1. */
+const ORDER = [6, 1, 10, 3, 8, 0, 11, 5, 2, 9, 4, 7];
 
 const fmt = (v, digits = 2) => fmtSigned(v, digits);
 
@@ -51,11 +57,15 @@ export function createSlowMotion(wasm, home, nodes) {
   nodes.runCount.textContent = RUN.toLocaleString("en-US");
   nodes.run.textContent = "Run three days";
 
-  const rows = home.sensors.map((sensor) => {
+  const letters = new Map(ORDER.map((sensor, row) => [sensor, `Sensor ${String.fromCharCode(65 + row)}`]));
+  let named = false;
+  const label = (s) => (named ? home.sensors[s].name : letters.get(s));
+
+  const rows = ORDER.map((s) => {
     const row = document.createElement("tr");
     const head = document.createElement("th");
     head.scope = "row";
-    head.textContent = sensor.name;
+    head.textContent = label(s);
     const cells = ["reading", "trust", "speed"].map(() => document.createElement("td"));
     const sparkCell = document.createElement("td");
     const line = svg("polyline");
@@ -63,7 +73,7 @@ export function createSlowMotion(wasm, home, nodes) {
     sparkCell.append(chart);
     row.append(head, ...cells, sparkCell);
     nodes.rows.append(row);
-    return { reading: cells[0], trust: cells[1], speed: cells[2], line };
+    return { s, head, reading: cells[0], trust: cells[1], speed: cells[2], line };
   });
 
   function restart() {
@@ -105,7 +115,7 @@ export function createSlowMotion(wasm, home, nodes) {
     nodes.run.disabled = over;
     nodes.reading.textContent = race.completed().toLocaleString("en-US");
     const top = Math.max(...history.flat()) * 1.05;
-    rows.forEach((row, s) => row.line.setAttribute("points", sparkline(history[s], top)));
+    for (const row of rows) row.line.setAttribute("points", sparkline(history[row.s], top));
     if (!last) {
       for (const node of [nodes.guess, nodes.actual, nodes.miss]) node.textContent = "-";
       const start = home.initialStepSize.toFixed(4);
@@ -113,12 +123,12 @@ export function createSlowMotion(wasm, home, nodes) {
       nodes.summary.textContent =
         `Press Next reading to start. Every sensor begins with trust 0 and the same step size, ${start}. ` +
         `Per unit of reading, that is already ${ratio.toFixed(0)} times faster on the sensors whose readings swing most.`;
-      rows.forEach((row, s) => {
+      for (const row of rows) {
         row.reading.textContent = "-";
         row.trust.textContent = fmt(0);
-        row.speed.textContent = history[s][0].toFixed(4);
+        row.speed.textContent = history[row.s][0].toFixed(4);
         row.speed.className = "";
-      });
+      }
       return;
     }
     nodes.guess.textContent = inWords(last.guess);
@@ -128,7 +138,8 @@ export function createSlowMotion(wasm, home, nodes) {
     let biggest = 0;
     let up = 0;
     let down = 0;
-    rows.forEach((row, s) => {
+    rows.forEach((row) => {
+      const { s } = row;
       const w0 = last.before.weights[s];
       const w1 = last.weights[s];
       const a0 = last.before.alphas[s];
@@ -136,7 +147,7 @@ export function createSlowMotion(wasm, home, nodes) {
       if (Math.abs(w1 - w0) > Math.abs(last.weights[biggest] - last.before.weights[biggest])) biggest = s;
       if (a1 > a0) up += 1;
       if (a1 < a0) down += 1;
-      row.reading.textContent = fmt(last.features[s]);
+      row.reading.textContent = fmt(last.features[s] / home.sensors[s].scale);
       row.trust.textContent = `${fmt(w0)} → ${fmt(w1)}`;
       const move = a1 === a0 ? "unchanged" : `${a1 > a0 ? "↑" : "↓"} ${percent(a0, a1)}`;
       row.speed.textContent = `${a0.toFixed(4)} → ${a1.toFixed(4)} ${move}`;
@@ -151,7 +162,7 @@ export function createSlowMotion(wasm, home, nodes) {
     const end = over ? " The three days are over. Restart to watch again." : "";
     nodes.summary.textContent =
       `IDBD guessed the meter would read ${inWords(last.guess)}. It read ${inWords(last.target)}, so the guess was ` +
-      `${missInWords(last.target, last.guess)}. It moved its trust in the ${home.sensors[biggest].name} the most, ` +
+      `${missInWords(last.target, last.guess)}. It moved its trust in ${named ? "the " : ""}${label(biggest)} the most, ` +
       `by ${fmt(change, 3)}. ${speeds}${end}`;
   }
 
@@ -161,8 +172,19 @@ export function createSlowMotion(wasm, home, nodes) {
   restart();
 
   return {
+    /** Puts the sensors' names on the rows, once the game has revealed which matter. */
+    revealNames() {
+      named = true;
+      for (const row of rows) row.head.textContent = label(row.s);
+      nodes.hidden.hidden = true;
+      if (last) render();
+    },
     state() {
       return {
+        order: ORDER,
+        named,
+        readings: last && last.features.map((v, s) => v / home.sensors[s].scale),
+        trustBefore: last && last.before.weights,
         completed: race.completed(),
         stepSizes: Array.from(race.idbdSpeeds()),
         last: last && { guess: last.guess, target: last.target, before: last.before.alphas, after: last.alphas },

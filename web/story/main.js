@@ -294,7 +294,7 @@ function fillSpeeds(home) {
   $("speed-high-value").textContent = String(nervous.stepSize);
   $("speed-low").setAttribute(
     "aria-label",
-    `Measured over ${minutes} minutes in which a sensor with small readings adds ${influence} kW per unit of reading. ` +
+    `Measured over ${minutes} minutes in which a sensor with small readings adds ${influence} kW per typical swing of its reading. ` +
       `At fixed speed ${late.stepSize} the trust in it peaks at ${peak.toFixed(2)}` +
       (lmsHalf === null ? " and never reaches half the real effect." : `, reaching half the real effect after ${lmsHalf} minutes.`) +
       (idbdHalf === null ? " IDBD does not reach half either." : ` IDBD reaches half after ${idbdHalf} minutes.`),
@@ -320,8 +320,35 @@ function fillSpeeds(home) {
   return result;
 }
 
+/**
+ * Explains the learned speeds against fair rivals: each sensor that matters is compared
+ * with the sensors that never matter and started at its speed. Its own speed can fall, as
+ * the oven's does, and still end well above theirs.
+ */
+function learnedWhy(home, start, speeds) {
+  const ratios = [];
+  let rose = 0;
+  home.sensors.forEach((sensor, i) => {
+    if (!sensor.hours) return;
+    const rivals = home.sensors.flatMap((other, j) => (!other.hours && start[j] === start[i] ? [speeds[j]] : []));
+    if (!rivals.length) return;
+    if (speeds[i] > start[i]) rose += 1;
+    ratios.push(speeds[i] / (rivals.reduce((a, b) => a + b, 0) / rivals.length));
+  });
+  const fell = ratios.length - rose;
+  const words = ["None", "One", "Two", "Three", "Four"];
+  const moved = `${words[rose] ?? rose} of the ${(words[ratios.length] ?? ratios.length).toLowerCase()} sped up and ${(words[fell] ?? fell).toLowerCase()} slowed down`;
+  return (
+    "Nobody told it which sensors matter. " +
+    `${moved}, but each ended ${Math.min(...ratios).toFixed(1)} to ${Math.max(...ratios).toFixed(1)} times faster ` +
+    "than the sensors that started at its speed and never matter. Their corrections kept agreeing, so their speeds " +
+    "fell less or rose. The others' kept cancelling out."
+  );
+}
+
 function fillDesk(home) {
   const day = new wasm.FamilyDay(home.seeds[0]);
+  const start = Array.from(day.idbdSpeeds());
   day.run(home.readings);
   const speeds = Array.from(day.idbdSpeeds());
   day.free();
@@ -340,6 +367,7 @@ function fillDesk(home) {
     $("desk").append(el("li", { class: home.sensors[i].hours ? "relevant" : null }, [fader, label]));
   });
   $("desk-readings").textContent = count(home.readings);
+  $("learned-why").textContent = learnedWhy(home, start, speeds);
   return speeds;
 }
 
@@ -367,6 +395,7 @@ async function main() {
     miss: $("slow-miss"),
     summary: $("slow-summary"),
     rows: $("slow-rows"),
+    hidden: $("slow-hidden"),
   });
   const family = createFamily(wasm, {
     root: $("family"),
@@ -386,6 +415,7 @@ async function main() {
     mechanism: $("family-mechanism"),
     again: $("family-again"),
     failure: $("family-failure"),
+    onReveal: () => slow.revealNames(),
   });
 
   window.idbdStory = {

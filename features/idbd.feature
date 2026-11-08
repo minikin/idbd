@@ -593,7 +593,9 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       Given a fresh learner on the home
       When the visitor asks for the next reading
       Then the page shows the guess, the real power draw and the miss read from the crate
-      And for every sensor it shows the trust and the speed per unit of reading before and after the update
+      And for every sensor it shows the trust and the speed per typical swing before and after the update
+      And each reading is shown per typical swing, so the readings times the trust before the update add up to the guess
+      And the rows stay lettered, not named, until the visitor has played the game
 
     Scenario: S03 Let a visitor guess the hours each sensor matters
       Given the Family Assistant game on the story page
