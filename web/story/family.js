@@ -320,7 +320,11 @@ export function createFamily(wasm, ui) {
     frame = requestAnimationFrame((now) => step(0, now)(now));
   }
 
-  function again() {
+  /**
+   * Watches three new days of the same home: the next seed changes the readings and the
+   * noise, not which sensors matter or when, so the visitor's hours are kept and run again.
+   */
+  function watchAgain() {
     if (frame) cancelAnimationFrame(frame);
     frame = null;
     seedIndex = (seedIndex + 1) % home.seeds.length;
@@ -346,7 +350,8 @@ export function createFamily(wasm, ui) {
       lane.truthBand.hidden = true;
     });
     ui.failure.hidden = true;
-    ui.run.focus();
+    run();
+    if (phase === "running") ui.clock.focus();
   }
 
   function clear() {
@@ -359,7 +364,7 @@ export function createFamily(wasm, ui) {
 
   ui.run.addEventListener("click", run);
   ui.reset.addEventListener("click", clear);
-  ui.again.addEventListener("click", again);
+  ui.again.addEventListener("click", watchAgain);
   for (const button of ui.viewButtons) {
     button.addEventListener("click", () => {
       view = button.dataset.view;

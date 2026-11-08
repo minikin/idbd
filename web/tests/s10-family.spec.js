@@ -171,7 +171,7 @@ test("S10 the reveal switches to the fixed speed's bars and back", async ({ page
   await expect(page.locator("#family")).toHaveAttribute("data-view", "idbd");
 });
 
-test("S10 the three days play out over time, then Play again starts the next run", async ({ page }) => {
+test("S10 the three days play out over time, then three new days of the same home run with the same hours", async ({ page }) => {
   test.setTimeout(60_000);
   await page.clock.install();
   await openStory(page);
@@ -187,13 +187,19 @@ test("S10 the three days play out over time, then Play again starts the next run
   expect((await game(page)).phase).toBe("done");
   await expect(page.locator("#family-clock")).toHaveText("Three days watched, 4,320 readings");
 
-  const seed = (await game(page)).seed;
+  const first = await game(page);
+  await expect(page.locator("#family-again")).toHaveText("Watch three new days");
   await page.click("#family-again");
   const next = await game(page);
-  expect(next.phase).toBe("guess");
-  expect(next.seed).not.toBe(seed);
+  expect(next.phase).toBe("running");
+  expect(next.seed).not.toBe(first.seed);
+  expect(next.truth).toEqual(first.truth);
+  expect(next.guesses).toEqual(first.guesses);
   await expect(page.locator("#family-result")).toBeHidden();
-  await expect(page.locator("#family-run")).toBeFocused();
+  await expect(page.locator("#family-clock")).toBeFocused();
+  await page.clock.runFor(10_000);
+  expect((await game(page)).phase).toBe("done");
+  await expect(page.locator("#family-result")).toBeVisible();
 });
 
 test("S10 the dial marks each day and paints IDBD's bars only after the warm-up", async ({ page }) => {
