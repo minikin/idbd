@@ -13,6 +13,11 @@ IDBD (Sutton, 1992) is the LMS rule with one learning rate per input. It keeps
 so an input whose corrections keep pointing the same way gets a larger step and an input whose
 corrections cancel out gets a smaller one. No input is marked as relevant in advance.
 
+<p align="center">
+  <img src="docs/assets/demo-loop.webp" width="100%" alt="The story page's guessing game on a 24-hour dial with one ring per sensor: a visitor's marked hours in violet, IDBD's bars forming in amber over three simulated days, then the scores, the visitor 21% and IDBD 85%">
+</p>
+<p align="center"><sub>One run of the story page's guessing game. A tuned fixed step on rescaled readings scores 89% to IDBD's 85% over ten runs, see <a href="#results">Results</a>.</sub></p>
+
 This repository has three parts:
 
 - `idbd`, the crate: IDBD and Autostep (Mahmood et al., 2012) as checked, atomic,
@@ -61,11 +66,6 @@ checkpointing the learner with its stream position. Run it with
 update equations, configuration, bounds, checkpoints, when to use IDBD and its limitations.
 
 ## The demo
-
-<p align="center">
-  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's guessing game on a 24-hour dial with one ring per sensor: a visitor's marked hours in violet, IDBD's bars forming in amber over three simulated days, then the scores, the visitor 21% and IDBD 85%">
-</p>
-<p align="center"><sub>One run of the game. A tuned fixed step on rescaled readings scores 89% to IDBD's 85% over ten runs, see <a href="#results">Results</a>.</sub></p>
 
 The story page explains IDBD with Family Assistant, a home with twelve sensors and a power
 meter. Four of the sensors add to the meter, each during its own hours of the day, and the
