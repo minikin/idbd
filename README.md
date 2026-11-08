@@ -188,10 +188,12 @@ pinned in `crates/idbd-wasm`) and Node.js. The house is drawn with three.js 0.17
 site is static: after `just web-build`, any file server that sends `.wasm` as
 `application/wasm` can host `web/`.
 
-The `Demo` workflow deploys to GitHub Pages. It copies only `index.html`, `explorer.html`,
-`styles.css`, `src/`, `story/`, three.js from `vendor/` and the two files the pages load from
-`pkg/`. It deploys on every push to `main` once the repository variable `DEPLOY_DEMO` is
-`true`, and on any manual run. GitHub Pages must be enabled with "GitHub Actions" as the source.
+`just web-site` copies only `index.html`, `explorer.html`, `styles.css`, `src/`, `story/`,
+three.js from `vendor/` and the two files the pages load from `pkg/` into `_site/`.
+`just web-deploy` deploys `_site/` to Cloudflare as the assets-only Worker in `wrangler.jsonc`,
+after `wrangler login` or with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. The `Demo`
+workflow does the same on any manual run, and on every push to `main` once the repository
+variable `DEPLOY_DEMO` is `true`. It needs both values as repository secrets.
 
 ## Development
 
