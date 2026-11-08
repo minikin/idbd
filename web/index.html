@@ -324,82 +324,73 @@
       <section id="play" class="chapter wrap" aria-labelledby="play-title">
         <div class="chapter-copy wide">
           <p class="eyebrow">06 &middot; Play</p>
-          <h2 id="play-title">Play against it.</h2>
+          <h2 id="play-title">Family Assistant: which sensors cost you, and when?</h2>
+          <p>
+            A home with twelve sensors and one power meter. Four of the sensors add to the bill,
+            each during its own hours of the day. The other eight never do. Mark the hours you
+            think each sensor matters, then let IDBD watch the home for three days and see what
+            it found on its own.
+          </p>
         </div>
 
-        <div class="how card">
-          <h3>How to play</h3>
-          <ol>
-          <li><strong>You guess too.</strong> Mark each sensor: does it warm the room, cool it, or not matter? Every reading, your guess adds up the usual effect of the sensors you marked.</li>
-          <li><strong>Highest accuracy wins.</strong> 100% is as close as anyone can get: the readings are noisy, so even a perfect guess misses a little. 0% is no better than always guessing "the temperature won't change". A round is 600 readings, one minute.</li>
-          </ol>
-        </div>
-
-        <div class="levels" role="group" aria-label="Level">
-          <button type="button" class="level" data-level="changing" aria-pressed="true">
-            <span class="strong">Level 1: a busy house</span>
-            <span class="muted small">What matters changes about every two seconds. This is what IDBD is for.</span>
-          </button>
-          <button type="button" class="level" data-level="still" aria-pressed="false">
-            <span class="strong">Level 2: a calm house</span>
-            <span class="muted small">Nothing changes. One fixed speed is enough here, and you can win.</span>
-          </button>
-        </div>
-
-        <div class="game-bar">
-          <p class="muted" id="level-note"></p>
-          <div class="actions">
-            <button type="button" class="button primary" id="game-run">Start</button>
-            <button type="button" class="button" id="game-reset">Reset</button>
-          </div>
-        </div>
-
-        <div class="game">
-          <div class="card sliders">
-            <div class="card-head"><span>What does each sensor do to the room?</span></div>
-            <div id="sliders"></div>
-          </div>
-          <div class="game-main">
-            <div class="scores" id="scores" aria-live="polite" aria-atomic="true"></div>
-            <div class="card">
-              <div class="card-head"><span>Accuracy over the last 100 readings</span><span class="mono" id="game-count">reading 0</span></div>
-              <svg viewBox="0 0 600 180" class="race-chart" id="game-chart" role="img" aria-label="Accuracy over the round for you, IDBD and the fixed-speed learner. Dashed vertical lines mark moments when the house changed.">
-                <line x1="0" y1="179" x2="600" y2="179" class="zero"></line>
-                <path id="game-changes" class="changes" d=""></path>
-                <polyline id="game-lms" class="line-lms" points=""></polyline>
-                <polyline id="game-idbd" class="line-idbd" points=""></polyline>
-                <path id="game-you" class="line-you" d=""></path>
-              </svg>
-              <div class="key">
-                <span><span class="swatch swatch-you"></span>you</span>
-                <span><span class="swatch swatch-idbd"></span>IDBD</span>
-                <span><span class="swatch swatch-lms"></span>fixed speed</span>
-                <span><span class="swatch swatch-change"></span>the house changed</span>
-                <span class="faint">higher is better</span>
-              </div>
+        <div class="card family" id="family">
+          <div class="family-head">
+            <p class="muted small" id="family-hint">
+              Drag the two handles on a lane to mark its hours. Leave a lane empty if you think the
+              sensor never matters.
+            </p>
+            <p class="key family-key" id="family-key" hidden>
+              <span><span class="key-truth"></span>the true hours</span>
+              <span><span class="key-bars"></span>the learner's belief, solid where it marks the hour</span>
+              <span><span class="swatch swatch-you"></span>your hours</span>
+            </p>
+            <div class="family-view" role="group" aria-label="Bars to show" hidden id="family-view">
+              <button type="button" class="button small" data-view="idbd" aria-pressed="true">IDBD's bars</button>
+              <button type="button" class="button small" data-view="lms" aria-pressed="false">Fixed speed's bars</button>
             </div>
           </div>
+          <div class="family-scale" aria-hidden="true">
+            <span></span>
+            <div class="family-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+          </div>
+          <ol class="family-lanes" id="family-lanes"></ol>
+          <div class="family-bar">
+            <div class="actions">
+              <button type="button" class="button primary" id="family-run">Run three days</button>
+              <button type="button" class="button" id="family-reset">Clear my hours</button>
+            </div>
+            <p class="mono small muted" id="family-clock" aria-live="polite"></p>
+          </div>
         </div>
 
-        <p class="card verdict" id="verdict" role="status" hidden></p>
-
-        <div class="card reveal">
-          <div class="card-head">
-            <span class="strong">What IDBD has worked out: what each sensor does, and how fast it is still learning about it</span>
-            <button type="button" class="button small" id="reveal" aria-expanded="false" aria-controls="learned-wrap">Show IDBD's trust and speeds</button>
+        <div class="family-result" id="family-result" hidden>
+          <div class="scores" id="family-scores" aria-live="polite" aria-atomic="true"></div>
+          <div class="card family-explain">
+            <h3>What you just watched</h3>
+            <p id="family-mechanism"></p>
+            <p>
+              IDBD's bars show what it believes each sensor adds to the meter at each hour. They run a
+              little late: a belief takes time to grow after a sensor starts to matter and to fade after
+              it stops.
+            </p>
+            <p>
+              Every sensor here reads on its own scale, the way a barometer and an oven thermometer
+              do. One fixed learning speed cannot suit them all, and that is where IDBD's edge comes
+              from. Rescale every reading to the same spread first, as the idbd README recommends, and
+              a well-tuned fixed speed draws bars close to IDBD's.
+            </p>
+            <p>
+              This demonstrates how IDBD finds what matters. Family Assistant only predicted the meter
+              from the sensors. It did not switch anything on or off.
+              <a href="https://github.com/minikin/idbd/blob/main/docs/results/family/README.md">Method and results over ten simulated runs.</a>
+            </p>
           </div>
-          <div id="learned-wrap" hidden>
-            <div id="learned" class="learned"></div>
-            <p class="muted small learned-note" id="learned-note"></p>
+          <div class="actions">
+            <button type="button" class="button primary" id="family-again">Play again</button>
           </div>
         </div>
 
-        <p class="mono faint small" id="game-note">
-          IDBD and the fixed-speed learner run in the idbd crate, compiled to WebAssembly, and have
-          already seen 5,000 readings of this house. Each uses the settings that measured best for
-          that house. Your score uses the same readings.
-        </p>
-        <p class="failure" id="game-failure" role="alert" hidden></p>
+        <p class="failure" id="family-failure" role="alert" hidden></p>
       </section>
 
       <section id="advanced" class="chapter wrap advanced" aria-labelledby="advanced-title">

@@ -3,8 +3,8 @@ import { expect, test } from "@playwright/test";
 
 import { inWords, missInWords } from "../story/slow.js";
 
-// S01 to S07: the story page. Its learning values come from the crate's HouseRace, the
-// game races that crate code, and the page stays usable without WebGL or motion.
+// S01 to S07: the story page. Its learning values come from the crate's HouseRace, and
+// the page stays usable without WebGL or motion. The game has its own file, s10.
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -23,15 +23,6 @@ const story = (page) =>
     game: window.idbdStory.game(),
     slow: window.idbdStory.slow(),
   }));
-
-const STOPS = { "cools a lot": -2, "cools a little": -1, ignore: 0, "warms a little": 1, "warms a lot": 2 };
-
-async function mark(page, sensor, choice) {
-  await page.locator(`#trust-${sensor}`).evaluate((input, value) => {
-    input.value = String(value);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  }, STOPS[choice]);
-}
 
 test("S01 the chapters show step sizes and errors computed by the crate", async ({ page }) => {
   const errors = [];
@@ -75,69 +66,6 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-reading")).toHaveText("0");
 });
 
-test("S03 the calm house rewards matching the truth, and Reset clears everything", async ({ page }) => {
-  await openStory(page);
-  await expect(page.locator(".level[data-level='changing']")).toHaveAttribute("aria-pressed", "true");
-  await page.click(".level[data-level='still']");
-  await expect(page.locator(".level[data-level='still']")).toHaveAttribute("aria-pressed", "true");
-  const fresh = (await story(page)).game;
-  expect(fresh.level).toBe("still");
-  expect(fresh.lmsStepSize).toBe((await story(page)).house.stillLmsStepSize);
-
-  await expect(page.locator('output[for="trust-0"]')).toHaveText("ignore");
-  await mark(page, 0, "warms a lot");
-  await mark(page, 1, "warms a lot");
-  await mark(page, 2, "cools a lot");
-  await expect(page.locator('output[for="trust-0"]')).toHaveText("warms a lot");
-  await expect(page.locator("#trust-0")).toHaveAttribute("aria-valuetext", "warms a lot");
-  const tuned = (await story(page)).game;
-  const strong = (await story(page)).house.levels.map(([level]) => level);
-  expect(tuned.trust).toEqual([...strong, 0, 0, 0]);
-
-  await mark(page, 0, "warms a little");
-  const [, sunWeak] = (await story(page)).house.levels[0];
-  expect((await story(page)).game.trust[0]).toBe(sunWeak);
-  await mark(page, 0, "warms a lot");
-
-  await page.click("#game-run");
-  await page.waitForFunction(() => window.idbdStory.game().scored >= 60, null, { timeout: 20000 });
-  await page.click("#game-run");
-  const paused = (await story(page)).game;
-  expect(paused.running).toBe(false);
-  for (const value of Object.values(paused.scores)) expect(Number.isFinite(value)).toBe(true);
-  await page.waitForTimeout(400);
-  expect((await story(page)).game.scored).toBe(paused.scored);
-
-  await page.click("#game-reset");
-  const reset = (await story(page)).game;
-  expect(reset.scored).toBe(0);
-  expect(reset.trust.every((v) => v === 0)).toBe(true);
-  await expect(page.locator('output[for="trust-0"]')).toHaveText("ignore");
-  expect(reset.revealed).toBe(false);
-});
-
-test("S04 level 1 races on the switching house with its own fixed speed", async ({ page }) => {
-  await openStory(page);
-  await page.click(".level[data-level='still']");
-  await page.click(".level[data-level='changing']");
-  await expect(page.locator(".level[data-level='changing']")).toHaveAttribute("aria-pressed", "true");
-  const s = await story(page);
-  expect(s.game.level).toBe("changing");
-  expect(s.game.lmsStepSize).toBe(s.house.lmsStepSize);
-  await expect(page.locator("#scores .note").nth(2)).toContainText("one speed for every sensor");
-});
-
-test("S05 IDBD's trust and speeds stay hidden until the visitor asks", async ({ page }) => {
-  await openStory(page);
-  await expect(page.locator("#learned")).toBeHidden();
-  await page.click("#reveal");
-  await expect(page.locator("#learned")).toBeVisible();
-  await expect(page.locator("#reveal")).toHaveAttribute("aria-expanded", "true");
-  const speeds = await page.$$eval("#learned .item .faint", (nodes) => nodes.map((n) => n.textContent));
-  const game = (await story(page)).game;
-  speeds.forEach((text, s) => expect(text).toContain(`(speed ${game.stepSizes[s].toFixed(3)},`));
-});
-
 test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openStory(page);
@@ -151,10 +79,8 @@ test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => 
 test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {
   await openStory(page);
   await page.click("#slow-run");
-  await page.click("#game-run");
-  await page.waitForFunction(() => window.idbdStory.game().scored >= 20, null, { timeout: 15000 });
-  await page.click("#game-run");
-  await page.click("#reveal");
+  await page.click("#family-run");
+  await page.waitForFunction(() => window.idbdStory.game().phase === "done", null, { timeout: 30000 });
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const found = results.violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target.join(" ")) }));
   expect(found).toEqual([]);
@@ -178,23 +104,4 @@ test("S07 no section leaves an empty gap between its blocks", async ({ page }) =
     }),
   );
   for (const { section, largest } of gaps) expect(largest, section).toBeLessThanOrEqual(64);
-});
-
-test("S08 a round ends after 600 readings with a winner and a reason", async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.clock.install();
-  await openStory(page);
-  await page.click("#game-run");
-  for (let second = 0; second < 61; second += 1) await page.clock.runFor(1_000);
-  const game = (await story(page)).game;
-  expect(game.finished).toBe(true);
-  expect(game.scored).toBe(600);
-  await expect(page.locator("#verdict")).toBeVisible();
-  await expect(page.locator("#verdict")).toContainText("Accuracy over the round: ");
-  await expect(page.locator("#verdict")).toContainText(/[\u2605\u2606]{3}/);
-  const accuracy = (await story(page)).game.accuracy;
-  for (const value of Object.values(accuracy)) expect(value).toBeGreaterThanOrEqual(0);
-  await expect(page.locator("#scores .value").nth(1)).toHaveText(/^\d{1,3}%$/);
-  await expect(page.locator("#game-run")).toHaveText("Play again");
-  await expect(page.locator("#scores .lead", { hasText: "winner" })).toHaveCount(1);
 });

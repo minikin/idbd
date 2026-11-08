@@ -7,7 +7,7 @@ import init, * as wasm from "../pkg/idbd_wasm.js";
 import { el, svg } from "../src/dom.js";
 import { fmtSigned } from "../src/format.js";
 import { SENSOR_COLORS, createHouse2d } from "./house.js";
-import { createGame } from "./game.js";
+import { createFamily } from "./family.js";
 import { createSlowMotion } from "./slow.js";
 
 const HERO_SEED = 1;
@@ -401,25 +401,21 @@ async function main() {
     summary: $("slow-summary"),
     rows: $("slow-rows"),
   });
-  const game = createGame(wasm, house, {
-    levels: [...document.querySelectorAll(".level")],
-    levelNote: $("level-note"),
-    chart: $("game-chart"),
-    run: $("game-run"),
-    reset: $("game-reset"),
-    sliders: $("sliders"),
-    scores: $("scores"),
-    count: $("game-count"),
-    you: $("game-you"),
-    idbd: $("game-idbd"),
-    lms: $("game-lms"),
-    changes: $("game-changes"),
-    reveal: $("reveal"),
-    learned: $("learned"),
-    learnedWrap: $("learned-wrap"),
-    learnedNote: $("learned-note"),
-    verdict: $("verdict"),
-    failure: $("game-failure"),
+  const family = createFamily(wasm, {
+    root: $("family"),
+    lanes: $("family-lanes"),
+    run: $("family-run"),
+    reset: $("family-reset"),
+    clock: $("family-clock"),
+    hint: $("family-hint"),
+    key: $("family-key"),
+    view: $("family-view"),
+    viewButtons: [...document.querySelectorAll("#family-view [data-view]")],
+    result: $("family-result"),
+    scores: $("family-scores"),
+    mechanism: $("family-mechanism"),
+    again: $("family-again"),
+    failure: $("family-failure"),
   });
 
   window.idbdStory = {
@@ -431,7 +427,8 @@ async function main() {
     speeds,
     desk,
     lanes,
-    game: () => game.state(),
+    family,
+    game: () => family.state(),
     slow: () => slow.state(),
   };
   document.body.dataset.appReady = "true";

@@ -68,10 +68,12 @@ update equations, configuration, bounds, checkpoints, when to use IDBD and its l
 
 The story page explains IDBD with a thermostat house. Six sensors, three of which move the room
 temperature by amounts that keep switching. The page walks through one update in slow motion,
-plots a fixed learning speed that is late or nervous when the oven switches on, and ends with a
-game in which you set the trust in each sensor by hand and race IDBD and a tuned fixed-speed
-learner. Every learning value on the page comes from the crate. In a house where nothing
-switches, the tuned fixed speed wins, and the page says so.
+plots a fixed learning speed that is late or nervous when the oven switches on, and ends with
+Family Assistant, a game in a home with twelve sensors and a power meter. You mark the hours in
+which you think each sensor adds to the meter, then IDBD and a tuned fixed-speed learner watch
+three simulated days and draw their own answer. Every learning value on the page comes from the
+crate. The game's sensors read on different scales, which is where IDBD's edge comes from, and
+the page says that rescaling the readings would let a fixed speed come close.
 
 The Explorer runs IDBD, LMS and untuned Autostep side by side on Sutton's 20-input task, with
 replay, export and a guided single update.
@@ -146,6 +148,20 @@ IDBD was lower than tuned LMS on all 10 seeds of the switching house and on none
 house. Its final step sizes were 0.0786 to 0.137 on the three sensors that matter and about
 0.012 on the other three. [Method and per-sensor step sizes](docs/results/house/README.md).
 
+**The Family Assistant home (new task).** Twelve sensors on their own reading scales, four of
+which add to the power draw during fixed hours of the day, one reading a minute for three days.
+This is the task behind the story page's game. The score is the overlap of the hours a
+learner's weights mark with the true hours, pooled over all sensors.
+
+| Learner | Mean squared error | Bar score | Overlap on the 4 sensors that matter |
+| --- | --- | --- | --- |
+| LMS, alpha 0.01 (tuned) | 0.514 +/- 0.004 | 0.38 | 0.43 |
+| IDBD, theta 0.07 (tuned) | 0.384 +/- 0.003 | 0.85 | 0.88 |
+
+IDBD found all four sensors on every evaluation seed and marked Wi-Fi data use an hour late.
+With every reading rescaled to the same spread, a tuned fixed step draws bars close to IDBD's.
+[Method, sensors and every bar](docs/results/family/README.md).
+
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
 about 5 ns per feature up to 10,000 features. A standalone loop of one `exp` call per input takes
 85 to 97% as long as the update, a reference cost, not a measured split. An Autostep update costs
@@ -159,6 +175,7 @@ cargo run --release -p idbd-lab --bin sutton1992-exp2   # Experiment 2 and the F
 cargo run --release -p idbd-lab --bin evaluate          # IDBD against LMS on four tasks
 cargo run --release -p idbd-lab --bin autostep-eval     # untuned Autostep against both
 cargo run --release -p idbd-lab --bin house-eval        # the thermostat house
+cargo run --release -p idbd-lab --bin family-eval       # the Family Assistant home
 cargo run --release -p idbd-lab --bin bench             # core timings
 ```
 
