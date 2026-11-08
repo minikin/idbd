@@ -19,6 +19,8 @@ const point = (r, hour) => [C + r * Math.cos(angle(hour)), C + r * Math.sin(angl
 
 /** An annular sector from hour `a` to hour `b` between radii `r0` and `r1`. */
 function sector(r0, r1, a, b) {
+  // An SVG arc whose ends meet draws nothing, so a whole day is two half days.
+  if (b - a >= 24) return sector(r0, r1, a, a + 12) + sector(r0, r1, a + 12, b);
   const [x0, y0] = point(r1, a);
   const [x1, y1] = point(r1, b);
   const [x2, y2] = point(r0, b);
@@ -29,6 +31,7 @@ function sector(r0, r1, a, b) {
 }
 
 function arc(r, a, b) {
+  if (b - a >= 24) return arc(r, a, a + 12) + arc(r, a + 12, b);
   const [x0, y0] = point(r, a);
   const [x1, y1] = point(r, b);
   const large = b - a > 12 ? 1 : 0;

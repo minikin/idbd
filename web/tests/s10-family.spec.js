@@ -225,6 +225,21 @@ test("S10 the dial marks each day and paints IDBD's bars only after the warm-up"
   await expect(dial.locator(".dial-pips")).toBeHidden();
 });
 
+test("S10 a whole-day guess draws a whole circle on the dial", async ({ page }) => {
+  await openStory(page);
+  const until = page.locator('#family-lanes .lane[data-sensor="0"] input.until');
+  await until.focus();
+  await page.keyboard.press("End");
+  expect((await game(page)).guesses[0]).toBe(0xffffff);
+  await runToEnd(page);
+  const drawn = await page.locator("#family-dial .dial-you").first().evaluate((group) => {
+    const paths = [...group.querySelectorAll("path")];
+    const r = Number(paths[0].getAttribute("d").match(/A([\d.]+)/)[1]);
+    return { length: paths.reduce((sum, p) => sum + p.getTotalLength(), 0), circle: 2 * Math.PI * r };
+  });
+  expect(drawn.length).toBeCloseTo(drawn.circle, 0);
+});
+
 test("S10 tally counts sensors found, right hours and wrong hours", () => {
   const truth = [0, 0b1100];
   expect(tally([0b0110, 0b0100], truth)).toEqual({ sensorsFound: 1, right: 1, wrong: 2, missed: 1 });
