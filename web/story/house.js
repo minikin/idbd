@@ -104,8 +104,9 @@ export function createHouse2d(group, names) {
       group.append(
         svg("line", { x1: cx, y1: cy, x2: x, y2: y + 4, class: "leader", stroke: "rgba(255,255,255,0.25)" }),
       );
+      const textX = label.end ? x - 4 : x + 12;
       const text = svg("text", {
-        x: label.end ? x - 4 : x + 12,
+        x: textX,
         y,
         class: "label",
         "text-anchor": label.end ? "end" : "start",
@@ -118,17 +119,29 @@ export function createHouse2d(group, names) {
       const chipDot = svg("circle", { r: 3, fill: SENSOR_COLORS[index] });
       group.insertBefore(chip, text);
       group.insertBefore(chipDot, text);
-      chips.push({ text, chip, chipDot });
+      chips.push({ text, chip, chipDot, textX });
     }
     return { ring };
   });
 
   // A hidden label measures as an empty box, so the chips are sized whenever the labels
   // become visible: after the fonts load and whenever the phone breakpoint flips.
+  // The label offsets are tuned to Geist Mono from Google Fonts. When it does not load, a
+  // wider fallback font pushes some chips past the edge, so each label is moved back inside
+  // the view box after it is measured.
   function sizeChips() {
-    for (const { text, chip, chipDot } of chips) {
-      const box = text.getBBox();
+    const view = group.ownerSVGElement.viewBox.baseVal;
+    for (const { text, chip, chipDot, textX } of chips) {
+      text.setAttribute("x", textX);
+      let box = text.getBBox();
       if (box.width === 0) continue;
+      // The chip spans 16 units left of the text and 6 right of it.
+      const shift =
+        Math.max(0, view.x + 18 - box.x) - Math.max(0, box.x + box.width - (view.x + view.width - 8));
+      if (shift !== 0) {
+        text.setAttribute("x", textX + shift);
+        box = text.getBBox();
+      }
       const left = box.x - 14;
       chip.setAttribute("x", left - 2);
       chip.setAttribute("y", box.y - 3);
