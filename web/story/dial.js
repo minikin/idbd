@@ -62,10 +62,11 @@ export function createDial(root, sensors) {
     const [x, y] = point(outer + 16, h);
     return svg("text", { x: x.toFixed(1), y: (y + 4).toFixed(1), class: "dial-label", "text-anchor": "middle", text: `${String(h).padStart(2, "0")}:00` });
   });
-  const hand = svg("line", { x1: C, y1: C, x2: C, y2: C - outer, class: "dial-hand" });
+  const hand = svg("line", { x1: C, y1: C - INNER + 8, x2: C, y2: C - outer, class: "dial-hand" });
   const dayText = svg("text", { x: C, y: C - 4, class: "dial-day", "text-anchor": "middle" });
   const timeText = svg("text", { x: C, y: C + 18, class: "dial-time", "text-anchor": "middle" });
-  root.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`);
+  // Side margin for the 06:00 and 18:00 labels, which sit beyond the outer ring.
+  root.setAttribute("viewBox", `-30 0 ${SIZE + 60} ${SIZE}`);
   root.replaceChildren(
     ...rings.flatMap((ring) => [...ring.cells, ring.truth, ring.you]),
     ...labels,
