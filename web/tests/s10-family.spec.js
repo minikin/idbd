@@ -214,8 +214,10 @@ test("S10 the dial marks each day and paints IDBD's bars only after the warm-up"
   await expect(dial.locator(".dial-pip.now")).toHaveCount(1);
   await expect(dial.locator(".dial-pip.done")).toHaveCount(0);
   await expect(dial.locator(".dial-cell.live")).toHaveCount(0);
+  await expect(page.locator("#family-dial-now")).toHaveText("Day 1 is the warm-up. IDBD draws no bars yet.");
 
   await page.clock.runFor(2_500);
+  await expect(page.locator("#family-dial-now")).toHaveText(/^After the warm-up, IDBD's bars mark: .+\.$/);
   await expect(dial.locator(".dial-day")).toHaveText("Day 2");
   await expect(dial.locator(".dial-time")).toHaveText(/^\d\d:\d\d$/);
   await expect(dial.locator(".dial-pip.done")).toHaveCount(1);
@@ -229,6 +231,35 @@ test("S10 the dial marks each day and paints IDBD's bars only after the warm-up"
   await page.clock.runFor(10_000);
   await expect(dial.locator(".dial-cell.live")).toHaveCount(0);
   await expect(dial.locator(".dial-pips")).toBeHidden();
+  await expect(page.locator("#family-dial-now")).toContainText("The dial shows IDBD's bars after three days");
+});
+
+test("S10 asking for reduced motion mid-run finishes the run at once", async ({ page }) => {
+  await openStory(page);
+  await page.click("#family-run");
+  await expect.poll(async () => (await game(page)).completed).toBeGreaterThan(300);
+  expect((await game(page)).phase).toBe("running");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  // An animated run needs about six more seconds, so one second tells the two apart.
+  await expect.poll(async () => (await game(page)).phase, { timeout: 1_000 }).toBe("done");
+  expect((await game(page)).completed).toBe(4320);
+  await expect(page.locator("#family-result")).toBeVisible();
+});
+
+test("S10 a failed rerun of three new days hands focus back to Run", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openStory(page);
+  await runToEnd(page);
+  await page.evaluate(async () => {
+    const wasm = await import("/pkg/idbd_wasm.js");
+    wasm.FamilyDay.prototype.run = () => {
+      throw new Error("injected failure");
+    };
+  });
+  await page.locator("#family-again").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#family-failure")).toContainText("injected failure");
+  await expect(page.locator("#family-run")).toBeFocused();
 });
 
 test("S10 a whole-day guess draws a whole circle on the dial", async ({ page }) => {

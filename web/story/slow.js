@@ -122,7 +122,7 @@ export function createSlowMotion(wasm, home, nodes) {
       const ratio = Math.max(...history.map((h) => h[0])) / Math.min(...history.map((h) => h[0]));
       nodes.summary.textContent =
         `Press Next reading to start. Every sensor begins with trust 0 and the same step size, ${start}. ` +
-        `Per unit of reading, that is already ${ratio.toFixed(0)} times faster on the sensors whose readings swing most.`;
+        `Per typical swing of a reading, that is already ${ratio.toFixed(0)} times faster on the sensors whose readings swing most.`;
       for (const row of rows) {
         row.reading.textContent = "-";
         row.trust.textContent = fmt(0);

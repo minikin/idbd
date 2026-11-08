@@ -411,6 +411,7 @@ async function main() {
     resultTitle: $("family-result-title"),
     stage: $("family-stage"),
     dial: $("family-dial"),
+    dialNow: $("family-dial-now"),
     scores: $("family-scores"),
     mechanism: $("family-mechanism"),
     again: $("family-again"),

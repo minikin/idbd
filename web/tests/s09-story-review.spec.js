@@ -88,7 +88,9 @@ test("S09 chapter 2 traces a late and a nervous fixed speed against IDBD", async
 test("S09 slow motion reports exact speed changes and resets cleanly", async ({ page }) => {
   await openStory(page);
   await expect(page.locator("#slow-summary")).toContainText("the same step size, 0.0500.");
-  await expect(page.locator("#slow-summary")).toContainText("16 times faster on the sensors whose readings swing most");
+  await expect(page.locator("#slow-summary")).toContainText(
+    "Per typical swing of a reading, that is already 16 times faster on the sensors whose readings swing most",
+  );
   await page.click("#slow-next");
   const one = await slow(page);
   expect(one.last.after).toEqual(one.last.before);
@@ -104,6 +106,7 @@ test("S09 slow motion reports exact speed changes and resets cleanly", async ({ 
   await expect(page.locator("#slow-summary")).toContainText(`${up} speeds went up and ${down} went down`);
 
   await page.click("#slow-restart");
+  await expect(page.locator("#slow-summary")).toContainText("Per typical swing of a reading");
   const classes = await page.$$eval("#slow-rows td:nth-child(4)", (cells) => cells.map((c) => c.className));
   expect(classes).toEqual(Array(12).fill(""));
 });

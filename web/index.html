@@ -317,13 +317,15 @@
 
         <div class="family-stage" id="family-stage" hidden>
           <figure class="card family-dial">
-            <svg id="family-dial" role="img" aria-labelledby="family-dial-caption"></svg>
+            <svg id="family-dial" role="img" aria-labelledby="family-dial-caption family-dial-now"></svg>
             <figcaption class="small muted" id="family-dial-caption">
               The same day as a clock, midnight at the top. One ring per sensor, in the order of the
               lanes from the centre out: Wi-Fi signal innermost, plant soil moisture outermost. Day 1
-              is a warm-up. From day 2 the hand paints IDBD's bars as they form, brighter where a
-              sensor carries more of the bill at that hour.
+              is a warm-up. From day 2 the hand paints IDBD's bars as they form, brighter where IDBD
+              estimates a sensor adds more to the meter at that hour. After the run the dial shows the
+              bars of the learner you pick, IDBD or the fixed speed.
             </figcaption>
+            <p class="sr-only" id="family-dial-now" aria-live="polite"></p>
           </figure>
         <div class="family-result" id="family-result" hidden>
           <h3 class="sr-only" id="family-result-title" tabindex="-1">Results after three days</h3>

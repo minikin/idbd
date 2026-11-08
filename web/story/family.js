@@ -85,6 +85,7 @@ export function createFamily(wasm, ui) {
   let view = "idbd";
   let frame = null;
   let result = null;
+  let describedDay = 0;
 
   const lanes = sensors.map((sensor, i) => {
     const label = (end) => `${sensor.name}: matters ${end}`;
@@ -148,6 +149,22 @@ export function createFamily(wasm, ui) {
     ui.lanes.style.setProperty("--now", String(fraction));
     const warming = completed < home.warmupReadings;
     dial.clock(fraction, dayNumber, time, warming ? "warm-up" : "");
+    if (phase === "running" && dayNumber !== describedDay) describeDay(dayNumber);
+  }
+
+  /** Says in words what the dial paints, once per day, from the crate's marked hours. */
+  function describeDay(dayNumber) {
+    describedDay = dayNumber;
+    if (dayNumber === 1) {
+      ui.dialNow.textContent = "Day 1 is the warm-up. IDBD draws no bars yet.";
+      return;
+    }
+    const found = Array.from(day.idbdFound());
+    const marked = sensors.flatMap((sensor, i) => (found[i] ? [`${sensor.name} ${hoursText(found[i])}`] : []));
+    const after = dayNumber - 1 === 1 ? "the warm-up" : `day ${dayNumber - 1}`;
+    ui.dialNow.textContent = marked.length
+      ? `After ${after}, IDBD's bars mark: ${marked.join(", ")}.`
+      : `After ${after}, IDBD's bars mark no hours yet.`;
   }
 
   /** Paints IDBD's bars so far on the dial. They exist only after the warm-up day. */
@@ -182,6 +199,10 @@ export function createFamily(wasm, ui) {
     ui.run.disabled = false;
     ui.failure.textContent = `The run stopped: ${message}. Your hours are kept. Run three days to try again.`;
     ui.failure.hidden = false;
+    ui.dialNow.textContent = "";
+    describedDay = 0;
+    ui.run.hidden = false;
+    ui.run.focus();
   }
 
   function drawBars() {
@@ -202,6 +223,7 @@ export function createFamily(wasm, ui) {
       lane.summary.textContent = `. Your hours: ${hoursText(mine[i])}. ${learner} marks: ${hoursText(found[i])}.`;
     });
     dial.reveal({ values, found, peak: result.peak, truth, label: view === "idbd" ? "IDBD" : "Fixed speed" });
+    ui.dialNow.textContent = `The dial shows ${view === "idbd" ? "IDBD's" : "the fixed speed's"} bars after three days, with the true hours outlined. The lanes list them hour by hour.`;
   }
 
   function scoreTile(who, swatch, score, words) {
@@ -271,6 +293,20 @@ export function createFamily(wasm, ui) {
     ui.resultTitle.focus();
   }
 
+  // A visitor who asks for reduced motion mid-run gets the rest of the run at once.
+  reducedMotion.addEventListener("change", () => {
+    if (phase !== "running" || !reducedMotion.matches) return;
+    if (frame) cancelAnimationFrame(frame);
+    frame = null;
+    try {
+      day.run(home.readings);
+    } catch (error) {
+      fail(day.failureMessage() ?? error.message);
+      return;
+    }
+    finish();
+  });
+
   function finish() {
     frame = null;
     phase = "done";
@@ -298,6 +334,7 @@ export function createFamily(wasm, ui) {
   function run() {
     if (phase !== "guess") return;
     phase = "running";
+    describedDay = 0;
     ui.failure.hidden = true;
     setInputsDisabled(true);
     ui.run.disabled = true;
