@@ -429,13 +429,13 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And every failed run is reported with its sample and stage, never replaced by a value
       And the report claims no general ordering of the learners
 
-    Scenario: E06 Measure the thermostat house behind the story page
-      Given a 6-sensor house where 3 sensors switch between a strong and a weak influence
-      And the same house with switching turned off
-      When LMS and IDBD are tuned with the E01 protocol and Autostep runs at its defaults
-      Then every learner's evaluation MSE is reported for both houses, with paired differences by seed
-      And IDBD's final step size is reported for every sensor
-      And the report states that the house is synthetic and claims no general ordering
+    Scenario: E07 Measure the Family Assistant home behind the story page
+      Given a 12-sensor home whose sensors read on their own scales, where 4 sensors add to the power draw during fixed hours
+      When LMS and IDBD are selected by mean squared error on the tuning seeds and run for 3 days on the evaluation seeds
+      Then every learner's error, hour-bar score and speed per sensor is reported
+      And a control runs LMS on readings rescaled to unit spread
+      And the run fails if the selection differs from the parameters the story page uses
+      And the report states that the home is synthetic and that the edge comes from the reading scales
 
     Scenario: E03 Integrate the crate in a practical streaming example
       Given a documented example of latency prediction under a deployment change
@@ -582,26 +582,25 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And its rolling MSE is drawn with a distinct color and dash pattern, and listed with its weights and step sizes
       And if any of the three learners rejects a sample, none of them learns from it
 
-    Scenario: S01 Explain IDBD to a non-specialist with the thermostat house
-      Given the story page, built on the house measured in scenario E06
+    Scenario: S01 Explain IDBD to a non-specialist with the Family Assistant home
+      Given the story page, built on the home measured in scenario E07
       When it loads
-      Then every step size, prediction and error it shows comes from the crate through WebAssembly
-      And chapter curves that are sketches say so
-      And it states the E06 result for both the switching house and the still house
+      Then every step size, prediction, weight and error it shows comes from the crate through WebAssembly
+      And no chapter before the game names which sensors matter or when
+      And it states E07's rescaled control, so it does not imply IDBD wins in general
 
     Scenario: S02 Show one IDBD update in slow motion
-      Given a fresh learner on the house
+      Given a fresh learner on the home
       When the visitor asks for the next reading
-      Then the page shows the guess, the real change and the miss read from the crate
-      And for every sensor it shows the trust and the speed before and after the update
+      Then the page shows the guess, the real power draw and the miss read from the crate
+      And for every sensor it shows the trust and the speed per unit of reading before and after the update
 
-    Scenario: S03 Let a visitor race the learners by hand
-      Given the game on the story page, with a still house and a switching house
-      When the visitor sets trust sliders and starts the race
-      Then IDBD and the fixed-step learner use the parameters E06 selected for that house
-      And all three scores average the same 300 most recent readings
-      And each slider shows what its setting costs per reading
-      And Reset restores the readings, the sliders and the hidden step-size panel
+    Scenario: S03 Let a visitor guess the hours each sensor matters
+      Given the Family Assistant game on the story page
+      When the visitor marks one range of hours per sensor and runs three days
+      Then IDBD and the fixed-step learner use the parameters E07 selected
+      And the visitor, IDBD and the fixed speed are scored by one rule against the true hours
+      And the reveal shows the true hours, the visitor's hours and each learner's hour bars as text as well as drawn
 
     Scenario: S06 Keep the story page usable without WebGL or motion
       Given a browser without WebGL, or a visitor who prefers reduced motion

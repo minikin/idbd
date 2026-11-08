@@ -23,9 +23,7 @@ use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 mod family;
-mod house;
 pub use family::{FamilyDay, FamilyWatch, family_json, family_overlaps, family_score};
-pub use house::{HouseRace, house_json};
 
 /// Largest whole number a JavaScript double represents exactly.
 const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
