@@ -211,7 +211,9 @@ pub fn found_hours(bar: &[f64; HOURS]) -> HourSet {
     HourSet(bits)
 }
 
-/// The mean overlap of `guesses` with the true hours, over every sensor.
+/// The overlap of `guesses` with the true hours, pooled over every sensor: hours guessed
+/// right on any sensor over hours in either the guess or the truth. Leaving every sensor
+/// empty scores 0, because four sensors matter, and every wrongly claimed hour lowers it.
 ///
 /// # Panics
 ///
@@ -219,12 +221,17 @@ pub fn found_hours(bar: &[f64; HOURS]) -> HourSet {
 #[must_use]
 pub fn score(guesses: &[HourSet]) -> f64 {
     assert_eq!(guesses.len(), NUM_SENSORS, "one guess per sensor");
-    let total: f64 = guesses
-        .iter()
-        .zip(&SENSORS)
-        .map(|(guess, sensor)| guess.overlap(sensor.hours))
-        .sum();
-    total / f64::from(u8::try_from(NUM_SENSORS).expect("twelve sensors"))
+    let (shared, union) =
+        guesses
+            .iter()
+            .zip(&SENSORS)
+            .fold((0_u32, 0_u32), |(shared, union), (guess, sensor)| {
+                (
+                    shared + (guess.0 & sensor.hours.0).count_ones(),
+                    union + (guess.0 | sensor.hours.0).count_ones(),
+                )
+            });
+    f64::from(shared) / f64::from(union)
 }
 
 /// A seeded home that produces one reading a minute.
@@ -723,7 +730,13 @@ mod tests {
         assert_eq!(truth.iter().filter(|h| !h.is_empty()).count(), 4);
         assert_eq!(score(&truth), 1.0);
         let blank = [HourSet::EMPTY; NUM_SENSORS];
-        assert_eq!(score(&blank), 8.0 / 12.0);
+        assert_eq!(score(&blank), 0.0);
+        let mut oven_only = blank;
+        oven_only[5] = SENSORS[5].hours;
+        assert_eq!(score(&oven_only), 3.0 / 12.0);
+        let mut extra = truth;
+        extra[0] = HourSet::range(0, 4).expect("valid");
+        assert_eq!(score(&extra), 12.0 / 16.0);
         for sensor in &SENSORS {
             assert_eq!(
                 sensor.hours.is_empty(),
@@ -794,7 +807,7 @@ mod tests {
         assert_eq!(day.completed(), READINGS);
         assert!(day.step().is_err(), "a finished run takes no more readings");
         assert!(day.failure().is_none());
-        assert!(day.idbd_bars().score() > 0.9, "{}", day.idbd_bars().score());
+        assert!(day.idbd_bars().score() > 0.8, "{}", day.idbd_bars().score());
         let (idbd, lms) = day.mean_squared_errors().expect("measured");
         assert!(idbd < lms, "IDBD {idbd} vs LMS {lms}");
         assert!(idbd > NOISE * NOISE, "nobody beats the noise: {idbd}");

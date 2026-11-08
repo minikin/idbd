@@ -23,7 +23,7 @@ The home in `idbd_lab::family` has 12 sensors. Each reading is an independent st
 
 One reading arrives per simulated minute, 60 an hour, for 3 days. The error is averaged from the start of the second day. Every learner starts from zero weights, and IDBD starts every step size at 0.05.
 
-A learner's bar for a sensor and an hour is its weight, scaled to kW per standard deviation of the reading and averaged over the readings of that hour on all 3 days. The bar marks an hour as found when it reaches 0.5 of the sensor's peak, unless the peak stays below 0.25 kW, in which case the sensor is found to never matter. A sensor's score is the overlap of the found hours with the true hours: shared hours over hours in either, 1 when both are empty. The bar score is the mean over all 12 sensors. Leaving every sensor empty scores 0.6667.
+A learner's bar for a sensor and an hour is its weight, scaled to kW per standard deviation of the reading and averaged over the readings of that hour on all 3 days. The bar marks an hour as found when it reaches 0.5 of the sensor's peak, unless the peak stays below 0.25 kW, in which case the sensor is found to never matter. A sensor's score is the overlap of the found hours with the true hours: shared hours over hours in either. The bar score pools that over all 12 sensors: hours marked right on any sensor over hours marked by the bars or the truth. Leaving every sensor empty scores 0 and every wrongly marked hour lowers the score.
 
 The LMS step size and the IDBD meta step size are each selected by mean squared error on tuning seeds 1001, 1002, 1003, 1004, 1005, then reported on evaluation seeds 1 to 10. A grid value with any failed run is not selectable. Learning speeds are reported per sensor as `alpha_i * scale_i^2`, the step size in units of a standardized reading.
 
@@ -37,8 +37,8 @@ IDBD theta: selected 0.07. Mean squared error per grid value: 0 0.9301, 0.001 0.
 
 | Learner | Parameter | Mean squared error | Bar score | Overlap on the 4 sensors that matter | Highest bar on a sensor that never matters, kW | Speed, sensors that matter | Speed, sensors that never matter |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| LMS | alpha 0.01 | 0.5144 +/- 0.004187 | 0.8116 +/- 1.984e-4 | 0.4348 +/- 5.952e-4 | 0.1243 +/- 0.006365 | 0.01375 +/- 0.000 | 0.01937 +/- 0.000 |
-| IDBD | theta 0.07 | 0.3841 +/- 0.002942 | 0.9583 +/- 0.000 | 0.875 +/- 0.000 | 0.1184 +/- 0.003151 | 0.04956 +/- 9.435e-4 | 0.01811 +/- 1.804e-4 |
+| LMS | alpha 0.01 | 0.5144 +/- 0.004187 | 0.3848 +/- 0.002729 | 0.4348 +/- 5.952e-4 | 0.1243 +/- 0.006365 | 0.01375 +/- 0.000 | 0.01937 +/- 0.000 |
+| IDBD | theta 0.07 | 0.3841 +/- 0.002942 | 0.8462 +/- 3.701e-17 | 0.875 +/- 0.000 | 0.1184 +/- 0.003151 | 0.04956 +/- 9.435e-4 | 0.01811 +/- 1.804e-4 |
 
 Every value is a mean over the evaluation seeds with one standard error. `bars.csv` holds every bar.
 

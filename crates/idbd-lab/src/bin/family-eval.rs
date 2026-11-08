@@ -279,8 +279,9 @@ fn method_section() -> String {
          days. The bar marks an hour as found when it reaches {fraction} of the sensor's peak, \
          unless the peak stays below {found_floor} kW, in which case the sensor is found to \
          never matter. A sensor's score is the overlap of the found hours with the true hours: \
-         shared hours over hours in either, 1 when both are empty. The bar score is the mean \
-         over all {NUM_SENSORS} sensors. Leaving every sensor empty scores {blank}.\n\n\
+         shared hours over hours in either. The bar score pools that over all {NUM_SENSORS} \
+         sensors: hours marked right on any sensor over hours marked by the bars or the truth. \
+         Leaving every sensor empty scores 0 and every wrongly marked hour lowers the score.\n\n\
          The LMS step size and the IDBD meta step size are each selected by mean squared error \
          on tuning seeds {tuning}, then reported on evaluation seeds {first} to {last}. A grid \
          value with any failed run is not selectable. Learning speeds are reported per sensor \
@@ -291,7 +292,6 @@ fn method_section() -> String {
         initial = parameter(IDBD_INITIAL_STEP_SIZE),
         fraction = parameter(FOUND_FRACTION),
         found_floor = parameter(FOUND_FLOOR),
-        blank = magnitude(8.0 / 12.0),
         tuning = TUNING_SEEDS.map(|s| s.to_string()).join(", "),
         first = EVALUATION_SEEDS[0],
         last = EVALUATION_SEEDS[EVALUATION_SEEDS.len() - 1],

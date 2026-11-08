@@ -77,7 +77,8 @@ pub fn family_overlaps(bits: &[u32]) -> Result<Vec<f64>, JsError> {
         .collect())
 }
 
-/// Returns the game score of the guessed hours: the mean overlap over every sensor.
+/// Returns the game score of the guessed hours: their overlap with the true hours,
+/// pooled over every sensor.
 ///
 /// # Errors
 ///
@@ -239,7 +240,7 @@ mod tests {
         assert_eq!(guesses(&truth).map(|g| score(&g)), Ok(1.0));
         let blank = vec![0; NUM_SENSORS];
         let sets = guesses(&blank).expect("valid");
-        assert!((score(&sets) - 8.0 / 12.0).abs() < 1e-12);
+        assert!(score(&sets).abs() < f64::EPSILON);
         assert!(
             guesses(&[0; 3])
                 .expect_err("short")
