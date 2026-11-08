@@ -384,9 +384,9 @@ mod tests {
 
     #[test]
     fn a_moved_selection_fails_the_run_and_names_the_constant() {
-        let error = check_page_constants(0.07, FAMILY_LMS_STEP_SIZE).expect_err("moved");
+        let error = check_page_constants(0.1, FAMILY_LMS_STEP_SIZE).expect_err("moved");
         assert!(
-            error.starts_with("IDBD theta selected on the tuning seeds is 0.07"),
+            error.starts_with("IDBD theta selected on the tuning seeds is 0.1,"),
             "{error}"
         );
         let error = check_page_constants(FAMILY_THETA, 0.5).expect_err("moved");
