@@ -6,6 +6,8 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-08
+
 ### Added
 
 - `Idbd`, a dense linear learner implementing equations 3 to 6 of Sutton (1992), with
