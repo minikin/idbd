@@ -547,6 +547,115 @@ pub fn select(
     Ok((points, best))
 }
 
+/// One completed reading and the predictions both learners made before learning from it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Reading {
+    /// The raw sensor values.
+    pub features: [f64; NUM_SENSORS],
+    /// The power draw above the base, in kW.
+    pub target: f64,
+    /// IDBD's prediction before the update.
+    pub idbd_prediction: f64,
+    /// The fixed-step learner's prediction before the update.
+    pub lms_prediction: f64,
+}
+
+/// Days of readings the story page's hero lets IDBD watch before the visitor arrives. After
+/// seven days the four sensors that matter learn faster than all eight that never do on
+/// every evaluation seed, about five times as fast on average.
+pub const HERO_WARMUP_DAYS: usize = 7;
+
+/// IDBD alone, watching one seeded home for as long as the caller likes. The hero's live
+/// house. It keeps no bars, so it has no reading limit.
+#[derive(Debug, Clone)]
+pub struct Watch {
+    home: Home,
+    idbd: Idbd,
+    completed: usize,
+    last: Option<(f64, f64)>,
+    failure: Option<String>,
+}
+
+impl Watch {
+    /// Starts watching with the meta step size E07 selected.
+    #[must_use]
+    pub fn new(seed: u64) -> Self {
+        let config = Config::new(IDBD_INITIAL_STEP_SIZE, FAMILY_THETA)
+            .expect("the selected parameters are valid");
+        Self {
+            home: Home::new(seed),
+            idbd: Idbd::new(NUM_SENSORS, config).expect("the home has sensors"),
+            completed: 0,
+            last: None,
+            failure: None,
+        }
+    }
+
+    /// Lets IDBD learn from the next reading.
+    ///
+    /// # Errors
+    ///
+    /// Returns the failure message if IDBD rejects the reading or an earlier failure
+    /// stopped the watch. IDBD does not change then.
+    pub fn step(&mut self) -> Result<(), String> {
+        if let Some(failure) = &self.failure {
+            return Err(failure.clone());
+        }
+        let mut features = [0.0; NUM_SENSORS];
+        let target = self.home.next_sample(&mut features);
+        match self.idbd.update(&features, target) {
+            Ok(update) => {
+                self.completed += 1;
+                self.last = Some((target, target - update.error));
+                Ok(())
+            }
+            Err(e) => {
+                let failure = format!("reading {}: IDBD: {e}", self.completed + 1);
+                self.failure = Some(failure.clone());
+                Err(failure)
+            }
+        }
+    }
+
+    /// Steps `readings` times.
+    ///
+    /// # Errors
+    ///
+    /// Returns the failure message if a reading fails.
+    pub fn run(&mut self, readings: usize) -> Result<(), String> {
+        (0..readings).try_for_each(|_| self.step())
+    }
+
+    /// Returns the number of readings IDBD completed.
+    #[must_use]
+    pub const fn completed(&self) -> usize {
+        self.completed
+    }
+
+    /// Returns the most recent power draw and IDBD's prediction made before learning it.
+    #[must_use]
+    pub const fn last(&self) -> Option<(f64, f64)> {
+        self.last
+    }
+
+    /// Returns the failure that stopped the watch, if any.
+    #[must_use]
+    pub fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
+
+    /// Returns IDBD's learning speed per sensor, `alpha_i * scale_i^2`.
+    #[must_use]
+    pub fn speeds(&self) -> [f64; NUM_SENSORS] {
+        let mut speeds = [0.0; NUM_SENSORS];
+        for ((speed, alpha), sensor) in speeds.iter_mut().zip(self.idbd.step_sizes()).zip(&SENSORS)
+        {
+            *speed = alpha * sensor.scale * sensor.scale;
+        }
+        speeds
+    }
+}
+
 /// IDBD and a fixed-step LMS learning one seeded home, one reading at a time.
 #[derive(Debug, Clone)]
 pub struct Day {
@@ -558,6 +667,7 @@ pub struct Day {
     idbd_squared_error: f64,
     lms_squared_error: f64,
     completed: usize,
+    last: Option<Reading>,
     failure: Option<String>,
 }
 
@@ -586,6 +696,7 @@ impl Day {
             idbd_squared_error: 0.0,
             lms_squared_error: 0.0,
             completed: 0,
+            last: None,
             failure: None,
         })
     }
@@ -635,6 +746,12 @@ impl Day {
         self.idbd_bars.add(hour, &self.idbd_weights());
         self.lms_bars.add(hour, &self.lms_weights());
         self.completed += 1;
+        self.last = Some(Reading {
+            features,
+            target,
+            idbd_prediction: target - update.error,
+            lms_prediction: target - outcome.error,
+        });
         Ok(())
     }
 
@@ -670,6 +787,38 @@ impl Day {
     #[must_use]
     pub fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
+    }
+
+    /// Returns the most recent reading both learners completed, with their predictions
+    /// made before learning from it.
+    #[must_use]
+    pub const fn last(&self) -> Option<&Reading> {
+        self.last.as_ref()
+    }
+
+    /// Returns the hour of the day of the most recent completed reading.
+    #[must_use]
+    pub const fn hour(&self) -> Option<usize> {
+        match self.completed.checked_sub(1) {
+            Some(index) => Some(hour_of(index)),
+            None => None,
+        }
+    }
+
+    /// Returns IDBD's raw step sizes, in the units of each sensor's own reading.
+    #[must_use]
+    pub fn idbd_step_sizes(&self) -> [f64; NUM_SENSORS] {
+        let mut sizes = [0.0; NUM_SENSORS];
+        for (size, alpha) in sizes.iter_mut().zip(self.idbd.step_sizes()) {
+            *size = alpha;
+        }
+        sizes
+    }
+
+    /// Returns the fixed step size.
+    #[must_use]
+    pub fn lms_step_size(&self) -> f64 {
+        self.lms.step_size()
     }
 
     /// Returns IDBD's bars.
@@ -864,6 +1013,61 @@ mod tests {
         day.run(1).expect("runs");
         day.run(usize::MAX).expect("runs to the end");
         assert_eq!(day.completed(), READINGS);
+    }
+
+    #[test]
+    fn a_day_reports_its_last_reading_and_hour() {
+        let mut day = Day::new(5);
+        assert_eq!(day.last(), None);
+        assert_eq!(day.hour(), None);
+        day.run(61).expect("runs");
+        assert_eq!(day.hour(), Some(1));
+        let last = *day.last().expect("a reading");
+        let mut home = Home::new(5);
+        let mut x = [0.0; NUM_SENSORS];
+        let target = (0..61)
+            .map(|_| home.next_sample(&mut x))
+            .last()
+            .expect("readings");
+        assert_eq!(last.features, x);
+        assert_eq!(last.target.to_bits(), target.to_bits());
+        assert_ne!(
+            last.idbd_prediction.to_bits(),
+            last.lms_prediction.to_bits()
+        );
+        let raw = day.idbd_step_sizes();
+        let speeds = day.idbd_speeds();
+        assert_eq!(raw[1] * 0.25, speeds[1]);
+        assert_eq!(day.lms_step_size(), FAMILY_LMS_STEP_SIZE);
+    }
+
+    #[test]
+    fn a_week_of_watching_puts_the_four_that_matter_ahead() {
+        let mut watch = Watch::new(1);
+        assert_eq!(watch.last(), None);
+        watch.run(HERO_WARMUP_DAYS * WARMUP_READINGS).expect("runs");
+        assert_eq!(watch.completed(), 10_080);
+        assert!(watch.failure().is_none());
+        let speeds = watch.speeds();
+        let slowest_matter = (0..NUM_SENSORS)
+            .filter(|&i| !SENSORS[i].hours.is_empty())
+            .map(|i| speeds[i])
+            .fold(f64::INFINITY, f64::min);
+        let fastest_never = (0..NUM_SENSORS)
+            .filter(|&i| SENSORS[i].hours.is_empty())
+            .map(|i| speeds[i])
+            .fold(0.0, f64::max);
+        assert!(slowest_matter > fastest_never, "{speeds:?}");
+        let (target, prediction) = watch.last().expect("a reading");
+        assert!(
+            (target - prediction).abs() < 5.0,
+            "{target} vs {prediction}"
+        );
+        let mut same = Day::new(1);
+        same.run(500).expect("runs");
+        let mut watch = Watch::new(1);
+        watch.run(500).expect("runs");
+        assert_eq!(watch.speeds(), same.idbd_speeds());
     }
 
     #[test]

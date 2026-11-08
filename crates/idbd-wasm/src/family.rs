@@ -6,8 +6,9 @@
 
 use idbd_lab::evaluation::{EVALUATION_SEEDS, IDBD_INITIAL_STEP_SIZE};
 use idbd_lab::family::{
-    DAYS, Day, FAMILY_LMS_STEP_SIZE, FAMILY_THETA, FOUND_FLOOR, FOUND_FRACTION, HOURS, HourSet,
-    NOISE, NUM_SENSORS, READINGS, READINGS_PER_HOUR, SENSORS, WARMUP_READINGS, score,
+    DAYS, Day, FAMILY_LMS_STEP_SIZE, FAMILY_THETA, FOUND_FLOOR, FOUND_FRACTION, HERO_WARMUP_DAYS,
+    HOURS, HourSet, NOISE, NUM_SENSORS, READINGS, READINGS_PER_HOUR, SENSORS, WARMUP_READINGS,
+    Watch, score,
 };
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -40,7 +41,7 @@ pub fn family_json() -> String {
         "{{\"sensors\":[{sensors}],\"hours\":{HOURS},\"readingsPerHour\":{READINGS_PER_HOUR},\
          \"days\":{DAYS},\"readings\":{READINGS},\"warmupReadings\":{WARMUP_READINGS},\
          \"noise\":{},\"foundFloor\":{},\"foundFraction\":{},\"initialStepSize\":{},\
-         \"theta\":{},\"lmsStepSize\":{},\"seeds\":[{seeds}]}}",
+         \"theta\":{},\"lmsStepSize\":{},\"heroWarmupDays\":{HERO_WARMUP_DAYS},\"seeds\":[{seeds}]}}",
         json_number(NOISE),
         json_number(FOUND_FLOOR),
         json_number(FOUND_FRACTION),
@@ -103,6 +104,12 @@ impl FamilyDay {
             inner: Day::new(seed_from_number(seed)?),
         })
     }
+
+    fn create_with_lms_step_size(seed: f64, lms_step_size: f64) -> Result<Self, String> {
+        Ok(Self {
+            inner: Day::with_parameters(seed_from_number(seed)?, FAMILY_THETA, lms_step_size)?,
+        })
+    }
 }
 
 fn flatten(bar: impl Fn(usize) -> [f64; HOURS]) -> Vec<f64> {
@@ -119,6 +126,76 @@ impl FamilyDay {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: f64) -> Result<Self, JsError> {
         Self::create(seed).map_err(|message| js(&message))
+    }
+
+    /// Starts a run whose fixed-step learner uses `lms_step_size`. IDBD and the readings
+    /// match `new` for the same seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless `seed` is a whole number in `0..2^53` and `lms_step_size`
+    /// is finite and positive.
+    #[wasm_bindgen(js_name = withLmsStepSize)]
+    pub fn with_lms_step_size(seed: f64, lms_step_size: f64) -> Result<Self, JsError> {
+        Self::create_with_lms_step_size(seed, lms_step_size).map_err(|message| js(&message))
+    }
+
+    /// Lets both learners learn from the next reading, or neither.
+    ///
+    /// # Errors
+    ///
+    /// Returns the failure message if a learner rejects the reading, the run already
+    /// stopped, or the last day is over.
+    pub fn step(&mut self) -> Result<(), JsError> {
+        self.inner.step().map_err(|message| js(&message))
+    }
+
+    /// Returns the hour of the most recent reading, or nothing before the first.
+    #[must_use]
+    pub fn hour(&self) -> Option<u32> {
+        self.inner.hour().and_then(|h| u32::try_from(h).ok())
+    }
+
+    /// Returns the raw sensor values of the most recent reading, empty before the first.
+    #[must_use]
+    pub fn features(&self) -> Vec<f64> {
+        self.inner
+            .last()
+            .map_or_else(Vec::new, |r| r.features.to_vec())
+    }
+
+    /// Returns the most recent power draw above the base, in kW.
+    #[must_use]
+    pub fn target(&self) -> Option<f64> {
+        self.inner.last().map(|r| r.target)
+    }
+
+    /// Returns IDBD's prediction for the most recent reading, made before learning it.
+    #[wasm_bindgen(js_name = idbdPrediction)]
+    #[must_use]
+    pub fn idbd_prediction(&self) -> Option<f64> {
+        self.inner.last().map(|r| r.idbd_prediction)
+    }
+
+    /// Returns the fixed-step learner's prediction for the most recent reading.
+    #[wasm_bindgen(js_name = lmsPrediction)]
+    #[must_use]
+    pub fn lms_prediction(&self) -> Option<f64> {
+        self.inner.last().map(|r| r.lms_prediction)
+    }
+
+    /// Returns IDBD's raw step sizes, in the units of each sensor's own reading.
+    #[wasm_bindgen(js_name = idbdStepSizes)]
+    #[must_use]
+    pub fn idbd_step_sizes(&self) -> Vec<f64> {
+        self.inner.idbd_step_sizes().to_vec()
+    }
+
+    /// Returns the fixed step size.
+    #[wasm_bindgen(js_name = lmsStepSize)]
+    #[must_use]
+    pub fn lms_step_size(&self) -> f64 {
+        self.inner.lms_step_size()
     }
 
     /// Steps up to `readings` times, stopping at the end of the last day.
@@ -212,6 +289,75 @@ impl FamilyDay {
     }
 }
 
+/// IDBD alone watching one seeded home with no reading limit: the hero's live house.
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct FamilyWatch {
+    inner: Watch,
+}
+
+impl FamilyWatch {
+    fn create(seed: f64) -> Result<Self, String> {
+        Ok(Self {
+            inner: Watch::new(seed_from_number(seed)?),
+        })
+    }
+}
+
+#[wasm_bindgen]
+impl FamilyWatch {
+    /// Starts watching before the first reading.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless `seed` is a whole number in `0..2^53`.
+    #[wasm_bindgen(constructor)]
+    pub fn new(seed: f64) -> Result<Self, JsError> {
+        Self::create(seed).map_err(|message| js(&message))
+    }
+
+    /// Steps `readings` times.
+    ///
+    /// # Errors
+    ///
+    /// Returns the failure message if IDBD rejects a reading.
+    pub fn run(&mut self, readings: u32) -> Result<(), JsError> {
+        let readings = usize::try_from(readings).map_err(|e| js(&e.to_string()))?;
+        self.inner.run(readings).map_err(|message| js(&message))
+    }
+
+    /// Returns the number of readings IDBD completed.
+    #[must_use]
+    pub fn completed(&self) -> f64 {
+        count_to_f64(u64::try_from(self.inner.completed()).unwrap_or(u64::MAX))
+    }
+
+    /// Returns the most recent power draw, in kW above the base.
+    #[must_use]
+    pub fn target(&self) -> Option<f64> {
+        self.inner.last().map(|(target, _)| target)
+    }
+
+    /// Returns IDBD's prediction for the most recent reading, made before learning it.
+    #[must_use]
+    pub fn prediction(&self) -> Option<f64> {
+        self.inner.last().map(|(_, prediction)| prediction)
+    }
+
+    /// Returns IDBD's learning speed per sensor, `alpha_i * scale_i^2`.
+    #[must_use]
+    pub fn speeds(&self) -> Vec<f64> {
+        self.inner.speeds().to_vec()
+    }
+
+    /// Returns the failure that stopped the watch, if any.
+    #[wasm_bindgen(js_name = failureMessage)]
+    #[must_use]
+    pub fn failure_message(&self) -> Option<String> {
+        self.inner.failure().map(str::to_owned)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,6 +429,46 @@ mod tests {
         };
         let error = failing.inner.finish().expect_err("diverges");
         assert_eq!(failing.failure_message(), Some(error));
+    }
+
+    #[test]
+    fn a_day_steps_and_reports_its_last_reading() {
+        let mut day = FamilyDay::create_with_lms_step_size(2.0, 0.05).expect("valid");
+        assert!((day.lms_step_size() - 0.05).abs() < f64::EPSILON);
+        assert_eq!(day.hour(), None);
+        assert!(day.features().is_empty());
+        assert_eq!(
+            (day.target(), day.idbd_prediction(), day.lms_prediction()),
+            (None, None, None)
+        );
+        day.step().map_err(|_| "steps").expect("steps");
+        let mut lab = Day::with_parameters(2, FAMILY_THETA, 0.05).expect("valid");
+        lab.step().expect("steps");
+        let last = lab.last().expect("a reading");
+        assert_eq!(day.hour(), Some(0));
+        assert_eq!(day.features(), last.features.to_vec());
+        assert_eq!(day.target(), Some(last.target));
+        assert_eq!(day.idbd_prediction(), Some(last.idbd_prediction));
+        assert_eq!(day.lms_prediction(), Some(last.lms_prediction));
+        assert_eq!(day.idbd_step_sizes(), lab.idbd_step_sizes().to_vec());
+        assert!(FamilyDay::create_with_lms_step_size(2.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn a_watch_reports_the_lab_watch() {
+        let mut watch = FamilyWatch::create(6.0).expect("valid seed");
+        let mut lab = Watch::new(6);
+        assert_eq!(watch.target(), None);
+        watch.run(800).map_err(|_| "runs").expect("runs");
+        lab.run(800).expect("runs");
+        assert!((watch.completed() - 800.0).abs() < f64::EPSILON);
+        assert_eq!(watch.speeds(), lab.speeds().to_vec());
+        let (target, prediction) = lab.last().expect("a reading");
+        assert_eq!(watch.target(), Some(target));
+        assert_eq!(watch.prediction(), Some(prediction));
+        assert!(watch.failure_message().is_none());
+        assert!(FamilyWatch::create(0.5).is_err());
+        assert!(family_json().contains("\"heroWarmupDays\":7"));
     }
 
     #[test]
