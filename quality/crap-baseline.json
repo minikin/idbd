@@ -1521,7 +1521,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::completed",
-      "line": 791,
+      "line": 800,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1530,7 +1530,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::failure",
-      "line": 797,
+      "line": 806,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1539,7 +1539,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::finish",
-      "line": 785,
+      "line": 794,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1548,7 +1548,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::hour",
-      "line": 810,
+      "line": 819,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1557,7 +1557,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::idbd_bars",
-      "line": 835,
+      "line": 844,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1566,7 +1566,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::idbd_speeds",
-      "line": 860,
+      "line": 869,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1575,7 +1575,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::idbd_step_sizes",
-      "line": 819,
+      "line": 828,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1584,7 +1584,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::idbd_weights",
-      "line": 847,
+      "line": 856,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1593,7 +1593,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::last",
-      "line": 804,
+      "line": 813,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1602,7 +1602,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::lms_bars",
-      "line": 841,
+      "line": 850,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1611,7 +1611,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::lms_speeds",
-      "line": 871,
+      "line": 880,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1620,7 +1620,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::lms_step_size",
-      "line": 829,
+      "line": 838,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1629,7 +1629,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::lms_weights",
-      "line": 853,
+      "line": 862,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1638,22 +1638,22 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::mean_squared_errors",
-      "line": 878,
+      "line": 887,
       "cyclomatic": 3.0,
       "coverage": 87.5,
       "crap": 3.017578125,
       "crate": "idbd-lab",
       "uncovered": [
         {
-          "start": 881,
-          "end": 881
+          "start": 890,
+          "end": 890
         }
       ]
     },
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::new",
-      "line": 686,
+      "line": 695,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1662,7 +1662,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::run",
-      "line": 772,
+      "line": 781,
       "cyclomatic": 3.0,
       "coverage": 100.0,
       "crap": 3.0,
@@ -1671,7 +1671,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::step",
-      "line": 719,
+      "line": 728,
       "cyclomatic": 6.0,
       "coverage": 100.0,
       "crap": 6.0,
@@ -1680,7 +1680,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Day::with_parameters",
-      "line": 696,
+      "line": 705,
       "cyclomatic": 4.0,
       "coverage": 100.0,
       "crap": 4.0,
@@ -1815,7 +1815,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::completed",
-      "line": 634,
+      "line": 643,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1824,7 +1824,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::failure",
-      "line": 652,
+      "line": 661,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1833,7 +1833,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::features",
-      "line": 646,
+      "line": 655,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1842,7 +1842,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::last",
-      "line": 640,
+      "line": 649,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1860,7 +1860,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::run",
-      "line": 628,
+      "line": 637,
       "cyclomatic": 1.0,
       "coverage": 100.0,
       "crap": 1.0,
@@ -1869,7 +1869,7 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::speeds",
-      "line": 658,
+      "line": 667,
       "cyclomatic": 2.0,
       "coverage": 100.0,
       "crap": 2.0,
@@ -1878,21 +1878,20 @@
     {
       "file": "crates/idbd-lab/src/family.rs",
       "function": "Watch::step",
-      "line": 602,
+      "line": 611,
       "cyclomatic": 4.0,
-      "coverage": 70.58823529411765,
-      "crap": 4.407083248524323,
-      "crate": "idbd-lab",
-      "uncovered": [
-        {
-          "start": 604,
-          "end": 604
-        },
-        {
-          "start": 615,
-          "end": 618
-        }
-      ]
+      "coverage": 100.0,
+      "crap": 4.0,
+      "crate": "idbd-lab"
+    },
+    {
+      "file": "crates/idbd-lab/src/family.rs",
+      "function": "Watch::with_theta",
+      "line": 592,
+      "cyclomatic": 3.0,
+      "coverage": 100.0,
+      "crap": 3.0,
+      "crate": "idbd-lab"
     },
     {
       "file": "crates/idbd-lab/src/family.rs",

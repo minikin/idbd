@@ -581,16 +581,25 @@ impl Watch {
     /// Starts watching with the meta step size E07 selected.
     #[must_use]
     pub fn new(seed: u64) -> Self {
-        let config = Config::new(IDBD_INITIAL_STEP_SIZE, FAMILY_THETA)
-            .expect("the selected parameters are valid");
-        Self {
+        Self::with_theta(seed, FAMILY_THETA).expect("the selected parameters are valid")
+    }
+
+    /// Starts watching with IDBD's meta step size `theta`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message if IDBD rejects `theta`.
+    pub fn with_theta(seed: u64, theta: f64) -> Result<Self, String> {
+        let config =
+            Config::new(IDBD_INITIAL_STEP_SIZE, theta).map_err(|e| format!("IDBD: {e}"))?;
+        Ok(Self {
             home: Home::new(seed),
-            idbd: Idbd::new(NUM_SENSORS, config).expect("the home has sensors"),
+            idbd: Idbd::new(NUM_SENSORS, config).map_err(|e| format!("IDBD: {e}"))?,
             completed: 0,
             last: None,
             features: [0.0; NUM_SENSORS],
             failure: None,
-        }
+        })
     }
 
     /// Lets IDBD learn from the next reading.
@@ -1078,6 +1087,12 @@ mod tests {
         let mut watch = Watch::new(1);
         watch.run(500).expect("runs");
         assert_eq!(watch.speeds(), same.idbd_speeds());
+        let reading = same.last().expect("a reading");
+        assert_eq!(
+            watch.last(),
+            Some((reading.target, reading.idbd_prediction))
+        );
+        assert_eq!(watch.features(), reading.features);
     }
 
     #[test]
@@ -1105,6 +1120,43 @@ mod tests {
         let quiet = speeds[0].max(speeds[2]);
         assert!(speeds[5] > 2.0 * quiet, "{speeds:?}");
         assert_eq!(day.lms_speeds()[0], FAMILY_LMS_STEP_SIZE);
+    }
+
+    #[test]
+    fn a_watch_that_diverges_stops_and_reports_why() {
+        let mut watch = Watch::with_theta(3, 1e6).expect("valid");
+        let error = watch
+            .run(READINGS)
+            .expect_err("a theta of a million diverges");
+        assert!(
+            error.starts_with(&format!("reading {}: IDBD: ", watch.completed() + 1)),
+            "{error}"
+        );
+        assert_eq!(watch.failure(), Some(error.as_str()));
+        let (completed, speeds) = (watch.completed(), watch.speeds());
+        assert_eq!(watch.step(), Err(error));
+        assert_eq!((watch.completed(), watch.speeds()), (completed, speeds));
+        assert!(Watch::with_theta(3, -1.0).is_err());
+    }
+
+    #[test]
+    fn each_prediction_is_the_weights_before_the_update_times_the_reading() {
+        let mut day = Day::new(4);
+        day.step().expect("steps");
+        let first = day.last().expect("a reading");
+        assert_eq!((first.idbd_prediction, first.lms_prediction), (0.0, 0.0));
+        let (idbd, lms) = (day.idbd_weights(), day.lms_weights());
+        day.step().expect("steps");
+        let second = day.last().expect("a reading");
+        // The weights are per standard deviation, so each reading is divided by its scale.
+        let predict = |weights: [f64; NUM_SENSORS]| -> f64 {
+            (0..NUM_SENSORS)
+                .map(|i| weights[i] * second.features[i] / SENSORS[i].scale)
+                .sum()
+        };
+        assert!((second.idbd_prediction - predict(idbd)).abs() < 1e-12);
+        assert!((second.lms_prediction - predict(lms)).abs() < 1e-12);
+        assert!(second.idbd_prediction.abs() > 1e-6 && second.lms_prediction.abs() > 1e-6);
     }
 
     #[test]

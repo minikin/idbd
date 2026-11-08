@@ -475,6 +475,11 @@ mod tests {
         assert_eq!(watch.prediction(), Some(prediction));
         assert!(watch.failure_message().is_none());
         assert!(FamilyWatch::create(0.5).is_err());
+        let mut failing = FamilyWatch {
+            inner: Watch::with_theta(6, 1e6).expect("valid"),
+        };
+        let error = failing.inner.run(10_000).expect_err("diverges");
+        assert_eq!(failing.failure_message(), Some(error));
         assert!(family_json().contains("\"heroWarmupDays\":7"));
     }
 
