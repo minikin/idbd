@@ -9,7 +9,7 @@ edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/minikin/idbd"
-authors = ["minikin <djminikin@gmail.com>"]
+authors = ["Oleksandr Prokhorenko <djminikin@gmail.com>"]
 
 # Application policy for the unpublished lab, WASM adapter and tools. The published
 # `idbd` crate declares the stricter library policy in its own manifest.
