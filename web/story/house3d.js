@@ -1,10 +1,14 @@
 // The hero house in three.js. Loaded only when WebGL works and the visitor has not asked
-// for reduced motion. Each sensor is a small device whose light follows its live reading.
-// IDBD's attention is an amber ring sized by the learned step size. The room acts out the
-// three relevant sensors' current state: sunbeam, oven heat and the front door.
+// for reduced motion. Each of the twelve sensors is a small device whose light follows its
+// live reading. IDBD's attention is an amber ring sized by its learning speed per typical
+// swing of a reading. The room does not act out which sensors matter or when: that is the game's
+// question.
 
 import * as THREE from "three";
 import { PERIODS, SENSOR_COLORS, SENSOR_POSITIONS, glowRadius, ringOpacity } from "./house.js";
+
+/** Each sensor's reading scale, so a device's light follows its standardized reading. */
+let SCALES = [];
 
 const COLORS = {
   floor: 0x121316,
@@ -13,8 +17,9 @@ const COLORS = {
   block: 0x24272c,
   door: 0x2a2d33,
   idbd: 0xffb547,
-  heat: 0xff7a45,
   sun: 0xffe08a,
+  screen: 0x0d1b2a,
+  leaf: 0x3f7d4f,
 };
 
 /**
@@ -22,12 +27,18 @@ const COLORS = {
  * is anchored there: 0 for its left edge, 0.5 for its middle, 1 for its right edge.
  */
 const LABEL_OFFSETS = [
-  [0, -46, 0.5],
-  [16, 10, 0],
-  [10, 30, 0],
-  [16, -26, 0],
-  [0, -32, 0.5],
-  [6, 56, 0],
+  [0, -40, 0.5],
+  [-14, -30, 1],
+  [12, 26, 0],
+  [-14, 10, 1],
+  [-14, -18, 1],
+  [16, 12, 0],
+  [14, 10, 0],
+  [14, -18, 0],
+  [16, -10, 0],
+  [0, -30, 0.5],
+  [12, 8, 0],
+  [14, 14, 0],
 ];
 
 /**
@@ -106,7 +117,8 @@ const lerp = (a, b, t) => a + (b - a) * t;
  * unavailable, so the caller can keep the 2D drawing. Calls `onLost` if the WebGL context
  * is lost later, so the caller can switch to 2D then too.
  */
-export function mountHouse3d(container, names, onLost) {
+export function mountHouse3d(container, names, onLost, scales = []) {
+  SCALES = scales;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.domElement.addEventListener("webglcontextlost", (event) => {
     event.preventDefault();
@@ -131,38 +143,27 @@ export function mountHouse3d(container, names, onLost) {
   const glow = radialTexture(false);
   const ringTexture = radialTexture(true);
 
-  // The window and the patch of sunlight it throws on the floor.
+  // The window, the front door and the TV are props, lit the same at every hour.
   const pane = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 1.5),
-    new THREE.MeshBasicMaterial({ color: COLORS.sun, transparent: true, opacity: 0.2 }),
+    new THREE.MeshBasicMaterial({ color: COLORS.sun, transparent: true, opacity: 0.12 }),
   );
   pane.position.set(3 * SX, 1.95, 0.02);
   scene.add(pane);
-  const beam = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.4, 2.6),
-    new THREE.MeshBasicMaterial({
-      map: glow,
-      color: COLORS.sun,
-      transparent: true,
-      opacity: 0.3,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
+  scene.add(box([0.05, 2.5, 1.6], [0.04, 1.25, 3.0 * SZ + 0.8], COLORS.door, 0.2));
+  const tv = box([1.1, 0.65, 0.06], [4.9 * SX, 1.25, 3.0 * SZ - 0.25], COLORS.screen, 0.25);
+  scene.add(tv);
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.17, 0.4, 20),
+    new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.9 }),
   );
-  beam.rotation.x = -Math.PI / 2;
-  beam.position.set(3.4 * SX, 0.02, 1.7 * SZ);
-  scene.add(beam);
-
-  const heat = sprite(glow, COLORS.heat, 0.4);
-  heat.position.set(7.1 * SX, 1.35, 0.8 * SZ);
-  heat.scale.set(1.8, 1.8, 1);
-  scene.add(heat);
-
-  // The front door swings on a hinge at its back edge.
-  const hinge = new THREE.Group();
-  hinge.position.set(0.04, 0, 3.0 * SZ);
-  hinge.add(box([0.05, 2.5, 1.6], [0, 1.25, 0.8], COLORS.door, 0.2));
-  scene.add(hinge);
+  pot.position.set(3.9 * SX, 0.2, 5.5 * SZ);
+  const leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 16, 12),
+    new THREE.MeshStandardMaterial({ color: COLORS.leaf, roughness: 0.8 }),
+  );
+  leaves.position.set(3.9 * SX, 0.75, 5.5 * SZ);
+  scene.add(pot, leaves);
 
   // The water heater stands in a closed boiler room in the back corner: a tank behind two
   // glass partitions, so it heats water, not this room.
@@ -190,9 +191,9 @@ export function mountHouse3d(container, names, onLost) {
   scene.add(partitionX, partitionZ, closet);
 
   // Wi-fi rings keep pulsing outward: the signal wiggles whether or not it matters.
-  const wifiAt = toScene(SENSOR_POSITIONS[3]);
+  const wifiAt = toScene(SENSOR_POSITIONS[0]);
   const waves = [0, 1, 2].map(() => {
-    const wave = sprite(ringTexture, new THREE.Color(SENSOR_COLORS[3]), 0);
+    const wave = sprite(ringTexture, new THREE.Color(SENSOR_COLORS[0]), 0);
     wave.position.copy(wifiAt);
     scene.add(wave);
     return wave;
@@ -228,8 +229,6 @@ export function mountHouse3d(container, names, onLost) {
 
     return { point, led, halo, ring, label, flash: 0, attention: 0.7, size: 1, phase: i * 1.3 };
   });
-
-  const state = { strong: [1, 1, 1], door: 0, sun: 1, oven: 1 };
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
   const target = new THREE.Vector3(WIDTH / 2, 1.5, DEPTH / 2);
@@ -304,13 +303,6 @@ export function mountHouse3d(container, names, onLost) {
     camera.position.set(base.x + sway, base.y, base.z - sway);
     camera.lookAt(target);
 
-    state.sun = lerp(state.sun, state.strong[0], ease);
-    state.oven = lerp(state.oven, state.strong[1], ease);
-    state.door = lerp(state.door, state.strong[2], ease);
-    beam.material.opacity = 0.08 + 0.5 * state.sun;
-    pane.material.opacity = 0.08 + 0.2 * state.sun;
-    heat.material.opacity = (0.1 + 0.45 * state.oven) * (0.85 + 0.15 * Math.sin(t * 9));
-    hinge.rotation.y = 1.05 * state.door;
     pilot.material.opacity = 0.35 + 0.2 * Math.sin(t * 7) * Math.sin(t * 2.3);
 
     waves.forEach((wave, k) => {
@@ -363,15 +355,14 @@ export function mountHouse3d(container, names, onLost) {
   schedule();
 
   return {
-    /** Takes IDBD's step sizes, the latest readings and which relevant sensors are strong. */
-    update({ alphas, features, strong }) {
-      const opacity = ringOpacity(alphas);
+    /** Takes IDBD's learning speeds per typical swing of each reading and the latest readings. */
+    update({ speeds, features }) {
+      const opacity = ringOpacity(speeds);
       sensors.forEach((sensor, i) => {
         sensor.attention = opacity[i];
-        sensor.size = (glowRadius(alphas[i]) / 37) * 1.6;
-        sensor.flash = Math.min(1, Math.abs(features[i]) / 2.5);
+        sensor.size = (glowRadius(speeds[i]) / 37) * 1.6;
+        sensor.flash = Math.min(1, Math.abs(features[i]) / ((SCALES[i] ?? 1) * 2.5));
       });
-      state.strong = strong.map(Number);
     },
     dispose() {
       if (frame !== null) cancelAnimationFrame(frame);

@@ -15,7 +15,7 @@ cargo run --release -p idbd-lab --bin sutton1992-exp1   # docs/results/sutton199
 cargo run --release -p idbd-lab --bin evaluate          # docs/results/evaluation/
 cargo run --release -p idbd-lab --bin sutton1992-exp2   # docs/results/sutton1992-experiment2/
 cargo run --release -p idbd-lab --bin autostep-eval     # docs/results/autostep/
-cargo run --release -p idbd-lab --bin house-eval        # docs/results/house/
+cargo run --release -p idbd-lab --bin family-eval       # docs/results/family/
 cargo run --release -p idbd-lab --bin bench             # docs/benchmarks.md
 ```
 
@@ -24,7 +24,7 @@ refuses to run in a debug build.
 
 Measured with `/usr/bin/time -p` on the release binaries, an Apple M4 Max runs
 `sutton1992-exp1` in about 3 seconds, `evaluate` in 3, `sutton1992-exp2` in 2,
-`autostep-eval` in 6, `house-eval` in 1 and `bench` in 14.
+`autostep-eval` in 6, `family-eval` in under 1 and `bench` in 14.
 
 ## Software
 
@@ -76,12 +76,12 @@ independent AR(1) processes, autocorrelation 0.999, unit stationary variance) an
 `changing-relevance` (Sutton's flips plus a move of the relevant group every 5000 samples). The
 last two are extensions, not from the paper.
 
-The thermostat house in `house.rs` is a different task and does not follow that description. It
-has 6 sensors with independent standard normal readings, of which the first 3 move the room
-temperature, and the target carries Gaussian noise with standard deviation 0.5, so the noise
-alone gives an MSE of 0.25. Each relevant sensor switches between a strong and a weak influence
-with probability 1/60 before every reading after the first. Task `still-house` is the same house
-with switching turned off. `house-eval` runs both.
+The Family Assistant home in `family.rs` is a different task and does not follow that description. It has 12 sensors whose readings are
+independent standard normals times each sensor's own scale (0.5, 1 or 2). Four of them add to the
+power draw during fixed hours, and the target carries Gaussian noise with standard deviation 0.5.
+One reading arrives per simulated minute for 3 days, and the error is averaged from the second
+day. `family-eval` selects the LMS step size and the IDBD meta step size on the tuning seeds and
+fails if they differ from the constants the story page uses.
 
 ## Bounds
 
@@ -132,7 +132,7 @@ setting, because a mean over the surviving seeds would hide the risk.
 | `docs/results/evaluation/` | `raw.csv`, `summary.csv`, `README.md` |
 | `docs/results/sutton1992-experiment2/` | `trajectories.csv`, `final-step-sizes.csv`, `figure5-sweep.csv`, `figure4.svg`, `adapted-demonstration.svg`, `figure5.svg`, `README.md` |
 | `docs/results/autostep/` | `raw.csv`, `summary.csv`, `step-sizes.csv`, `README.md` |
-| `docs/results/house/` | `raw.csv`, `summary.csv`, `step-sizes.csv`, `README.md` |
+| `docs/results/family/` | `tuning.csv`, `evaluation.csv`, `bars.csv`, `README.md` |
 | `docs/` | `benchmarks.md`, this file |
 
 The plots are hand-generated SVG with no plotting dependency. They carry an explicit white

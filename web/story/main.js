@@ -1,38 +1,30 @@
 // Boots the WebAssembly module and fills the story page. Every learning value on the
-// page comes from the crate's HouseRace: the hero's glows and live chart, chapter 1's
-// readings, chapter 2's fixed-speed traces, the slow motion, chapter 3's faders,
-// chapter 4's lanes and the game.
+// page comes from the crate's Family Assistant home: the hero's rings and live chart run
+// on FamilyWatch, chapter 1 shows its readings, chapter 2 traces two fixed speeds with
+// FamilyDay, and the slow motion, the game and the closing faders use FamilyDay too.
 
 import init, * as wasm from "../pkg/idbd_wasm.js";
 import { el, svg } from "../src/dom.js";
 import { fmtSigned } from "../src/format.js";
 import { SENSOR_COLORS, createHouse2d } from "./house.js";
-import { createGame } from "./game.js";
+import { createFamily } from "./family.js";
 import { createSlowMotion } from "./slow.js";
 
 const HERO_SEED = 1;
-const HERO_WARMUP = 5000;
-// Fast enough that the relevant sensors switch every few seconds on screen.
 const HERO_TICK_MS = 150;
-const DESK_SEED = 1;
-const DESK_READINGS = 30000;
-const LANES_SEED = 2;
-const LANES_WARMUP = 5000;
-const LANES_SHOWN = 600;
 const SPARK_POINTS = 60;
 const GRID_POINTS = 25;
 
-// Chapter 2 plots one real oven switch: the first one on this seed, after the learners
-// have settled, with the oven off for BEFORE readings and then on for AFTER readings.
-// 0.2 is about the fastest fixed speed that stays finite on this house: 0.3 diverges.
-const SWITCH_SEED = 4;
-const SWITCH_SEARCH_FROM = 1000;
-const SWITCH_SEARCH_TO = 6000;
-const SWITCH_BEFORE = 40;
-const SWITCH_AFTER = 160;
-const OVEN = 1;
-const SLOW_SPEED = 0.005;
-const FAST_SPEED = 0.2;
+// Chapter 2 traces two fixed speeds through one stretch of day 2 on this seed: from half an
+// hour before a sensor with small readings starts to matter until half an hour after it
+// stops. The late chart follows that sensor at the tuned fixed speed. The nervous chart
+// follows a sensor with large readings that never matters, at a faster fixed speed.
+const TRACE_SEED = 1;
+const TRACE_DAY = 1;
+const TRACE_MARGIN = 30;
+const LATE_SENSOR = 1;
+const NERVOUS_SENSOR = 2;
+const NERVOUS_SPEED = 0.05;
 
 const $ = (id) => document.getElementById(id);
 const count = (n) => n.toLocaleString("en-US");
@@ -48,12 +40,12 @@ function points(values, width, height, range) {
     .join(" ");
 }
 
-function fillHouseKey(house) {
+function fillHouseKey(home) {
   const key = $("house-key");
-  house.sensors.forEach((name, i) => {
+  home.sensors.forEach((sensor, i) => {
     const dot = el("i", { class: "sensor-dot", "aria-hidden": "true" });
     dot.style.background = SENSOR_COLORS[i];
-    key.append(el("li", {}, [dot, name]));
+    key.append(el("li", {}, [dot, sensor.name]));
   });
 }
 
@@ -62,9 +54,10 @@ function fillHouseKey(house) {
  * switches a running 3D house to 2D, for a lost WebGL context or a reduced-motion
  * preference turned on later.
  */
-async function mountRenderer(house) {
+async function mountRenderer(home) {
+  const names = home.sensors.map((s) => s.name);
   const node = $("house");
-  const update2d = createHouse2d($("house-2d-sensors"), house.sensors);
+  const update2d = createHouse2d($("house-2d-sensors"), names);
   const renderer = { kind: "2d", update: update2d, flatten() {} };
   node.dataset.renderer = "2d";
   if (reducedMotion.matches) {
@@ -73,13 +66,14 @@ async function mountRenderer(house) {
   try {
     const { mountHouse3d } = await import("./house3d.js");
     let latest = null;
-    const view = mountHouse3d($("house-3d"), house.sensors, () => renderer.flatten());
+    const scales = home.sensors.map((s) => s.scale);
+    const view = mountHouse3d($("house-3d"), names, () => renderer.flatten(), scales);
     const canvas = $("house-3d");
     canvas.hidden = false;
     canvas.setAttribute("role", "img");
     canvas.setAttribute(
       "aria-label",
-      "A cutaway house with six sensors. An amber ring around each sensor grows with the speed IDBD has learned for it.",
+      "A cutaway home with twelve sensors. An amber ring around each sensor grows with the learning speed IDBD has given it.",
     );
     $("house-2d").style.visibility = "hidden";
     $("house-2d").setAttribute("aria-hidden", "true");
@@ -110,19 +104,28 @@ async function mountRenderer(house) {
   return renderer;
 }
 
-function startHero(house, renderer) {
-  const race = new wasm.HouseRace(HERO_SEED);
-  race.run(HERO_WARMUP);
-  const readings = house.sensors.map(() => []);
+/** "day 8, 14:05" for a count of one-minute readings. */
+function clockText(completed) {
+  const minute = Math.max(0, completed - 1);
+  const day = Math.floor(minute / 1440) + 1;
+  const time = minute % 1440;
+  return `day ${day}, ${String(Math.floor(time / 60)).padStart(2, "0")}:${String(time % 60).padStart(2, "0")}`;
+}
+
+function startHero(home, renderer) {
+  const watch = new wasm.FamilyWatch(HERO_SEED);
+  const warmup = home.heroWarmupDays * home.hours * home.readingsPerHour;
+  watch.run(warmup);
+  const readings = home.sensors.map(() => []);
   const actual = [];
   const guess = [];
 
-  const sensors = house.sensors.map((name, i) => {
+  const sensors = home.sensors.map((sensor, i) => {
     const dot = el("i", { class: "sensor-dot" });
     dot.style.background = SENSOR_COLORS[i];
     const reading = el("span", { class: "sr-only" });
     const head = el("div", { class: "name" }, [
-      el("span", {}, [dot, name, reading]),
+      el("span", {}, [dot, sensor.name, reading]),
       el("span", { class: "unknown", "aria-hidden": "true", text: "?" }),
     ]);
     const line = svg("polyline", { points: "" });
@@ -132,14 +135,14 @@ function startHero(house, renderer) {
   });
 
   function record() {
-    race.step();
-    const x = race.features();
+    watch.run(1);
+    const x = watch.features();
     readings.forEach((list, i) => {
       list.push(x[i]);
       if (list.length > GRID_POINTS) list.shift();
     });
-    actual.push(race.target());
-    guess.push(race.idbdPrediction());
+    actual.push(watch.target());
+    guess.push(watch.prediction());
     if (actual.length > SPARK_POINTS) {
       actual.shift();
       guess.shift();
@@ -147,17 +150,17 @@ function startHero(house, renderer) {
   }
 
   function draw() {
-    const features = Array.from(race.features());
-    renderer.update({ alphas: Array.from(race.idbdStepSizes()), features, strong: Array.from(race.strong()) });
-    const minute = count(race.completed());
-    $("live-count").textContent = `minute ${minute}`;
+    const features = Array.from(watch.features());
+    renderer.update({ speeds: Array.from(watch.speeds()), features });
+    const when = clockText(watch.completed());
+    $("live-count").textContent = when;
     $("live-actual").setAttribute("points", points(actual, 240, 56, 4));
     $("live-idbd").setAttribute("points", points(guess, 240, 56, 4));
     $("live-text").textContent =
-      `Minute ${minute}: the room changed by ${fmtSigned(actual.at(-1), 2)}, ` +
-      `IDBD guessed ${fmtSigned(guess.at(-1), 2)}.`;
+      `${when[0].toUpperCase()}${when.slice(1)}: the meter read ${fmtSigned(actual.at(-1), 2)} kW against the base, ` +
+      `IDBD guessed ${fmtSigned(guess.at(-1), 2)} kW.`;
     sensors.forEach(({ line, reading }, i) => {
-      line.setAttribute("points", points(readings[i], 240, 40, 3));
+      line.setAttribute("points", points(readings[i], 240, 40, 5));
       reading.textContent = `, latest reading ${fmtSigned(features[i], 2)}`;
     });
   }
@@ -208,188 +211,180 @@ function startHero(house, renderer) {
   sync();
 
   return {
-    race,
-    state: () => ({ completed: race.completed(), running: timer !== null, paused }),
+    watch,
+    warmup,
+    state: () => ({ completed: watch.completed(), running: timer !== null, paused }),
   };
 }
 
-/** The first oven switch on SWITCH_SEED that has the off and on stretches chapter 2 needs. */
-function findOvenSwitch() {
-  const race = new wasm.HouseRace(SWITCH_SEED);
-  const on = [];
-  for (let t = 0; t < SWITCH_SEARCH_TO; t += 1) {
-    race.step();
-    on.push(race.strong()[OVEN] === 1);
+const firstHour = (bits) => [...Array(24).keys()].find((h) => bits & (1 << h));
+const lastHour = (bits) => [...Array(24).keys()].reverse().find((h) => bits & (1 << h)) + 1;
+
+/** One learner pair's weights on `sensor` over the chapter 2 window, in kW per standard deviation. */
+function trace(home, sensor, lmsSpeed, window) {
+  const day = wasm.FamilyDay.withLmsStepSize(TRACE_SEED, lmsSpeed);
+  day.run(window.start);
+  const lms = [];
+  const idbd = [];
+  for (let t = 0; t < window.length; t += 1) {
+    day.step();
+    lms.push(day.lmsWeights()[sensor]);
+    idbd.push(day.idbdWeights()[sensor]);
   }
-  race.free();
-  for (let t = SWITCH_SEARCH_FROM; t + SWITCH_AFTER <= on.length; t += 1) {
-    const before = on.slice(t - SWITCH_BEFORE, t);
-    const after = on.slice(t, t + SWITCH_AFTER);
-    if (before.every((x) => !x) && after.every((x) => x)) return t - SWITCH_BEFORE;
-  }
-  throw new Error(`seed ${SWITCH_SEED} has no long enough oven switch`);
+  const stepSize = day.lmsStepSize();
+  day.free();
+  return { lms, idbd, stepSize };
 }
 
-function traceOven(start, speed) {
-  const race = wasm.HouseRace.withLmsStepSize(SWITCH_SEED, speed);
-  race.run(start);
-  const trust = [];
-  const truth = [];
-  for (let t = 0; t < SWITCH_BEFORE + SWITCH_AFTER; t += 1) {
-    race.step();
-    trust.push(race.lmsWeights()[OVEN]);
-    truth.push(race.coefficients()[OVEN]);
-  }
-  const stepSize = race.lmsStepSize();
-  race.free();
-  return { trust, truth, stepSize };
+/** The first minute, counted from `from`, at which `values` reach half of `goal`, or null. */
+function halfway(values, goal, from) {
+  const index = values.findIndex((v, i) => i >= from && v >= goal / 2);
+  return index < 0 ? null : index - from;
 }
 
-function fillSpeeds() {
-  const start = findOvenSwitch();
-  const runs = { low: traceOven(start, SLOW_SPEED), high: traceOven(start, FAST_SPEED) };
-  const all = [...runs.low.trust, ...runs.high.trust, ...runs.low.truth];
-  const lo = Math.min(...all) - 0.1;
-  const hi = Math.max(...all) + 0.1;
+const spread = (values) => {
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  return Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length);
+};
+
+function drawTrace(chart, run, truth, range, marks) {
   const width = 560;
   const height = 220;
-  const n = SWITCH_BEFORE + SWITCH_AFTER;
+  const n = truth.length;
   const x = (i) => ((i * width) / (n - 1)).toFixed(1);
-  const y = (v) => (height - ((v - lo) / (hi - lo)) * height).toFixed(1);
+  const y = (v) => (height - ((v - range[0]) / (range[1] - range[0])) * height).toFixed(1);
   const line = (values) => values.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const marker = x(SWITCH_BEFORE - 0.5);
-
-  for (const [name, run] of Object.entries(runs)) {
-    const chart = $(`speed-${name}`);
-    chart.append(
-      svg("line", { x1: 0, x2: width, y1: y(0), y2: y(0), class: "zero" }),
-      svg("line", { x1: marker, x2: marker, y1: 0, y2: height, class: "marker" }),
-      svg("polyline", { points: line(run.truth), class: "line-actual" }),
-      svg("polyline", { points: line(run.trust), class: name === "high" ? "line-lms thin" : "line-lms" }),
-    );
-    const after = run.trust.slice(SWITCH_BEFORE);
-    const from = run.trust[SWITCH_BEFORE - 1].toFixed(2);
-    const to = run.trust.at(-1).toFixed(2);
-    const [off, onValue] = [run.truth[0], run.truth.at(-1)].map((v) => v.toFixed(1));
-    chart.setAttribute(
-      "aria-label",
-      `Measured: the oven's real effect jumps from ${off} to ${onValue}. At fixed speed ${run.stepSize}, ` +
-        `the trust in the oven goes from ${from} to ${to} over the next ${SWITCH_AFTER} readings, ` +
-        `ranging from ${Math.min(...after).toFixed(2)} to ${Math.max(...after).toFixed(2)}.`,
-    );
-    $(`speed-${name}-value`).textContent = String(run.stepSize);
-  }
-  for (const note of document.querySelectorAll(".axis-note")) {
-    note.style.gridTemplateColumns = `${SWITCH_BEFORE}fr ${SWITCH_AFTER}fr`;
-  }
-  $("switch-seed").textContent = String(SWITCH_SEED);
-  $("switch-reading").textContent = count(start + SWITCH_BEFORE + 1);
-  return { start, low: runs.low.trust, high: runs.high.trust, truth: runs.low.truth };
+  chart.append(
+    svg("line", { x1: 0, x2: width, y1: y(0), y2: y(0), class: "zero" }),
+    ...marks.map((m) => svg("line", { x1: x(m - 0.5), x2: x(m - 0.5), y1: 0, y2: height, class: "marker" })),
+    svg("polyline", { points: line(truth), class: "line-actual" }),
+    svg("polyline", { points: line(run.lms), class: "line-lms" }),
+    svg("polyline", { points: line(run.idbd), class: "line-idbd" }),
+  );
 }
 
-function fillDesk(house) {
-  const race = new wasm.HouseRace(DESK_SEED);
-  race.run(DESK_READINGS);
-  const alphas = Array.from(race.idbdStepSizes());
-  race.free();
-  const scale = Math.max(...alphas) * 1.1;
-  alphas.forEach((alpha, i) => {
-    const height = `${((alpha / scale) * 100).toFixed(1)}%`;
+function fillSpeeds(home) {
+  const perDay = home.hours * home.readingsPerHour;
+  const hours = home.sensors[LATE_SENSOR].hours;
+  const on = TRACE_DAY * perDay + firstHour(hours) * home.readingsPerHour;
+  const off = TRACE_DAY * perDay + lastHour(hours) * home.readingsPerHour;
+  const window = { start: on - TRACE_MARGIN, length: off - on + 2 * TRACE_MARGIN };
+  const inside = (i) => i >= TRACE_MARGIN && i < TRACE_MARGIN + off - on;
+  const influence = home.sensors[LATE_SENSOR].influence;
+  const lateTruth = Array.from({ length: window.length }, (_, i) => (inside(i) ? influence : 0));
+  const late = trace(home, LATE_SENSOR, home.lmsStepSize, window);
+  const nervous = trace(home, NERVOUS_SENSOR, NERVOUS_SPEED, window);
+  const quietTruth = Array(window.length).fill(0);
+  const marks = [TRACE_MARGIN, TRACE_MARGIN + off - on];
+
+  drawTrace($("speed-low"), late, lateTruth, [-0.3, influence + 0.3], marks);
+  const swing = Math.max(...nervous.lms.map(Math.abs), ...nervous.idbd.map(Math.abs)) * 1.1;
+  drawTrace($("speed-high"), nervous, quietTruth, [-swing, swing], marks);
+
+  const lmsHalf = halfway(late.lms, influence, TRACE_MARGIN);
+  const idbdHalf = halfway(late.idbd, influence, TRACE_MARGIN);
+  const peak = Math.max(...late.lms.slice(TRACE_MARGIN, TRACE_MARGIN + off - on));
+  const minutes = off - on;
+  const result = {
+    window,
+    late: { stepSize: late.stepSize, lmsHalf, idbdHalf, peak },
+    nervous: { stepSize: nervous.stepSize, lmsSpread: spread(nervous.lms), idbdSpread: spread(nervous.idbd) },
+  };
+  $("speed-low-value").textContent = String(late.stepSize);
+  $("speed-high-value").textContent = String(nervous.stepSize);
+  $("speed-low").setAttribute(
+    "aria-label",
+    `Measured over ${minutes} minutes in which a sensor with small readings adds ${influence} kW per typical swing of its reading. ` +
+      `At fixed speed ${late.stepSize} the trust in it peaks at ${peak.toFixed(2)}` +
+      (lmsHalf === null ? " and never reaches half the real effect." : `, reaching half the real effect after ${lmsHalf} minutes.`) +
+      (idbdHalf === null ? " IDBD does not reach half either." : ` IDBD reaches half after ${idbdHalf} minutes.`),
+  );
+  $("speed-high").setAttribute(
+    "aria-label",
+    `Measured over the same ${window.length} minutes on a sensor with large readings that never matters. At fixed speed ` +
+      `${nervous.stepSize} the trust in it swings with a spread of ${result.nervous.lmsSpread.toFixed(2)}. IDBD's spread is ` +
+      `${result.nervous.idbdSpread.toFixed(2)}.`,
+  );
+  $("late-caption").textContent =
+    lmsHalf === null
+      ? `At the tuned fixed speed the trust is still far below the real effect when the sensor stops mattering ${minutes} minutes later: it peaks at ${peak.toFixed(2)} of ${influence}.` +
+        (idbdHalf === null ? "" : ` IDBD gets halfway in ${idbdHalf} minutes.`)
+      : `At the tuned fixed speed the trust takes ${lmsHalf} minutes to get halfway.` + (idbdHalf === null ? "" : ` IDBD takes ${idbdHalf}.`);
+  $("nervous-caption").textContent =
+    `This sensor never matters, so the right trust is 0. At fixed speed ${nervous.stepSize} every reading knocks the trust about, ` +
+    `with a spread of ${result.nervous.lmsSpread.toFixed(2)}. IDBD's spread is ${result.nervous.idbdSpread.toFixed(2)}.`;
+  for (const note of document.querySelectorAll(".axis-note")) {
+    note.style.gridTemplateColumns = `${TRACE_MARGIN}fr ${window.length - TRACE_MARGIN}fr`;
+  }
+  $("trace-seed").textContent = String(TRACE_SEED);
+  return result;
+}
+
+/**
+ * Explains the learned speeds against fair rivals: each sensor that matters is compared
+ * with the sensors that never matter and started at its speed. Its own speed can fall, as
+ * the oven's does, and still end well above theirs.
+ */
+function learnedWhy(home, start, speeds) {
+  const ratios = [];
+  let rose = 0;
+  home.sensors.forEach((sensor, i) => {
+    if (!sensor.hours) return;
+    const rivals = home.sensors.flatMap((other, j) => (!other.hours && start[j] === start[i] ? [speeds[j]] : []));
+    if (!rivals.length) return;
+    if (speeds[i] > start[i]) rose += 1;
+    ratios.push(speeds[i] / (rivals.reduce((a, b) => a + b, 0) / rivals.length));
+  });
+  const fell = ratios.length - rose;
+  const words = ["None", "One", "Two", "Three", "Four"];
+  const moved = `${words[rose] ?? rose} of the ${(words[ratios.length] ?? ratios.length).toLowerCase()} sped up and ${(words[fell] ?? fell).toLowerCase()} slowed down`;
+  return (
+    "Nobody told it which sensors matter. " +
+    `${moved}, but each ended ${Math.min(...ratios).toFixed(1)} to ${Math.max(...ratios).toFixed(1)} times faster ` +
+    "than the sensors that started at its speed and never matter. Their corrections kept agreeing, so their speeds " +
+    "fell less or rose. The others' kept cancelling out."
+  );
+}
+
+function fillDesk(home) {
+  const day = new wasm.FamilyDay(home.seeds[0]);
+  const start = Array.from(day.idbdSpeeds());
+  day.run(home.readings);
+  const speeds = Array.from(day.idbdSpeeds());
+  day.free();
+  const scale = Math.max(...speeds) * 1.1;
+  speeds.forEach((speed, i) => {
+    const height = `${((speed / scale) * 100).toFixed(1)}%`;
     const [track, fill, knob] = ["track", "fill", "knob"].map((name) => el("div", { class: name }));
     fill.style.height = height;
     knob.style.bottom = height;
     const fader = el("div", { class: "fader", "aria-hidden": "true" }, [track, fill, knob]);
     const label = el("span", { class: "fader-label" }, [
-      house.sensors[i],
+      home.sensors[i].name,
       el("br"),
-      el("span", { class: "mono", text: alpha.toFixed(3) }),
+      el("span", { class: "mono", text: speed.toFixed(3) }),
     ]);
-    $("desk").append(el("li", { class: i < house.relevant ? "relevant" : null }, [fader, label]));
+    $("desk").append(el("li", { class: home.sensors[i].hours ? "relevant" : null }, [fader, label]));
   });
-  $("desk-readings").textContent = count(DESK_READINGS);
-  return alphas;
-}
-
-function fillLanes(house) {
-  const race = new wasm.HouseRace(LANES_SEED);
-  race.run(LANES_WARMUP);
-  const strong = Array.from({ length: house.relevant }, () => []);
-  let idbd = 0;
-  let lms = 0;
-  for (let t = 0; t < LANES_SHOWN; t += 1) {
-    race.step();
-    race.strong().forEach((flag, k) => strong[k].push(flag === 1));
-    idbd += (race.target() - race.idbdPrediction()) ** 2;
-    lms += (race.target() - race.lmsPrediction()) ** 2;
-  }
-  const alphas = Array.from(race.idbdStepSizes());
-  race.free();
-
-  const lanes = $("lanes");
-  house.sensors.forEach((sensorName, sensor) => {
-    const flags = strong[sensor] ?? [];
-    const on = flags.filter(Boolean).length;
-    const summary = sensor < house.relevant ? `, strong for ${on} of ${LANES_SHOWN} readings` : ", never affects the room";
-    const name = el("span", { class: sensor >= house.relevant ? "lane-name inert" : "lane-name" }, [
-      sensorName,
-      el("span", { class: "sr-only", text: summary }),
-    ]);
-    const strip = svg("svg", { viewBox: "0 0 1000 20", preserveAspectRatio: "none", "aria-hidden": "true" });
-    strip.append(svg("rect", { x: 0, y: 0, width: 1000, height: 20, rx: 3, class: "lane-ground" }));
-    let start = null;
-    flags.forEach((isOn, i) => {
-      if (isOn && start === null) start = i;
-      if ((!isOn || i === flags.length - 1) && start !== null) {
-        const end = isOn ? i + 1 : i;
-        strip.append(
-          svg("rect", {
-            x: ((start * 1000) / LANES_SHOWN).toFixed(1),
-            y: 0,
-            width: (((end - start) * 1000) / LANES_SHOWN).toFixed(1),
-            height: 20,
-            class: "lane-on",
-          }),
-        );
-        start = null;
-      }
-    });
-    lanes.append(name, strip, el("span", { class: "speed", text: alphas[sensor].toFixed(3) }));
-  });
-  lanes.append(
-    el("span", { class: "lane-spacer" }),
-    el("span", { class: "mono faint", text: `reading 1 to ${LANES_SHOWN} →` }),
-    el("span", { class: "mono faint speed", text: "speed" }),
-  );
-  $("lanes-shown").textContent = count(LANES_SHOWN);
-  $("lanes-speed-at").textContent = count(LANES_WARMUP + LANES_SHOWN);
-
-  // The same fixed scale as the game. Both ends are long-run averages for the switching
-  // house: 100% is the measurement noise alone, 0% is always guessing "no change".
-  const noise = house.noise ** 2;
-  const nothingLongRun = house.levels.reduce((sum, [hi, lo]) => sum + (hi ** 2 + lo ** 2) / 2, 0) + noise;
-  const accuracyOf = (mse) => Math.max(0, Math.min(1, (nothingLongRun - mse) / (nothingLongRun - noise)));
-  const result = { idbd: idbd / LANES_SHOWN, lms: lms / LANES_SHOWN, strong };
-  result.idbdAccuracy = accuracyOf(result.idbd);
-  result.lmsAccuracy = accuracyOf(result.lms);
-  $("run-idbd").textContent = `${Math.round(result.idbdAccuracy * 100)}%`;
-  $("run-lms").textContent = `${Math.round(result.lmsAccuracy * 100)}%`;
-  return result;
+  $("desk-readings").textContent = count(home.readings);
+  $("learned-why").textContent = learnedWhy(home, start, speeds);
+  return speeds;
 }
 
 async function main() {
   await init();
-  const house = JSON.parse(wasm.houseJson());
+  const home = JSON.parse(wasm.familyJson());
   $("core-version").textContent = `idbd ${wasm.coreVersion()}`;
-  $("chip-sensors").textContent = `${house.sensors.length} sensors`;
-  $("chip-relevant").textContent = `${house.relevant} matter`;
-  $("hero-warmup").textContent = count(HERO_WARMUP);
-  fillHouseKey(house);
-  const renderer = await mountRenderer(house);
-  const hero = startHero(house, renderer);
-  const speeds = fillSpeeds();
-  const desk = fillDesk(house);
-  const lanes = fillLanes(house);
-  const slow = createSlowMotion(wasm, house, {
+  const relevant = home.sensors.filter((s) => s.hours).length;
+  $("chip-sensors").textContent = `${home.sensors.length} sensors`;
+  $("chip-relevant").textContent = `${relevant} matter`;
+  fillHouseKey(home);
+  const renderer = await mountRenderer(home);
+  const hero = startHero(home, renderer);
+  $("hero-warmup").textContent = `${home.heroWarmupDays} days, ${count(hero.warmup)} readings,`;
+  const speeds = fillSpeeds(home);
+  const desk = fillDesk(home);
+  const slow = createSlowMotion(wasm, home, {
     next: $("slow-next"),
     run: $("slow-run"),
     runCount: $("slow-run-count"),
@@ -400,38 +395,40 @@ async function main() {
     miss: $("slow-miss"),
     summary: $("slow-summary"),
     rows: $("slow-rows"),
+    hidden: $("slow-hidden"),
   });
-  const game = createGame(wasm, house, {
-    levels: [...document.querySelectorAll(".level")],
-    levelNote: $("level-note"),
-    chart: $("game-chart"),
-    run: $("game-run"),
-    reset: $("game-reset"),
-    sliders: $("sliders"),
-    scores: $("scores"),
-    count: $("game-count"),
-    you: $("game-you"),
-    idbd: $("game-idbd"),
-    lms: $("game-lms"),
-    changes: $("game-changes"),
-    reveal: $("reveal"),
-    learned: $("learned"),
-    learnedWrap: $("learned-wrap"),
-    learnedNote: $("learned-note"),
-    verdict: $("verdict"),
-    failure: $("game-failure"),
+  const family = createFamily(wasm, {
+    root: $("family"),
+    lanes: $("family-lanes"),
+    run: $("family-run"),
+    reset: $("family-reset"),
+    clock: $("family-clock"),
+    hint: $("family-hint"),
+    key: $("family-key"),
+    view: $("family-view"),
+    viewButtons: [...document.querySelectorAll("#family-view [data-view]")],
+    result: $("family-result"),
+    resultTitle: $("family-result-title"),
+    stage: $("family-stage"),
+    dial: $("family-dial"),
+    dialNow: $("family-dial-now"),
+    scores: $("family-scores"),
+    mechanism: $("family-mechanism"),
+    again: $("family-again"),
+    failure: $("family-failure"),
+    onReveal: () => slow.revealNames(),
   });
 
   window.idbdStory = {
-    house,
+    home,
     get renderer() {
       return renderer.kind;
     },
-    hero: () => ({ ...hero.state(), stepSizes: Array.from(hero.race.idbdStepSizes()) }),
+    hero: () => ({ ...hero.state(), warmup: hero.warmup, speeds: Array.from(hero.watch.speeds()) }),
     speeds,
     desk,
-    lanes,
-    game: () => game.state(),
+    family,
+    game: () => family.state(),
     slow: () => slow.state(),
   };
   document.body.dataset.appReady = "true";

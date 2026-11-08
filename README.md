@@ -63,15 +63,18 @@ update equations, configuration, bounds, checkpoints, when to use IDBD and its l
 ## The demo
 
 <p align="center">
-  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's house learning live: amber rings around the sun, oven and front door sensors stay wide while the rings on the Wi-Fi, doorbell and water heater stay small, and a live chart shows the room's temperature change against IDBD's guess">
+  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's home learning live: twelve sensors in a cutaway house, wide amber rings on the water heater, wall thermometer, oven and Wi-Fi data use and small rings on the other eight, and a live chart of the power meter against IDBD's guess">
 </p>
 
-The story page explains IDBD with a thermostat house. Six sensors, three of which move the room
-temperature by amounts that keep switching. The page walks through one update in slow motion,
-plots a fixed learning speed that is late or nervous when the oven switches on, and ends with a
-game in which you set the trust in each sensor by hand and race IDBD and a tuned fixed-speed
-learner. Every learning value on the page comes from the crate. In a house where nothing
-switches, the tuned fixed speed wins, and the page says so.
+The story page explains IDBD with Family Assistant, a home with twelve sensors and a power
+meter. Four of the sensors add to the meter, each during its own hours of the day, and the
+sensors read on different scales. The page shows the live readings, plots one fixed learning
+speed that is late on small readings and nervous on large ones, walks through one update in slow
+motion, and then lets you play: you mark the hours in which you think each sensor adds to the
+meter, and IDBD and a tuned fixed-speed learner watch three simulated days and draw their own
+answer. Every learning value on the page comes from the crate. The reading scales are where
+IDBD's edge comes from. The page says so, and that a fixed speed on rescaled readings does as
+well.
 
 The Explorer runs IDBD, LMS and untuned Autostep side by side on Sutton's 20-input task, with
 replay, export and a guided single update.
@@ -133,18 +136,22 @@ On these tasks untuned Autostep beat tuned LMS on two of three nonstationary tas
 tuned IDBD on all of them. At mu = 1, 19 of 20 tuning runs stopped when a step size underflowed
 to zero. [Method, mu sweep and step sizes](docs/results/autostep/README.md).
 
-**The thermostat house (new task, same protocol).** Six sensors with noisy readings, three
-of which switch between a strong and a weak influence on the room temperature. This is the
-task behind the story page. The noise alone gives an MSE of 0.25.
+**The Family Assistant home (new task).** Twelve sensors on their own reading scales, four of
+which add to the power draw during fixed hours of the day, one reading a minute for three days.
+This is the task behind the story page's game. The score is the overlap of the hours a
+learner's weights mark with the true hours, pooled over all sensors.
 
-| Task | LMS, tuned | IDBD, tuned | Autostep, default |
+| Learner | Mean squared error | Bar score | Overlap on the 4 sensors that matter |
 | --- | --- | --- | --- |
-| House, influences switch | 0.630 +/- 0.003 | 0.543 +/- 0.004 | 0.587 +/- 0.004 |
-| Same house, nothing switches | 0.252 +/- 0.001 | 0.269 +/- 0.001 | 0.262 +/- 0.001 |
+| LMS, alpha 0.01 (tuned) | 0.514 +/- 0.004 | 0.38 | 0.43 |
+| IDBD, theta 0.07 (tuned) | 0.384 +/- 0.003 | 0.85 | 0.88 |
+| LMS on rescaled readings, alpha 0.03 (tuned) | 0.411 +/- 0.003 | 0.89 | 0.89 |
 
-IDBD was lower than tuned LMS on all 10 seeds of the switching house and on none of the still
-house. Its final step sizes were 0.0786 to 0.137 on the three sensors that matter and about
-0.012 on the other three. [Method and per-sensor step sizes](docs/results/house/README.md).
+IDBD found all four sensors on every evaluation seed and marked Wi-Fi data use an hour late.
+The last row divides every reading by its sensor's scale first, as this README recommends. With
+the scales evened out, the tuned fixed step draws bars as good as IDBD's, so on this home IDBD's
+edge comes from the different reading scales.
+[Method, sensors and every bar](docs/results/family/README.md).
 
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
 about 5 ns per feature up to 10,000 features. A standalone loop of one `exp` call per input takes
@@ -158,7 +165,7 @@ cargo run --release -p idbd-lab --bin sutton1992-exp1   # Experiment 1, about 3 
 cargo run --release -p idbd-lab --bin sutton1992-exp2   # Experiment 2 and the Figure 5 sweep
 cargo run --release -p idbd-lab --bin evaluate          # IDBD against LMS on four tasks
 cargo run --release -p idbd-lab --bin autostep-eval     # untuned Autostep against both
-cargo run --release -p idbd-lab --bin house-eval        # the thermostat house
+cargo run --release -p idbd-lab --bin family-eval       # the Family Assistant home
 cargo run --release -p idbd-lab --bin bench             # core timings
 ```
 
