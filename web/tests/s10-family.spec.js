@@ -26,6 +26,15 @@ async function guessTruth(page) {
   }, truth.map(span));
 }
 
+// Jumps past the end of an animated run. runFor would replay every animation frame on the
+// way, about 600 dial repaints for 10 s, which takes up to a minute in WebKit on the Linux
+// CI runner. The run reads progress from the elapsed time, so one frame after the jump
+// finishes it.
+async function finishRun(page) {
+  await page.clock.fastForward(10_000);
+  await page.clock.runFor(50);
+}
+
 async function runToEnd(page) {
   await page.click("#family-run");
   await page.waitForFunction(() => window.idbdStory.game().phase === "done", null, { timeout: 30000 });
@@ -183,7 +192,7 @@ test("S10 the three days play out over time, then three new days of the same hom
   expect(midway.completed).toBeLessThan(4320);
   await expect(page.locator("#family-clock")).toHaveText(/^Day [1-3], \d\d:\d\d$/);
   await expect(page.locator(".lane-bars").first()).toBeHidden();
-  await page.clock.runFor(10_000);
+  await finishRun(page);
   expect((await game(page)).phase).toBe("done");
   await expect(page.locator("#family-clock")).toHaveText("Three days watched, 4,320 readings");
 
@@ -197,7 +206,7 @@ test("S10 the three days play out over time, then three new days of the same hom
   expect(next.guesses).toEqual(first.guesses);
   await expect(page.locator("#family-result")).toBeHidden();
   await expect(page.locator("#family-clock")).toBeFocused();
-  await page.clock.runFor(10_000);
+  await finishRun(page);
   expect((await game(page)).phase).toBe("done");
   await expect(page.locator("#family-result")).toBeVisible();
 });
@@ -228,7 +237,7 @@ test("S10 the dial marks each day and paints IDBD's bars only after the warm-up"
     .evaluateAll((cells) => Math.max(...cells.map((c) => Number(c.style.getPropertyValue("--h")))));
   expect(strongest).toBe(1);
 
-  await page.clock.runFor(10_000);
+  await finishRun(page);
   await expect(dial.locator(".dial-cell.live")).toHaveCount(0);
   await expect(dial.locator(".dial-pips")).toBeHidden();
   await expect(page.locator("#family-dial-now")).toContainText("The dial shows IDBD's bars after three days");
