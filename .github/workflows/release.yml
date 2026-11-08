@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  # Automatic triggers are off until the project is ready. Runs start by hand only.
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -35,10 +34,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  ci-passed:
+    name: CI passed for this commit
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      # Publishing needs a successful CI run (tests on three systems, MSRV, rustdoc, cargo-deny,
+      # packaging) for the exact commit, so a release cannot skip the checks.
+      - name: Find a successful CI run for the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" \
+            --status success --json databaseId --jq 'length')
+          if [ "$passed" -lt 1 ]; then
+            echo "::error::No successful CI run for $GITHUB_SHA. Run CI on main and wait for it to pass."
+            exit 1
+          fi
+
   publish:
     name: Publish to crates.io
     # Publishing is a deliberate act: it runs only when someone starts this workflow.
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: ci-passed
     runs-on: ubuntu-latest
     environment: crates-io
     permissions:

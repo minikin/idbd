@@ -63,8 +63,9 @@ update equations, configuration, bounds, checkpoints, when to use IDBD and its l
 ## The demo
 
 <p align="center">
-  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's home learning live: twelve sensors in a cutaway house, wide amber rings on the water heater, wall thermometer, oven and Wi-Fi data use and small rings on the other eight, and a live chart of the power meter against IDBD's guess">
+  <img src="docs/assets/demo-loop.webp" width="612" alt="The story page's guessing game on a 24-hour dial with one ring per sensor: a visitor's marked hours in violet, IDBD's bars forming in amber over three simulated days, then the scores, the visitor 21% and IDBD 85%">
 </p>
+<p align="center"><sub>One run of the game. A tuned fixed step on rescaled readings scores 89% to IDBD's 85% over ten runs, see <a href="#results">Results</a>.</sub></p>
 
 The story page explains IDBD with Family Assistant, a home with twelve sensors and a power
 meter. Four of the sensors add to the meter, each during its own hours of the day, and the
@@ -188,29 +189,12 @@ pinned in `crates/idbd-wasm`) and Node.js. The house is drawn with three.js 0.17
 site is static: after `just web-build`, any file server that sends `.wasm` as
 `application/wasm` can host `web/`.
 
-The `Demo` workflow deploys to GitHub Pages. It copies only `index.html`, `explorer.html`,
-`styles.css`, `src/`, `story/`, three.js from `vendor/` and the two files the pages load from
-`pkg/`. It deploys on every push to `main` once the repository variable `DEPLOY_DEMO` is
-`true`, and on any manual run. GitHub Pages must be enabled with "GitHub Actions" as the source.
-
-## Development
-
-```sh
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
-cargo doc --workspace --no-deps
-scripts/coverage.sh                      # coverage and CRAP gates: no function above CRAP 10
-cargo mutants -p idbd                    # mutation testing of the core
-```
-
-The lint policy follows [BeautifulRust](https://github.com/morganlinton/BeautifulRust). Core
-scenario tests carry their IDs from `features/idbd.feature`, for example
-`c07_use_old_traces_and_one_shared_pre_update_error`. Numerical fixtures come from an
-independent 50-digit decimal implementation in
-[`reference.py`](crates/idbd/tests/scenarios/fixtures/reference.py).
-[docs/acceptance.md](docs/acceptance.md) maps every scenario to its test or recorded result and
-lists what remains open.
+`just web-site` copies only `index.html`, `explorer.html`, `styles.css`, `src/`, `story/`,
+three.js from `vendor/` and the two files the pages load from `pkg/` into `_site/`.
+`just web-deploy` deploys `_site/` to Cloudflare as the assets-only Worker in `wrangler.jsonc`,
+after `wrangler login` or with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. The `Demo`
+workflow does the same on any manual run, and on every push to `main` once the repository
+variable `DEPLOY_DEMO` is `true`. It needs both values as repository secrets.
 
 ## Reference
 

@@ -25,4 +25,6 @@ The CI `semver` job skips its check until a version is on crates.io, so the API 
 
 ## Before every release
 
+The `publish` job runs only after `ci-passed` finds a successful CI run for the exact commit on `main`. Merge, wait for CI to pass, then start the workflow.
+
 `cargo package -p idbd --list` must show only the crate sources, `README.md`, `CHANGELOG.md`, the two license files and the manifest files Cargo adds. The `publish` job and the `Package the core crate` CI job both check this.

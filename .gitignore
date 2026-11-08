@@ -8,3 +8,5 @@
 /web/playwright-report/
 /lcov.info
 /mutants.out*/
+/_site/
+/.wrangler/

@@ -1,0 +1,8 @@
+// The demo is a static site: a Worker with assets only, no script. `just web-site` builds
+// the directory and the Demo workflow deploys it.
+{
+  "name": "idbd-demo",
+  "compatibility_date": "2026-10-22",
+  "send_metrics": false,
+  "assets": { "directory": "./_site" }
+}

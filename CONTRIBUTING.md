@@ -36,4 +36,4 @@ Commits merged before the convention was adopted (up to pull request #1) do not 
 
 ## Checks
 
-`just check` runs formatting, Clippy, tests and rustdoc. `scripts/coverage.sh` runs the coverage and CRAP gate, and `just web-test` runs the browser tests.
+`just check` runs formatting, Clippy, tests and rustdoc with every feature enabled and warnings denied. CI pins Clippy to Rust 1.97.1, because new releases change lints, so a newer local Clippy can report lints CI does not. `scripts/coverage.sh` runs the coverage and CRAP gate, and `just web-test` runs the browser tests.

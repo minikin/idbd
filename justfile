@@ -3,11 +3,12 @@
 default:
     @just --list
 
-# Format, lint and test the Rust workspace.
+# Format, lint, test and document the Rust workspace with every feature, as CI does.
 check:
     cargo fmt --all -- --check
-    cargo clippy --workspace --all-targets -- -D warnings
-    cargo test --workspace
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    cargo test --workspace --all-features
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features
 
 # Compile the WebAssembly adapter and generate the browser glue in web/pkg.
 # The pinned wasm-bindgen crate version and the installed CLI version must match.
@@ -19,6 +20,26 @@ web-build:
     mkdir -p web/vendor
     cp web/node_modules/three/build/three.module.min.js web/vendor/
     cp web/node_modules/three/LICENSE web/vendor/three.LICENSE
+
+# Copy only the files the pages load into _site. Tests, tooling and anything outside web/
+# stay out, and the recipe fails if a path names internal.
+web-site: web-build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf _site
+    mkdir -p _site/pkg _site/vendor
+    cp web/index.html web/explorer.html web/styles.css _site/
+    cp -R web/src _site/src
+    cp -R web/story _site/story
+    cp web/vendor/three.module.min.js web/vendor/three.LICENSE _site/vendor/
+    cp web/pkg/idbd_wasm.js web/pkg/idbd_wasm_bg.wasm _site/pkg/
+    find _site -type f | sort
+    ! find _site -iname '*internal*' | grep .
+
+# Deploy _site to Cloudflare as the Worker named in wrangler.jsonc. Needs `wrangler login`
+# or CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+web-deploy *args: web-site
+    npx --yes wrangler@4.152.0 deploy {{args}}
 
 # Serve the story page at http://127.0.0.1:8173 and the Explorer at /explorer.html.
 web-serve: web-build

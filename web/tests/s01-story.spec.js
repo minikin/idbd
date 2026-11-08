@@ -88,6 +88,32 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-reading")).toHaveText("0");
 });
 
+async function labelsOutside(page) {
+  await page.evaluate(() => document.fonts.ready);
+  return page.locator("#house-2d").evaluate((svg) => {
+    const [x0, y0, w, h] = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+    return [...svg.querySelectorAll(".label-chip")].flatMap((chip) => {
+      // The chip is drawn around its dot and its text, so its box bounds the whole label.
+      const b = chip.getBBox();
+      return b.x < x0 || b.y < y0 || b.x + b.width > x0 + w || b.y + b.height > y0 + h ? [chip.nextSibling.nextSibling.textContent] : [];
+    });
+  });
+}
+
+test("S06 the 2D labels stay inside the drawing when the label font is wider", async ({ page }) => {
+  // Linux CI falls back to a wider monospace font than macOS. Wider letters stand in for it.
+  await page.addInitScript(() =>
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = ".house-2d .label { letter-spacing: 2px; }";
+      document.head.append(style);
+    }),
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openStory(page);
+  expect(await labelsOutside(page)).toEqual([]);
+});
+
 test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openStory(page);
@@ -96,16 +122,7 @@ test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => 
   await expect(page.locator("#house-2d")).toBeVisible();
   await expect(page.locator("#house-2d-sensors .attention")).toHaveCount(12);
   await expect(page.locator("#house-2d-sensors .label-chip")).toHaveCount(12);
-  await page.evaluate(() => document.fonts.ready);
-  const outside = await page.locator("#house-2d").evaluate((svg) => {
-    const [x0, y0, w, h] = svg.getAttribute("viewBox").split(/\s+/).map(Number);
-    return [...svg.querySelectorAll(".label-chip")].flatMap((chip) => {
-      // The chip is drawn around its dot and its text, so its box bounds the whole label.
-      const b = chip.getBBox();
-      return b.x < x0 || b.y < y0 || b.x + b.width > x0 + w || b.y + b.height > y0 + h ? [chip.nextSibling.nextSibling.textContent] : [];
-    });
-  });
-  expect(outside).toEqual([]);
+  expect(await labelsOutside(page)).toEqual([]);
 });
 
 test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {
