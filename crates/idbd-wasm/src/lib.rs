@@ -22,7 +22,9 @@ use idbd_lab::world::{Event, GROUP_SIZE, NUM_FEATURES, Origin, Preset};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
+mod family;
 mod house;
+pub use family::{FamilyDay, family_json, family_overlaps, family_score};
 pub use house::{HouseRace, house_json};
 
 /// Largest whole number a JavaScript double represents exactly.

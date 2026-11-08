@@ -78,6 +78,17 @@ impl HourSet {
         Some(Self(bits))
     }
 
+    /// The set with these hour bits, hour 0 in the lowest. Returns `None` if a bit at or
+    /// above hour 24 is set.
+    #[must_use]
+    pub const fn from_bits(bits: u32) -> Option<Self> {
+        if bits >> HOURS == 0 {
+            Some(Self(bits))
+        } else {
+            None
+        }
+    }
+
     /// Returns `true` if `hour` is in the set.
     #[must_use]
     pub const fn contains(self, hour: usize) -> bool {
@@ -701,6 +712,9 @@ mod tests {
         assert_eq!(a.overlap(HourSet::EMPTY), 0.0);
         assert!(HourSet::EMPTY.is_empty() && !a.is_empty());
         assert_eq!(a.bits(), 0b11_1100_0000);
+        assert_eq!(HourSet::from_bits(a.bits()), Some(a));
+        assert_eq!(HourSet::from_bits(1 << 23).map(HourSet::len), Some(1));
+        assert_eq!(HourSet::from_bits(1 << 24), None);
     }
 
     #[test]
