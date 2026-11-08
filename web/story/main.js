@@ -1,13 +1,15 @@
 // Boots the WebAssembly module and fills the story page. Every learning value on the
 // page comes from the crate's Family Assistant home: the hero's rings and live chart run
 // on FamilyWatch, chapter 1 shows its readings, chapter 2 traces two fixed speeds with
-// FamilyDay, and the slow motion, the game and the closing faders use FamilyDay too.
+// FamilyDay, and the four steps, the slow motion, the game and the closing faders use
+// FamilyDay too.
 
 import init, * as wasm from "../pkg/idbd_wasm.js";
 import { el, svg } from "../src/dom.js";
 import { fmtSigned } from "../src/format.js";
 import { SENSOR_COLORS, createHouse2d } from "./house.js";
 import { createFamily } from "./family.js";
+import { createLoop } from "./loop.js";
 import { createSlowMotion } from "./slow.js";
 
 const HERO_SEED = 1;
@@ -382,6 +384,18 @@ async function main() {
   const renderer = await mountRenderer(home);
   const hero = startHero(home, renderer);
   $("hero-warmup").textContent = `${home.heroWarmupDays} days, ${count(hero.warmup)} readings,`;
+  const loop = createLoop(
+    wasm,
+    home,
+    {
+      list: $("loop"),
+      cards: [...$("loop").children],
+      live: [1, 2, 3, 4].map((n) => $(`loop-live-${n}`)),
+      clock: $("loop-clock"),
+      pause: $("loop-pause"),
+    },
+    { clockText, reducedMotion },
+  );
   const speeds = fillSpeeds(home);
   const desk = fillDesk(home);
   const slow = createSlowMotion(wasm, home, {
@@ -430,6 +444,7 @@ async function main() {
     family,
     game: () => family.state(),
     slow: () => slow.state(),
+    loop: () => loop.state(),
   };
   document.body.dataset.appReady = "true";
 }

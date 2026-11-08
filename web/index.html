@@ -126,40 +126,50 @@
           <p class="eyebrow">What IDBD does</p>
           <h2 id="what-title" class="display">Guess and check. Decide how hard to correct, then correct.</h2>
           <p>
-            A home assistant wants to predict the power meter. Every minute it reads its sensors,
-            guesses the power draw, sees what the meter really says and corrects itself. Most
-            learning programs work this way. IDBD adds one thing: for every sensor it keeps its own
-            learning speed, and it adjusts those speeds before every correction.
+            A home assistant wants to predict the power meter. Every minute it reads its twelve
+            sensors, guesses the power draw, sees what the meter really says and corrects itself.
+            Most learning programs work this way. IDBD adds one thing: every sensor gets its own
+            learning speed, and IDBD tunes those speeds before every correction. Below, the four
+            steps run on the same home, one reading at a time.
           </p>
         </div>
-        <ol class="loop">
+        <ol class="loop" id="loop">
           <li class="card">
             <span class="step mono">1</span>
             <h3>Guess</h3>
-            <p>Multiply each sensor's reading by how much it trusts that sensor, and add them up.</p>
+            <p>Multiply each reading by the trust in its sensor and add them up.</p>
+            <p class="loop-live mono small" id="loop-live-1"></p>
           </li>
           <li class="card">
             <span class="step mono">2</span>
             <h3>Check</h3>
-            <p>Read the real power draw off the meter. The difference is the miss.</p>
+            <p>Read the meter. The difference from the guess is the miss.</p>
+            <p class="loop-live mono small" id="loop-live-2"></p>
           </li>
-          <li class="card highlight">
+          <li class="card highlight" aria-current="step">
             <span class="step mono">3</span>
             <h3>Tune the speeds</h3>
             <p>
-              If a sensor's corrections keep pushing the same way, speed it up. If they keep
-              cancelling out, slow it down. This step is IDBD.
+              Compare each sensor's correction with its recent ones. If they keep pushing the same
+              way, speed that sensor up. If they keep cancelling out, slow it down. This step is
+              IDBD.
             </p>
+            <p class="loop-live mono small" id="loop-live-3"></p>
           </li>
           <li class="card">
             <span class="step mono">4</span>
             <h3>Correct</h3>
             <p>
-              Change each trust a little to shrink the miss, as far as that sensor's new speed
-              allows. Remember the correction, so the next reading can be compared with it.
+              Move each trust to shrink the miss, as far as that sensor's speed allows, and
+              remember the move so the next reading can be compared with it.
             </p>
+            <p class="loop-live mono small" id="loop-live-4"></p>
           </li>
         </ol>
+        <div class="loop-bar">
+          <p class="mono small muted" id="loop-clock"></p>
+          <button type="button" class="button small" id="loop-pause">Pause</button>
+        </div>
       </section>
 
       <section id="story" class="chapter wrap split" aria-labelledby="ch1-title">

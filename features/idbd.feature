@@ -604,6 +604,14 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And the visitor, IDBD and the fixed speed are scored by one rule against the true hours
       And the reveal shows the true hours, the visitor's hours and each learner's hour bars as text as well as drawn
 
+    Scenario: S08 Walk the four steps of an update through live readings
+      Given the "What IDBD does" chapter of the story page
+      When it is on screen and the visitor has not paused it or asked for reduced motion
+      Then the highlight moves through guess, check, tune the speeds and correct, one step at a time
+      And each step shows what it did on the current reading, read from the crate
+      And it counts sensors without naming them
+      And with reduced motion it holds still on the step that is IDBD
+
     Scenario: S06 Keep the story page usable without WebGL or motion
       Given a browser without WebGL, or a visitor who prefers reduced motion
       When the story page loads

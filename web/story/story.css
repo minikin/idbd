@@ -1042,6 +1042,42 @@ h3 {
   color: var(--idbd);
 }
 
+.loop .card,
+.loop .step {
+  transition:
+    border-color 300ms ease,
+    background-color 300ms ease,
+    color 300ms ease;
+}
+
+.loop .loop-live {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink);
+  font-size: 13px;
+  min-height: 3.2em;
+}
+
+.loop-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.loop-bar p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loop .card,
+  .loop .step {
+    transition: none;
+  }
+}
+
 /* ---------- slow motion ---------- */
 
 .slow {
