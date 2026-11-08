@@ -256,6 +256,36 @@ mod tests {
     }
 
     #[test]
+    fn the_exported_scores_match_the_lab_on_valid_masks() {
+        let truth: Vec<u32> = SENSORS.iter().map(|s| s.hours.bits()).collect();
+        let mut half = truth;
+        half[5] = 0;
+        let score = family_score(&half)
+            .map_err(|_| "valid masks")
+            .expect("valid");
+        let sets = guesses(&half).expect("valid");
+        assert_eq!(score.to_bits(), idbd_lab::family::score(&sets).to_bits());
+        let overlaps = family_overlaps(&half)
+            .map_err(|_| "valid masks")
+            .expect("valid");
+        assert_eq!(overlaps.len(), NUM_SENSORS);
+        assert_eq!(overlaps[5].to_bits(), 0.0_f64.to_bits());
+        assert_eq!(overlaps[1].to_bits(), 1.0_f64.to_bits());
+    }
+
+    #[test]
+    fn a_failed_day_reports_its_message_and_run_advances() {
+        let mut day = FamilyDay::create(3.0).expect("valid seed");
+        day.run(250).map_err(|_| "runs").expect("runs");
+        assert_eq!(day.inner.completed(), 250);
+        let mut failing = FamilyDay {
+            inner: Day::with_parameters(3, FAMILY_THETA, 5.0).expect("valid"),
+        };
+        let error = failing.inner.finish().expect_err("diverges");
+        assert_eq!(failing.failure_message(), Some(error));
+    }
+
+    #[test]
     fn a_day_reports_the_lab_day() {
         let mut day = FamilyDay::create(3.0).expect("valid seed");
         let mut lab = Day::new(3);

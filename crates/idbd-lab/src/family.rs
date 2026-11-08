@@ -557,6 +557,7 @@ pub struct Day {
     lms_bars: Bars,
     idbd_squared_error: f64,
     lms_squared_error: f64,
+    completed: usize,
     failure: Option<String>,
 }
 
@@ -584,6 +585,7 @@ impl Day {
             lms_bars: Bars::new(),
             idbd_squared_error: 0.0,
             lms_squared_error: 0.0,
+            completed: 0,
             failure: None,
         })
     }
@@ -598,7 +600,7 @@ impl Day {
         if let Some(failure) = &self.failure {
             return Err(failure.clone());
         }
-        let index = self.home.generated();
+        let index = self.completed;
         if index >= READINGS {
             return Err(format!("the run ends after {READINGS} readings"));
         }
@@ -632,6 +634,7 @@ impl Day {
         let hour = hour_of(index);
         self.idbd_bars.add(hour, &self.idbd_weights());
         self.lms_bars.add(hour, &self.lms_weights());
+        self.completed += 1;
         Ok(())
     }
 
@@ -641,7 +644,7 @@ impl Day {
     ///
     /// Returns the failure message if a reading fails.
     pub fn run(&mut self, readings: usize) -> Result<(), String> {
-        let end = READINGS.min(self.completed() + readings);
+        let end = READINGS.min(self.completed.saturating_add(readings));
         while self.completed() < end {
             self.step()?;
         }
@@ -660,7 +663,7 @@ impl Day {
     /// Returns the number of readings both learners completed.
     #[must_use]
     pub const fn completed(&self) -> usize {
-        self.home.generated()
+        self.completed
     }
 
     /// Returns the failure that stopped the run, if any.
@@ -831,6 +834,38 @@ mod tests {
         assert_eq!(home.generated(), WARMUP_READINGS);
     }
 
+    const RECORDED_SEED_7: [u64; 3] = [
+        4_588_213_298_595_010_603,
+        13_818_207_806_458_805_176,
+        4_604_595_358_437_932_362,
+    ];
+
+    #[test]
+    fn seed_7_reproduces_its_recorded_targets() {
+        // Recorded from this implementation. A change here changes every published family
+        // result, so it must be deliberate. Box-Muller goes through ln and cos, whose last
+        // bit differs between platform math libraries, so targets compare to 1e-12.
+        let mut home = Home::new(7);
+        let mut x = [0.0; NUM_SENSORS];
+        let targets: Vec<f64> = (0..400).map(|_| home.next_sample(&mut x)).collect();
+        let recorded = [targets[0], targets[361], targets[399]];
+        let want = RECORDED_SEED_7.map(f64::from_bits);
+        for (got, want) in recorded.iter().zip(want) {
+            assert!(
+                (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+                "{got} vs {want}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_huge_batch_finishes_the_run_instead_of_overflowing() {
+        let mut day = Day::new(1);
+        day.run(1).expect("runs");
+        day.run(usize::MAX).expect("runs to the end");
+        assert_eq!(day.completed(), READINGS);
+    }
+
     #[test]
     fn the_same_seed_gives_the_same_run() {
         let (mut a, mut b) = (Day::new(9), Day::new(9));
@@ -861,8 +896,38 @@ mod tests {
     #[test]
     fn a_rejected_reading_stops_the_run_and_changes_neither_learner() {
         let mut day = Day::with_parameters(3, FAMILY_THETA, 5.0).expect("valid");
-        let error = day.finish().expect_err("a step size of 5 diverges");
-        assert!(error.starts_with("reading "), "{error}");
+        let snapshot = |day: &Day| {
+            (
+                day.idbd_weights(),
+                day.lms_weights(),
+                day.completed(),
+                day.mean_squared_errors(),
+                day.idbd_bars().bar(5),
+            )
+        };
+        let error = loop {
+            let before = snapshot(&day);
+            match day.step() {
+                Ok(()) => assert!(day.completed() < READINGS, "a step size of 5 diverges"),
+                Err(error) => {
+                    assert_eq!(
+                        snapshot(&day),
+                        before,
+                        "the rejected reading changed the run"
+                    );
+                    break error;
+                }
+            }
+        };
+        assert_eq!(
+            error,
+            format!(
+                "reading {}: {}",
+                day.completed() + 1,
+                error.split_once(": ").expect("prefixed").1
+            )
+        );
+        assert_eq!(day.failure(), Some(error.as_str()));
         let weights = (day.idbd_weights(), day.lms_weights(), day.completed());
         assert_eq!(day.step(), Err(error));
         assert_eq!(
@@ -927,6 +992,9 @@ mod tests {
         assert_eq!(points[2].mean_squared_error, None);
         assert_eq!(best, 1);
         assert!(points[1].mean_squared_error < points[0].mean_squared_error);
+        let one = run(1, lms(0.02)).expect("completes").mean_squared_error;
+        let two = run(2, lms(0.02)).expect("completes").mean_squared_error;
+        assert_eq!(points[1].mean_squared_error, Some(f64::midpoint(one, two)));
         assert!(select(&[5.0], &[1], lms).is_err());
         assert!(run(1, Learner::Idbd { theta: -1.0 }).is_err());
     }
@@ -936,6 +1004,7 @@ mod tests {
         let bars = Bars::default();
         assert_eq!(bars.bar(0), [0.0; HOURS]);
         assert_eq!(bars.found(), [HourSet::EMPTY; NUM_SENSORS]);
+        assert_eq!(bars.score(), 0.0);
         let mut bars = Bars::new();
         let mut weights = [0.0; NUM_SENSORS];
         weights[5] = 0.5;

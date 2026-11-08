@@ -381,9 +381,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_page_constants_match_the_selections_they_cite() {
+    fn the_tuning_seeds_select_the_page_constants() {
+        let (lms, best_lms) = select(&LMS_GRID, &TUNING_SEEDS, |step_size| Learner::Lms {
+            step_size,
+        })
+        .expect("a value completes");
+        let (idbd, best_idbd) = select(&THETA_GRID, &TUNING_SEEDS, |theta| Learner::Idbd { theta })
+            .expect("a value completes");
         assert_eq!(
-            check_page_constants(FAMILY_THETA, FAMILY_LMS_STEP_SIZE),
+            check_page_constants(idbd[best_idbd].value, lms[best_lms].value),
             Ok(())
         );
     }
