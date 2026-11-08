@@ -4,13 +4,12 @@ name: Badges
 # on main, and daily, so the crates.io version follows a release that landed after the
 # last push. Ported from minikin/cargo-crap.
 on:
-  # Automatic triggers are off until the project is ready. Runs start by hand only.
-  # workflow_run:
-  #   workflows: ["CI"]
-  #   types: [completed]
-  #   branches: [main]
-  # schedule:
-  #   - cron: "41 5 * * *"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "41 5 * * *"
   workflow_dispatch:
 
 permissions:

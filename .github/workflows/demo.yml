@@ -6,9 +6,8 @@ name: Demo
 # CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
 
 on:
-  # Automatic triggers are off until the project is ready. Runs start by hand only.
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
