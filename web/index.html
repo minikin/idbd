@@ -363,7 +363,16 @@
           </div>
         </div>
 
+        <div class="family-stage" id="family-stage" hidden>
+          <figure class="card family-dial">
+            <svg id="family-dial" role="img" aria-labelledby="family-dial-caption"></svg>
+            <figcaption class="small muted" id="family-dial-caption">
+              The same day as a clock, midnight at the top. One ring per sensor, in the order of the
+              lanes from the centre out: Wi-Fi signal innermost, plant soil moisture outermost.
+            </figcaption>
+          </figure>
         <div class="family-result" id="family-result" hidden>
+          <h3 class="sr-only" id="family-result-title" tabindex="-1">Results after three days</h3>
           <div class="scores" id="family-scores" aria-live="polite" aria-atomic="true"></div>
           <div class="card family-explain">
             <h3>What you just watched</h3>
@@ -389,6 +398,7 @@
           <div class="actions">
             <button type="button" class="button primary" id="family-again">Play again</button>
           </div>
+        </div>
         </div>
 
         <p class="failure" id="family-failure" role="alert" hidden></p>

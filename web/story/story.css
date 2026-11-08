@@ -1989,3 +1989,110 @@ main section {
 .family[data-view="lms"] .key-bars {
   background: var(--lms);
 }
+
+.family-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.family-stage.running {
+  grid-template-columns: minmax(0, 440px);
+  justify-content: center;
+}
+
+.family-stage .family-result .scores {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.family-dial {
+  margin: 0;
+  padding: 16px;
+  gap: 8px;
+}
+
+.family-dial svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.dial-cell {
+  fill: #121316;
+}
+
+.dial-cell.night {
+  fill: #0c0d10;
+}
+
+.dial-cell.shown {
+  fill: var(--idbd);
+  fill-opacity: calc(0.04 + var(--h, 0) * 0.35);
+  transition: fill-opacity 500ms var(--ease);
+}
+
+.dial-cell.shown.on {
+  fill-opacity: 1;
+}
+
+.family[data-view="lms"] ~ .family-stage .dial-cell.shown {
+  fill: var(--lms);
+}
+
+.dial-truth path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.dial-you path {
+  fill: none;
+  stroke: var(--you);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.dial-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  fill: var(--ink-3);
+}
+
+.dial-hand {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.dial-day {
+  font-size: 16px;
+  font-weight: 500;
+  fill: var(--ink);
+}
+
+.dial-time {
+  font-family: var(--mono);
+  font-size: 12px;
+  fill: var(--ink-2);
+}
+
+@media (max-width: 900px) {
+  .family-stage,
+  .family-stage.running {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .family-dial {
+    max-width: 440px;
+    width: 100%;
+    justify-self: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial-cell.shown {
+    transition: none;
+  }
+}

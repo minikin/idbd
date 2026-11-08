@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { tally } from "../story/family.js";
+import { hoursText, tally } from "../story/family.js";
 
 // S10: the Family Assistant game. The visitor marks hours per sensor, IDBD and a tuned
 // fixed-speed learner watch three days through the crate's FamilyDay, and every bar,
@@ -55,6 +55,67 @@ test("S10 the lane handles work from the keyboard and announce the hour", async 
   expect((await game(page)).guesses[5]).toBe(0);
 });
 
+test("S10 the handles push each other and never cross", async ({ page }) => {
+  await openStory(page);
+  const lane = page.locator('#family-lanes .lane[data-sensor="3"]');
+  const from = lane.locator("input.from");
+  const until = lane.locator("input.until");
+  await until.focus();
+  for (let i = 0; i < 4; i += 1) await page.keyboard.press("ArrowRight");
+  await from.focus();
+  for (let i = 0; i < 6; i += 1) await page.keyboard.press("ArrowRight");
+  await expect(from).toHaveAttribute("aria-valuetext", "06:00");
+  await expect(until).toHaveAttribute("aria-valuetext", "06:00");
+  expect((await game(page)).guesses[3]).toBe(0);
+  await until.focus();
+  for (let i = 0; i < 3; i += 1) await page.keyboard.press("ArrowRight");
+  await from.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(from).toHaveAttribute("aria-valuetext", "05:00");
+  await expect(until).toHaveAttribute("aria-valuetext", "09:00");
+  expect((await game(page)).guesses[3]).toBe(0b1_1110_0000);
+});
+
+test("S10 a failed run hands the controls back and keeps the hours", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openStory(page);
+  await page.evaluate(() => window.idbdStory.family.guess(5, 17, 20));
+  await page.evaluate(async () => {
+    const wasm = await import("/pkg/idbd_wasm.js");
+    wasm.FamilyDay.prototype.run = () => {
+      throw new Error("injected failure");
+    };
+  });
+  await page.click("#family-run");
+  await expect(page.locator("#family-failure")).toBeVisible();
+  await expect(page.locator("#family-failure")).toContainText("injected failure");
+  const s = await game(page);
+  expect(s.phase).toBe("guess");
+  expect(s.guesses[5]).toBe(0b111 << 17);
+  await expect(page.locator("#family-run")).toBeEnabled();
+  await expect(page.locator("#family-reset")).toBeEnabled();
+  await expect(page.locator('#family-lanes .lane[data-sensor="5"] input.until')).toBeEnabled();
+  await expect(page.locator("#family-stage")).toBeHidden();
+});
+
+test("S10 after the reveal each lane reads out your hours and the learner's", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openStory(page);
+  await page.evaluate(() => window.idbdStory.family.guess(5, 17, 21));
+  await runToEnd(page);
+  await expect(page.locator("#family-result-title")).toBeFocused();
+  const { idbdFound, lmsFound } = await game(page);
+  const oven = page.locator('#family-lanes .lane[data-sensor="5"] .lane-name .sr-only');
+  await expect(oven).toHaveText(`. Your hours: 17:00 to 21:00. IDBD marks: ${hoursText(idbdFound[5])}.`);
+  await page.click('#family-view [data-view="lms"]');
+  await expect(oven).toHaveText(`. Your hours: 17:00 to 21:00. The fixed speed marks: ${hoursText(lmsFound[5])}.`);
+});
+
+test("S10 hoursText names every run of hours", () => {
+  expect(hoursText(0)).toBe("none");
+  expect(hoursText((0b111 << 17) | (1 << 22))).toBe("17:00 to 20:00 and 22:00 to 23:00");
+});
+
 test("S10 dragging a handle with the mouse marks hours", async ({ page }) => {
   await openStory(page);
   const track = page.locator('#family-lanes .lane[data-sensor="5"] .lane-track');
@@ -87,6 +148,9 @@ test("S10 the true hours score 100% and the reveal shows the crate's bars and sc
   const idbd = tally(s.idbdFound, s.truth);
   await expect(page.locator("#family-scores .note").nth(1)).toContainText(`${idbd.sensorsFound} of 4 sensors found`);
   await expect(page.locator("#family-mechanism")).toContainText("times faster than about the eight that never do");
+  await expect(page.locator("#family-mechanism")).toContainText("16 times faster on the sensors with the largest readings");
+  await expect(page.locator("#family-dial .dial-cell.on")).toHaveCount(await page.locator(".lane-bars i.on").count());
+  await expect(page.locator("#family-dial .dial-truth path")).toHaveCount(4);
   await expect(page.locator(".lane-bars i.on")).toHaveCount(s.idbdFound.reduce((n, b) => n + span(b)[1] - span(b)[0], 0));
   await expect(page.locator('#family-lanes .lane[data-sensor="0"] .lane-note')).toHaveText("never matters");
   await expect(page.locator("#family-key")).toBeVisible();
