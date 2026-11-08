@@ -103,7 +103,7 @@ export function createFamily(wasm, ui) {
     return { row, from, until, bars: [...bars.children], truthBand, you, note, summary };
   });
   ui.lanes.replaceChildren(...lanes.map((lane) => lane.row));
-  const dial = createDial(ui.dial, sensors);
+  const dial = createDial(ui.dial, sensors, home.days);
 
   const guesses = () => lanes.map((lane) => bitsOf(Number(lane.from.value), Number(lane.until.value)));
 
@@ -146,7 +146,17 @@ export function createFamily(wasm, ui) {
       completed >= home.readings ? `Three days watched, ${home.readings.toLocaleString("en-US")} readings` : `Day ${dayNumber}, ${time}`;
     const fraction = completed >= home.readings ? 1 : (completed % perDay) / perDay;
     ui.lanes.style.setProperty("--now", String(fraction));
-    dial.clock(fraction, `Day ${dayNumber}`, time);
+    const warming = completed < home.warmupReadings;
+    dial.clock(fraction, dayNumber, time, warming ? "warm-up" : "");
+  }
+
+  /** Paints IDBD's bars so far on the dial. They exist only after the warm-up day. */
+  function paintLive() {
+    if (day.completed() <= home.warmupReadings) return;
+    const bars = day.idbdBars();
+    let peak = home.foundFloor;
+    for (const value of bars) peak = Math.max(peak, Math.abs(value));
+    dial.paint(bars, peak);
   }
 
   function setInputsDisabled(disabled) {
@@ -278,6 +288,7 @@ export function createFamily(wasm, ui) {
         return;
       }
       setClock(day.completed());
+      paintLive();
       if (day.completed() >= home.readings) finish();
       else frame = requestAnimationFrame(step(start, startedAt));
     };

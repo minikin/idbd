@@ -196,6 +196,35 @@ test("S10 the three days play out over time, then Play again starts the next run
   await expect(page.locator("#family-run")).toBeFocused();
 });
 
+test("S10 the dial marks each day and paints IDBD's bars only after the warm-up", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.clock.install();
+  await openStory(page);
+  await page.click("#family-run");
+  const dial = page.locator("#family-dial");
+  await page.clock.runFor(1_000);
+  await expect(dial.locator(".dial-day")).toHaveText("Day 1");
+  await expect(dial.locator(".dial-time")).toHaveText(/^\d\d:\d\d, warm-up$/);
+  await expect(dial.locator(".dial-pip.now")).toHaveCount(1);
+  await expect(dial.locator(".dial-pip.done")).toHaveCount(0);
+  await expect(dial.locator(".dial-cell.live")).toHaveCount(0);
+
+  await page.clock.runFor(2_500);
+  await expect(dial.locator(".dial-day")).toHaveText("Day 2");
+  await expect(dial.locator(".dial-time")).toHaveText(/^\d\d:\d\d$/);
+  await expect(dial.locator(".dial-pip.done")).toHaveCount(1);
+  await expect(dial).toHaveClass(/turn/);
+  await expect(dial.locator(".dial-cell.live")).toHaveCount(12 * 24);
+  const strongest = await dial
+    .locator(".dial-cell.live")
+    .evaluateAll((cells) => Math.max(...cells.map((c) => Number(c.style.getPropertyValue("--h")))));
+  expect(strongest).toBe(1);
+
+  await page.clock.runFor(10_000);
+  await expect(dial.locator(".dial-cell.live")).toHaveCount(0);
+  await expect(dial.locator(".dial-pips")).toBeHidden();
+});
+
 test("S10 tally counts sensors found, right hours and wrong hours", () => {
   const truth = [0, 0b1100];
   expect(tally([0b0110, 0b0100], truth)).toEqual({ sensorsFound: 1, right: 1, wrong: 2, missed: 1 });

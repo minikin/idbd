@@ -2064,11 +2064,63 @@ main section {
   fill: var(--ink-3);
 }
 
+.dial-cell.live {
+  fill: var(--idbd);
+  fill-opacity: calc(0.03 + var(--h, 0) * 0.8);
+  transition: fill-opacity 250ms linear;
+}
+
+.dial-rim {
+  fill: none;
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.turn .dial-rim {
+  animation: dial-turn 900ms var(--ease);
+}
+
+@keyframes dial-turn {
+  from {
+    stroke: var(--idbd);
+    stroke-width: 4;
+  }
+}
+
+.dial-tick {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+}
+
+.dial-trail path {
+  fill: var(--idbd);
+  fill-opacity: 0.16;
+}
+
 .dial-hand {
-  stroke: var(--ink);
+  stroke: var(--idbd);
   stroke-width: 2;
   stroke-linecap: round;
-  opacity: 0.85;
+}
+
+.dial-tip {
+  fill: var(--idbd);
+}
+
+.dial-pip {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.2;
+}
+
+.dial-pip.done {
+  fill: var(--ink-2);
+  stroke: var(--ink-2);
+}
+
+.dial-pip.now {
+  fill: var(--idbd);
+  stroke: var(--idbd);
 }
 
 .dial-day {
@@ -2097,7 +2149,12 @@ main section {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dial-cell.shown {
+  .dial-cell.shown,
+  .dial-cell.live {
     transition: none;
+  }
+
+  .turn .dial-rim {
+    animation: none;
   }
 }
