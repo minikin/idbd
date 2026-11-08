@@ -5,7 +5,8 @@
 //
 // The still is one composite of three captures: the story page's house, chapter 2's
 // measured fixed-speed traces and the Explorer's step-size chart after 20,000 samples.
-// The loop is the house learning, captured under Playwright's fake clock so every frame
+// The loop is the guessing game: a visitor's guess, three days on the dial while IDBD's
+// bars form, then the scores. It is captured under Playwright's fake clock so every frame
 // lands on the same simulated time on every run. Run `just web-build` first. Needs
 // cwebp and img2webp (libwebp).
 
@@ -24,18 +25,33 @@ const { chromium } = createRequire(join(root, "web/package.json"))("@playwright/
 const PORT = 8191;
 const BASE = `http://127.0.0.1:${PORT}`;
 const EXPLORER_SAMPLES = 20000;
-// The hero steps every 150 ms. 96 frames 75 ms apart is 7.2 s, 48 readings.
-const LOOP_FRAMES = 96;
-const LOOP_FRAME_MS = 75;
+const LOOP_FRAME_MS = 50;
+// Simulated time between frames. Shorter than a frame, so the three days play slower than on
+// the page and the hand moves about twenty minutes of the day per frame.
+const LOOP_CLOCK_MS = 20;
+// How long the loop holds on the visitor's guess before the hand starts, and on the scores
+// before it starts again.
+const LOOP_START_MS = 900;
+const LOOP_HOLD_MS = 4000;
+// A visitor's guess, [sensor, from, until], one right sensor with roughly right hours and
+// two sensors marked during hours where nothing happens, so the scores differ.
+const LOOP_GUESS = [
+  [1, 5, 8],
+  [5, 18, 22],
+  [7, 18, 22],
+];
 
 const TRANSPARENT_PAGE = `
   html, body, main, .hero, .hero-visual { background: transparent !important; }
   body::before, body::after, main::before, main::after { display: none !important; }`;
-// The loop shows the house and the live chart only.
+// The loop shows the dial and two scores, the visitor's and IDBD's. The fixed speed's tile is
+// left out because the loop cannot carry the page's note beside it: on rescaled readings a
+// fixed speed scores 89% to IDBD's 85% over ten runs.
 const LOOP_ONLY = `
-  .hero-cards .legend, #hero-pause, .house-key { display: none !important; }
-  .hero-cards .live { flex: 1 1 100%; }
-  main::before, main::after { display: none !important; }`;
+  #family-scores .score:has(.swatch-lms) { display: none !important; }
+  .site-header, .family-explain, .family-result .actions, #family-dial-caption { display: none !important; }
+  body::before, body::after, main::before, main::after { display: none !important; }
+  .family-stage { min-height: 470px; align-items: center !important; }`;
 
 const work = mkdtempSync(join(tmpdir(), "idbd-hero-"));
 const server = spawn(process.execPath, [join(root, "web/serve.mjs"), String(PORT)], { stdio: "ignore" });
@@ -133,24 +149,48 @@ async function renderStill(browser, captures) {
 }
 
 async function renderLoop(browser) {
-  const page = await openStory(browser, { deviceScaleFactor: 1 });
+  const page = await openStory(browser, { viewport: { width: 940, height: 900 }, deviceScaleFactor: 1 });
   await page.clock.install();
   await page.goto(`${BASE}/`);
   await page.clock.runFor(2000);
   await page.waitForSelector('body[data-app-ready="true"]', { timeout: 30000 });
   await page.addStyleTag({ content: LOOP_ONLY });
-  // Let the 3D rings settle onto the learned speeds before the first frame.
-  await page.clock.runFor(3000);
+  await page.evaluate((guess) => {
+    for (const [sensor, from, until] of guess) window.idbdStory.family.guess(sensor, from, until);
+  }, LOOP_GUESS);
+  await page.locator("#play").scrollIntoViewIfNeeded();
+  await page.click("#family-run");
+  const stage = page.locator("#family-stage");
   const frames = [];
-  for (let i = 0; i < LOOP_FRAMES; i += 1) {
-    const file = join(work, `frame-${String(i).padStart(3, "0")}.png`);
-    await page.locator(".hero-visual").screenshot({ path: file });
+  const shoot = async () => {
+    const file = join(work, `frame-${String(frames.length).padStart(3, "0")}.png`);
+    await stage.screenshot({ path: file });
     frames.push(file);
-    await page.clock.runFor(LOOP_FRAME_MS);
+  };
+  while ((await page.evaluate(() => window.idbdStory.game().phase)) === "running") {
+    await shoot();
+    await page.clock.runFor(LOOP_CLOCK_MS);
   }
+  await page.waitForTimeout(300);
+  await shoot();
   await page.close();
-  const args = ["-loop", "0", "-lossy", "-q", "62", "-m", "6", "-d", String(LOOP_FRAME_MS)];
-  execFileSync("img2webp", [...args, ...frames, "-o", join(assets, "demo-loop.webp")]);
+  const args = ["-loop", "0", "-lossy", "-q", "70", "-m", "6", "-d", String(LOOP_FRAME_MS)];
+  const [first, ...rest] = frames;
+  const last = rest.pop();
+  execFileSync("img2webp", [
+    ...args.slice(0, -1),
+    String(LOOP_START_MS),
+    first,
+    "-d",
+    String(LOOP_FRAME_MS),
+    ...rest,
+    "-d",
+    String(LOOP_HOLD_MS),
+    last,
+    "-o",
+    join(assets, "demo-loop.webp"),
+  ]);
+  return frames.length + 1;
 }
 
 try {
@@ -158,7 +198,7 @@ try {
   const hero = process.argv.includes("--hero");
   const browser = await chromium.launch();
   if (hero) await renderStill(browser, await captureStill(browser));
-  await renderLoop(browser);
+  process.stdout.write(`demo-loop.webp: ${await renderLoop(browser)} frames\n`);
   await browser.close();
   const written = hero ? ["hero-dark.webp", "hero-light.webp", "demo-loop.webp"] : ["demo-loop.webp"];
   for (const name of written) {
