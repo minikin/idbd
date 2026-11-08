@@ -6,6 +6,19 @@ All notable changes to the `idbd` crate are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0](https://github.com/minikin/idbd/releases/tag/v0.1.0) - 2026-11-08
+
+### Added
+
+- *(core)* reuse buffers in clone_from for Idbd and Autostep
+- *(core)* add the Autostep learner
+- *(core)* add an optional serde feature
+
+### Fixed
+
+- address the crate, lab and docs reviews, rework the README and gate CRAP at 10 ([#19](https://github.com/minikin/idbd/pull/19))
+- *(core)* require exact float round trips in the serde tests
+
 ### Added
 
 - `Idbd`, a dense linear learner implementing equations 3 to 6 of Sutton (1992), with
