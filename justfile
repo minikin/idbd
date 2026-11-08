@@ -3,11 +3,12 @@
 default:
     @just --list
 
-# Format, lint and test the Rust workspace.
+# Format, lint, test and document the Rust workspace with every feature, as CI does.
 check:
     cargo fmt --all -- --check
-    cargo clippy --workspace --all-targets -- -D warnings
-    cargo test --workspace
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    cargo test --workspace --all-features
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features
 
 # Compile the WebAssembly adapter and generate the browser glue in web/pkg.
 # The pinned wasm-bindgen crate version and the installed CLI version must match.
