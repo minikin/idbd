@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 
 import { inWords, missInWords } from "../story/slow.js";
 
-// S01 to S07: the story page. Its learning values come from the crate's HouseRace, and
-// the page stays usable without WebGL or motion. The game has its own file, s10.
+// S01 to S07: the story page. Its learning values come from the crate's FamilyWatch and
+// FamilyDay, and the page stays usable without WebGL or motion. The game has its own
+// file, s10.
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -15,11 +16,10 @@ async function openStory(page) {
 
 const story = (page) =>
   page.evaluate(() => ({
-    house: window.idbdStory.house,
+    home: window.idbdStory.home,
     renderer: window.idbdStory.renderer,
     hero: window.idbdStory.hero(),
     desk: window.idbdStory.desk,
-    lanes: { idbd: window.idbdStory.lanes.idbdAccuracy, lms: window.idbdStory.lanes.lmsAccuracy },
     game: window.idbdStory.game(),
     slow: window.idbdStory.slow(),
   }));
@@ -29,19 +29,23 @@ test("S01 the chapters show step sizes and errors computed by the crate", async 
   page.on("pageerror", (error) => errors.push(String(error)));
   await openStory(page);
   const s = await story(page);
-  expect(s.house.sensors).toHaveLength(6);
-  expect(s.house.relevant).toBe(3);
-  expect(s.hero.completed).toBeGreaterThanOrEqual(5000);
-  await expect(page.locator("#sensor-grid li")).toHaveCount(6);
+  expect(s.home.sensors).toHaveLength(12);
+  const matters = s.home.sensors.map((sensor) => sensor.hours !== 0);
+  expect(matters.filter(Boolean)).toHaveLength(4);
+  expect(s.hero.warmup).toBe(7 * 1440);
+  expect(s.hero.completed).toBeGreaterThanOrEqual(s.hero.warmup);
+  await expect(page.locator("#sensor-grid li")).toHaveCount(12);
+  // After the warm-up the hero's four widest rings belong to the sensors that matter.
+  const heroMatter = Math.min(...s.hero.speeds.filter((_, i) => matters[i]));
+  const heroQuiet = Math.max(...s.hero.speeds.filter((_, i) => !matters[i]));
+  expect(heroMatter).toBeGreaterThan(heroQuiet);
 
-  const slowestRelevant = Math.min(...s.desk.slice(0, 3));
-  const fastestInert = Math.max(...s.desk.slice(3));
-  expect(slowestRelevant).toBeGreaterThan(3 * fastestInert);
+  const slowestRelevant = Math.min(...s.desk.filter((_, i) => matters[i]));
+  const fastestInert = Math.max(...s.desk.filter((_, i) => !matters[i]));
+  expect(slowestRelevant).toBeGreaterThan(fastestInert);
   const labels = await page.$$eval("#desk .fader-label .mono", (nodes) => nodes.map((n) => n.textContent));
   expect(labels).toEqual(s.desk.map((a) => a.toFixed(3)));
-
-  await expect(page.locator("#run-idbd")).toHaveText(`${Math.round(s.lanes.idbd * 100)}%`);
-  await expect(page.locator("#run-lms")).toHaveText(`${Math.round(s.lanes.lms * 100)}%`);
+  await expect(page.locator("#desk li.relevant")).toHaveCount(4);
   expect(errors).toEqual([]);
 });
 
@@ -57,7 +61,9 @@ test("S02 slow motion shows one crate update at a time", async ({ page }) => {
   await expect(page.locator("#slow-summary")).toContainText("IDBD guessed");
 
   await page.click("#slow-run");
-  await expect(page.locator("#slow-reading")).toHaveText("5,001");
+  await expect(page.locator("#slow-reading")).toHaveText("4,320");
+  await expect(page.locator("#slow-next")).toBeDisabled();
+  await expect(page.locator("#slow-summary")).toContainText("The three days are over.");
   const later = (await story(page)).slow;
   const speeds = await page.$$eval("#slow-rows td:nth-child(4)", (cells) => cells.map((c) => c.textContent));
   speeds.forEach((text, s) => expect(text).toContain(`→ ${later.stepSizes[s].toFixed(4)}`));
@@ -72,8 +78,8 @@ test("S06 with reduced motion the house is the 2D drawing", async ({ page }) => 
   expect((await story(page)).renderer).toBe("2d");
   await expect(page.locator("#house-3d")).toBeHidden();
   await expect(page.locator("#house-2d")).toBeVisible();
-  await expect(page.locator("#house-2d-sensors .attention")).toHaveCount(6);
-  await expect(page.locator("#house-2d-sensors .label-chip")).toHaveCount(6);
+  await expect(page.locator("#house-2d-sensors .attention")).toHaveCount(12);
+  await expect(page.locator("#house-2d-sensors .label-chip")).toHaveCount(12);
 });
 
 test("S07 the story page has no WCAG A or AA violations and fits a phone", async ({ page }) => {

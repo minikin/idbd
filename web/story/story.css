@@ -1577,8 +1577,13 @@ main section {
 }
 
 @media (max-width: 640px) {
-  .house[data-renderer="2d"] + .house-key {
+  .house + .house-key {
     display: flex;
+  }
+
+  /* Twelve labels would cover the 3D house on a phone, so the key below names the colors. */
+  .house-labels {
+    display: none;
   }
 
   .lanes .lane-spacer {

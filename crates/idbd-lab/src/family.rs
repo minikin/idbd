@@ -573,6 +573,7 @@ pub struct Watch {
     idbd: Idbd,
     completed: usize,
     last: Option<(f64, f64)>,
+    features: [f64; NUM_SENSORS],
     failure: Option<String>,
 }
 
@@ -587,6 +588,7 @@ impl Watch {
             idbd: Idbd::new(NUM_SENSORS, config).expect("the home has sensors"),
             completed: 0,
             last: None,
+            features: [0.0; NUM_SENSORS],
             failure: None,
         }
     }
@@ -607,6 +609,7 @@ impl Watch {
             Ok(update) => {
                 self.completed += 1;
                 self.last = Some((target, target - update.error));
+                self.features = features;
                 Ok(())
             }
             Err(e) => {
@@ -636,6 +639,12 @@ impl Watch {
     #[must_use]
     pub const fn last(&self) -> Option<(f64, f64)> {
         self.last
+    }
+
+    /// Returns the raw sensor values of the most recent reading, zeros before the first.
+    #[must_use]
+    pub const fn features(&self) -> [f64; NUM_SENSORS] {
+        self.features
     }
 
     /// Returns the failure that stopped the watch, if any.
@@ -1059,6 +1068,7 @@ mod tests {
             .fold(0.0, f64::max);
         assert!(slowest_matter > fastest_never, "{speeds:?}");
         let (target, prediction) = watch.last().expect("a reading");
+        assert!(watch.features().iter().any(|&x| x != 0.0));
         assert!(
             (target - prediction).abs() < 5.0,
             "{target} vs {prediction}"

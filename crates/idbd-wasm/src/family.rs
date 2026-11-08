@@ -350,6 +350,12 @@ impl FamilyWatch {
         self.inner.speeds().to_vec()
     }
 
+    /// Returns the raw sensor values of the most recent reading, zeros before the first.
+    #[must_use]
+    pub fn features(&self) -> Vec<f64> {
+        self.inner.features().to_vec()
+    }
+
     /// Returns the failure that stopped the watch, if any.
     #[wasm_bindgen(js_name = failureMessage)]
     #[must_use]
@@ -463,6 +469,7 @@ mod tests {
         lab.run(800).expect("runs");
         assert!((watch.completed() - 800.0).abs() < f64::EPSILON);
         assert_eq!(watch.speeds(), lab.speeds().to_vec());
+        assert_eq!(watch.features(), lab.features().to_vec());
         let (target, prediction) = lab.last().expect("a reading");
         assert_eq!(watch.target(), Some(target));
         assert_eq!(watch.prediction(), Some(prediction));

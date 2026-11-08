@@ -6,7 +6,7 @@
     <title>IDBD: a learner that works out what to listen to</title>
     <meta
       name="description"
-      content="A thermostat house with six sensors explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser."
+      content="A home with twelve sensors and a power meter explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -81,7 +81,7 @@
           <div class="house" id="house">
             <div class="house-3d" id="house-3d" hidden></div>
             <svg class="house-2d" id="house-2d" viewBox="0 30 660 440" role="img" aria-labelledby="house-2d-label">
-              <title id="house-2d-label">A cutaway house with six sensors. Each sensor glows as wide as the learning speed IDBD gives it.</title>
+              <title id="house-2d-label">A cutaway home with twelve sensors. Each sensor's amber ring is as wide as the learning speed IDBD gives it.</title>
               <defs>
                 <filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="9"></feGaussianBlur></filter>
               </defs>
@@ -100,10 +100,10 @@
           <div class="hero-cards">
             <div class="card legend">
               <span><span class="dot dot-idbd" aria-hidden="true"></span>Amber ring: how closely IDBD watches a sensor</span>
-              <span class="muted legend-note">Bigger ring, faster learning. Nobody told it which sensors matter: it worked that out over the <span id="hero-warmup">5,000</span> minutes before you arrived.</span>
+              <span class="muted legend-note">Bigger ring, faster learning per unit of reading. Nobody told it which sensors matter: it watched this home for <span id="hero-warmup">7 days</span> one reading a minute before you arrived.</span>
             </div>
             <div class="card live">
-              <div class="card-head"><span>Room temperature change, live</span><span class="mono" id="live-count">minute 0</span></div>
+              <div class="card-head"><span>Power meter above the base, live</span><span class="mono" id="live-count">day 1, 00:00</span></div>
               <svg viewBox="0 0 240 56" class="spark" aria-hidden="true">
                 <polyline id="live-actual" class="line-actual" points=""></polyline>
                 <polyline id="live-idbd" class="line-idbd" points=""></polyline>
@@ -126,8 +126,8 @@
           <p class="eyebrow">What IDBD does</p>
           <h2 id="what-title" class="display">Guess and check. Decide how hard to correct, then correct.</h2>
           <p>
-            A thermostat wants to predict how the room temperature will change. Every minute it
-            reads its sensors, makes a guess, sees what really happened and corrects itself. Most
+            A home assistant wants to predict the power meter. Every minute it reads its sensors,
+            guesses the power draw, sees what the meter really says and corrects itself. Most
             learning programs work this way. IDBD adds one thing: for every sensor it keeps its own
             learning speed, and it adjusts those speeds before every correction.
           </p>
@@ -141,7 +141,7 @@
           <li class="card">
             <span class="step mono">2</span>
             <h3>Check</h3>
-            <p>See the real temperature change. The difference is the miss.</p>
+            <p>Read the real power draw off the meter. The difference is the miss.</p>
           </li>
           <li class="card highlight">
             <span class="step mono">3</span>
@@ -165,22 +165,26 @@
       <section id="story" class="chapter wrap split" aria-labelledby="ch1-title">
         <div class="chapter-copy">
           <p class="eyebrow">01 &middot; Too many signals</p>
-          <h2 id="ch1-title">Half of what this house measures is noise.</h2>
+          <h2 id="ch1-title">Two thirds of what this home measures never touches the bill.</h2>
           <p>
-            The thermostat reads six sensors every minute. The sun on the window and the oven warm
-            the room. An open front door lets heat out, so it cools the room. The Wi-Fi signal, the
-            doorbell battery and the water heater, which sits in a closed boiler room and heats water, not this room, do nothing to the temperature.
+            The assistant reads twelve sensors every minute: thermometers, the Wi-Fi router, the
+            doorbell, the front door, the air, even the plant's soil. Four of them add to the power
+            bill, each during its own hours of the day. The other eight never do.
           </p>
-          <p>Nobody tells the learner which is which. It has to work that out from the readings alone.</p>
+          <p>
+            Nobody tells the learner which four, or when. It has to work that out from the readings
+            alone. And the sensors read on different scales: some swing four times wider than
+            others.
+          </p>
           <div class="chips">
-            <span class="chip" id="chip-sensors">6 sensors</span><span class="chip" id="chip-relevant">3 matter</span><span class="chip muted">0 labels</span>
+            <span class="chip" id="chip-sensors">12 sensors</span><span class="chip" id="chip-relevant">4 matter</span><span class="chip muted">0 labels</span>
           </div>
         </div>
         <div class="chapter-figure">
-          <ul class="sensor-grid" id="sensor-grid" aria-label="The six sensors and their latest readings"></ul>
+          <ul class="sensor-grid" id="sensor-grid" aria-label="The twelve sensors and their latest readings"></ul>
           <div class="figure-foot">
-            <p class="muted">Every sensor wiggles. Which three actually move the temperature?</p>
-            <span class="mono faint">live readings from the simulated house</span>
+            <p class="muted">Every sensor wiggles. Which four cost you money, and when? You get to guess in chapter 4.</p>
+            <span class="mono faint">live readings from the simulated home</span>
           </div>
         </div>
       </section>
@@ -190,29 +194,30 @@
           <p class="eyebrow">02 &middot; One speed is a bad compromise</p>
           <h2 id="ch2-title">A single learning speed is either late or nervous.</h2>
           <p>
-            A plain learner corrects every sensor at one fixed speed. Set it low and it takes ages to
-            notice the oven is on. Set it high and every flicker of the Wi-Fi signal shakes the guess.
+            A plain learner corrects every sensor with one fixed step size. In this home the sensors
+            read on different scales, so one step size is slow on sensors with small readings and
+            jumpy on sensors with large ones. Here are two of them, unnamed so the game stays a game.
           </p>
         </div>
         <div class="two-up">
           <figure class="card figure">
-            <div class="card-head"><span class="strong">Low speed, <span class="mono" id="speed-low-value">0.005</span></span><span class="mono lms">calm, but late</span></div>
-            <div class="axis-note mono"><span>before</span><span class="axis-after"><span>&darr; oven turns on</span><span>after</span></span></div>
-            <svg id="speed-low" viewBox="0 0 560 220" role="img" aria-label="Measured trust in the oven at a low fixed speed"></svg>
-            <div class="key"><span><span class="swatch swatch-actual"></span>the oven's real effect</span><span><span class="swatch swatch-lms"></span>fixed-speed trust in the oven</span></div>
-            <figcaption>The oven came on long ago. The trust is still climbing towards it.</figcaption>
+            <div class="card-head"><span class="strong">The tuned fixed speed, <span class="mono" id="speed-low-value">0.01</span></span><span class="mono lms">calm, but late</span></div>
+            <div class="axis-note mono"><span>before</span><span class="axis-after"><span>&darr; the sensor starts to matter</span><span>&darr; stops</span></span></div>
+            <svg id="speed-low" viewBox="0 0 560 220" role="img" aria-label="Measured trust in a sensor with small readings"></svg>
+            <div class="key"><span><span class="swatch swatch-actual"></span>what the sensor really adds</span><span><span class="swatch swatch-lms"></span>fixed-speed trust</span><span><span class="swatch swatch-idbd"></span>IDBD's trust</span></div>
+            <figcaption id="late-caption">A sensor with small readings.</figcaption>
           </figure>
           <figure class="card figure">
-            <div class="card-head"><span class="strong">High speed, <span class="mono" id="speed-high-value">0.2</span></span><span class="mono lms">quick, but nervous</span></div>
-            <div class="axis-note mono"><span>before</span><span class="axis-after"><span>&darr; oven turns on</span><span>after</span></span></div>
-            <svg id="speed-high" viewBox="0 0 560 220" role="img" aria-label="Measured trust in the oven at a high fixed speed"></svg>
-            <div class="key"><span><span class="swatch swatch-actual"></span>the oven's real effect</span><span><span class="swatch swatch-lms"></span>fixed-speed trust in the oven</span></div>
-            <figcaption>It caught the oven at once, and every noisy reading knocks it about. Its trust in the Wi-Fi signal shakes the same way.</figcaption>
+            <div class="card-head"><span class="strong">A faster fixed speed, <span class="mono" id="speed-high-value">0.05</span></span><span class="mono lms">quick, but nervous</span></div>
+            <div class="axis-note mono"><span>before</span><span class="axis-after"><span>same minutes</span><span></span></span></div>
+            <svg id="speed-high" viewBox="0 0 560 220" role="img" aria-label="Measured trust in a sensor with large readings that never matters"></svg>
+            <div class="key"><span><span class="swatch swatch-actual"></span>what the sensor really adds: nothing</span><span><span class="swatch swatch-lms"></span>fixed-speed trust</span><span><span class="swatch swatch-idbd"></span>IDBD's trust</span></div>
+            <figcaption id="nervous-caption">A sensor with large readings that never matters.</figcaption>
           </figure>
         </div>
         <div class="rule-row">
-          <p class="big">What we want: fast for the oven, still for the Wi-Fi. No single speed does both.</p>
-          <span class="mono faint">measured by the idbd crate: house seed <span id="switch-seed">4</span>, the oven switches on at reading <span id="switch-reading">-</span></span>
+          <p class="big">What we want: quick on the small readings, still on the large ones. One step size cannot do both. IDBD keeps one per sensor.</p>
+          <span class="mono faint">measured by the idbd crate: home seed <span id="trace-seed">1</span>, day 2</span>
         </div>
       </section>
 
@@ -222,14 +227,14 @@
             <p class="eyebrow">03 &middot; Slow motion</p>
             <h2 id="slow-title">Watch IDBD learn, one reading at a time.</h2>
             <p>
-              This learner starts knowing nothing, with the same speed for every sensor. Press Next
-              to give it one reading. Press Run <span id="slow-run-count">5,000</span> to skip ahead: by then the speeds of the three sensors that matter have
-              pulled well away from the other three.
+              This learner starts knowing nothing, with the same step size for every sensor. Press
+              Next to give it one reading. Press Run three days to skip ahead through all
+              <span id="slow-run-count">4,320</span> readings and watch the speeds spread apart.
             </p>
           </div>
           <div class="actions">
             <button type="button" class="button primary" id="slow-next">Next reading</button>
-            <button type="button" class="button" id="slow-run">Run 5,000</button>
+            <button type="button" class="button" id="slow-run">Run three days</button>
             <button type="button" class="button" id="slow-restart">Restart</button>
           </div>
         </div>
@@ -238,8 +243,8 @@
           <div class="slow-live" aria-live="polite">
           <div class="slow-top">
             <div class="stat-block"><span class="muted">Reading</span><span class="mono value" id="slow-reading">0</span></div>
-            <div class="stat-block"><span class="muted">IDBD guessed the room would get</span><span class="mono value idbd" id="slow-guess">-</span></div>
-            <div class="stat-block"><span class="muted">The room really got</span><span class="mono value" id="slow-actual">-</span></div>
+            <div class="stat-block"><span class="muted">IDBD guessed the meter would read</span><span class="mono value idbd" id="slow-guess">-</span></div>
+            <div class="stat-block"><span class="muted">The meter really read</span><span class="mono value" id="slow-actual">-</span></div>
             <div class="stat-block"><span class="muted">The guess was</span><span class="mono value" id="slow-miss">-</span></div>
           </div>
           <p class="slow-summary" id="slow-summary">Press Next reading to start.</p>
@@ -252,7 +257,7 @@
                   <th scope="col">Sensor</th>
                   <th scope="col">Reading</th>
                   <th scope="col">Trust</th>
-                  <th scope="col">Speed</th>
+                  <th scope="col">Speed per unit of reading</th>
                   <th scope="col">Speed so far</th>
                 </tr>
               </thead>
@@ -262,68 +267,9 @@
         </div>
       </section>
 
-      <section class="chapter wrap" aria-labelledby="ch3-title">
-        <div class="split">
-          <div class="chapter-copy">
-            <p class="eyebrow">04 &middot; A speed for every sensor</p>
-            <h2 id="ch3-title">After a while, IDBD listens to three sensors and tunes out three.</h2>
-          </div>
-          <div class="chapter-copy">
-            <p>
-              Nobody told it which sensors matter. The speeds for the sun, the oven and the front door
-              grew because their corrections kept agreeing. The others shrank because theirs kept
-              cancelling out.
-            </p>
-            <p class="faint small">Richard Sutton called the rule Incremental Delta-Bar-Delta in 1992.</p>
-          </div>
-        </div>
-        <figure class="card instrument">
-          <div class="card-head">
-            <span>Speed IDBD learned for each sensor after <span id="desk-readings">30,000</span> readings</span>
-            <span class="mono faint">simulated house, computed by the idbd crate</span>
-          </div>
-          <ul class="desk" id="desk" aria-label="Learned speed per sensor"></ul>
-        </figure>
-      </section>
-
-      <section class="chapter" aria-labelledby="ch4-title">
-        <div class="wrap split end">
-          <div class="chapter-copy wide">
-            <p class="eyebrow">05 &middot; The house never sits still</p>
-            <h2 id="ch4-title">What matters keeps changing. Nobody announces it.</h2>
-            <p>
-              Clouds cross the sun. The oven goes on and off. The front door swings open and shut.
-              After each change, that sensor's corrections all push the same way for a while, so
-              IDBD keeps those three sensors fast and catches up quickly.
-            </p>
-          </div>
-          <a class="button primary" href="#play">Play against it</a>
-        </div>
-        <div class="band">
-          <figure class="wrap band-figure">
-            <div class="card-head">
-              <span><span id="lanes-shown">600</span> readings of one simulated run. Amber marks when a sensor strongly affects the room. The last three never do. Speeds are after <span id="lanes-speed-at">5,600</span> readings.</span>
-              <span class="mono faint">computed by the idbd crate</span>
-            </div>
-            <div class="lanes" id="lanes"></div>
-            <figcaption class="stats">
-              <div class="stat"><span class="muted">IDBD's accuracy</span><span class="mono value idbd" id="run-idbd">-</span></div>
-              <div class="stat"><span class="muted">Fixed speed's accuracy</span><span class="mono value lms" id="run-lms">-</span></div>
-              <p class="muted small">
-                Accuracy as in the game, on a scale of long-run averages for this house: 100% is the
-                measurement noise alone, 0% is always guessing "no change". These two numbers are from this one run. We also ran this house 10
-                times: IDBD was more accurate than the best fixed speed in all 10 runs. In the same house
-                with nothing changing, the fixed speed was more accurate in all 10.
-                <a href="https://github.com/minikin/idbd/blob/main/docs/results/house/README.md">How we measured</a>
-              </p>
-            </figcaption>
-          </figure>
-        </div>
-      </section>
-
       <section id="play" class="chapter wrap" aria-labelledby="play-title">
         <div class="chapter-copy wide">
-          <p class="eyebrow">06 &middot; Play</p>
+          <p class="eyebrow">04 &middot; Play</p>
           <h2 id="play-title">Family Assistant: which sensors cost you, and when?</h2>
           <p>
             A home with twelve sensors and one power meter. Four of the sensors add to the bill,
@@ -402,6 +348,34 @@
         </div>
 
         <p class="failure" id="family-failure" role="alert" hidden></p>
+      </section>
+
+      <section class="chapter wrap" aria-labelledby="learned-title">
+        <div class="split">
+          <div class="chapter-copy">
+            <p class="eyebrow">05 &middot; What IDBD learned</p>
+            <h2 id="learned-title">After three days, IDBD listens closely to four sensors and lets eight go quiet.</h2>
+          </div>
+          <div class="chapter-copy">
+            <p>
+              Nobody told it which sensors matter. The speeds for the water heater, the wall, the oven
+              and the Wi-Fi data use grew because their corrections kept agreeing. The others shrank
+              because theirs kept cancelling out.
+            </p>
+            <p>
+              Speeds rise a little in the hours a sensor is busy, but not enough to tell those hours
+              apart. The game's hour bars come from the trust, not the speed.
+            </p>
+            <p class="faint small">Richard Sutton called the rule Incremental Delta-Bar-Delta in 1992.</p>
+          </div>
+        </div>
+        <figure class="card instrument">
+          <div class="card-head">
+            <span>Speed per unit of reading IDBD learned for each sensor after <span id="desk-readings">4,320</span> readings, the game's first run</span>
+            <span class="mono faint">simulated home, computed by the idbd crate</span>
+          </div>
+          <ul class="desk" id="desk" aria-label="Learned speed per sensor"></ul>
+        </figure>
       </section>
 
       <section id="advanced" class="chapter wrap advanced" aria-labelledby="advanced-title">

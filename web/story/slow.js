@@ -1,28 +1,28 @@
-// Slow motion: one reading at a time from a fresh HouseRace, with every change IDBD makes
-// read from the crate before and after the update.
+// Slow motion: one reading at a time from a fresh FamilyDay, with every change IDBD makes
+// read from the crate before and after the update. Speeds are per unit of reading, so
+// sensors whose readings swing differently compare directly.
 
 import { svg } from "../src/dom.js";
 import { fmtSigned } from "../src/format.js";
 
 const SEED = 3;
-const RUN = 5000;
 const HISTORY = 600;
 
 const fmt = (v, digits = 2) => fmtSigned(v, digits);
 
-/** A temperature change in words: "warmer by 0.74", "cooler by 0.16" or "no change". */
+/** A power draw against the base in words: "0.74 kW above the base" or "at the base". */
 export function inWords(v) {
   const size = Math.abs(v).toFixed(2);
-  if (size === "0.00") return "no change";
-  return `${v > 0 ? "warmer" : "cooler"} by ${size}`;
+  if (size === "0.00") return "at the base";
+  return `${size} kW ${v > 0 ? "above" : "below"} the base`;
 }
 
-/** How far the guess missed, and which way: "0.75 too low". */
+/** How far the guess missed, and which way: "0.75 kW too low". */
 export function missInWords(target, guess) {
   const miss = target - guess;
   const size = Math.abs(miss).toFixed(2);
   if (size === "0.00") return "spot on";
-  return `${size} ${miss > 0 ? "too low" : "too high"}`;
+  return `${size} kW ${miss > 0 ? "too low" : "too high"}`;
 }
 
 /** A relative change that keeps two significant digits however small it is. */
@@ -42,20 +42,20 @@ function sparkline(values, top) {
     .join(" ");
 }
 
-export function createSlowMotion(wasm, house, nodes) {
+export function createSlowMotion(wasm, home, nodes) {
   let race = null;
   let history = [];
   let last = null;
+  const RUN = home.readings;
 
   nodes.runCount.textContent = RUN.toLocaleString("en-US");
-  nodes.run.textContent = `Run ${RUN.toLocaleString("en-US")}`;
+  nodes.run.textContent = "Run three days";
 
-  const rows = house.sensors.map((name, sensor) => {
+  const rows = home.sensors.map((sensor) => {
     const row = document.createElement("tr");
-    if (sensor < house.relevant) row.className = "relevant";
     const head = document.createElement("th");
     head.scope = "row";
-    head.textContent = name;
+    head.textContent = sensor.name;
     const cells = ["reading", "trust", "speed"].map(() => document.createElement("td"));
     const sparkCell = document.createElement("td");
     const line = svg("polyline");
@@ -68,20 +68,22 @@ export function createSlowMotion(wasm, house, nodes) {
 
   function restart() {
     if (race) race.free();
-    race = new wasm.HouseRace(SEED);
-    history = Array.from(race.idbdStepSizes(), (a) => [a]);
+    race = new wasm.FamilyDay(SEED);
+    history = Array.from(race.idbdSpeeds(), (a) => [a]);
     last = null;
     render();
   }
 
-  function advance(count) {
+  function advance(wanted) {
+    const count = Math.min(wanted, RUN - race.completed());
+    if (count < 1) return;
     for (let i = 0; i < count - 1; i += 1) {
       race.step();
-      race.idbdStepSizes().forEach((a, s) => history[s].push(a));
+      race.idbdSpeeds().forEach((a, s) => history[s].push(a));
     }
-    const before = { alphas: Array.from(race.idbdStepSizes()), weights: Array.from(race.idbdWeights()) };
+    const before = { alphas: Array.from(race.idbdSpeeds()), weights: Array.from(race.idbdWeights()) };
     race.step();
-    const alphas = Array.from(race.idbdStepSizes());
+    const alphas = Array.from(race.idbdSpeeds());
     alphas.forEach((a, s) => {
       history[s].push(a);
       history[s].splice(0, history[s].length - HISTORY);
@@ -98,13 +100,19 @@ export function createSlowMotion(wasm, house, nodes) {
   }
 
   function render() {
+    const over = race.completed() >= RUN;
+    nodes.next.disabled = over;
+    nodes.run.disabled = over;
     nodes.reading.textContent = race.completed().toLocaleString("en-US");
     const top = Math.max(...history.flat()) * 1.05;
     rows.forEach((row, s) => row.line.setAttribute("points", sparkline(history[s], top)));
     if (!last) {
       for (const node of [nodes.guess, nodes.actual, nodes.miss]) node.textContent = "-";
-      const start = house.initialStepSize.toFixed(4);
-      nodes.summary.textContent = `Press Next reading to start. Every sensor begins with trust 0 and the same speed, ${start}.`;
+      const start = home.initialStepSize.toFixed(4);
+      const ratio = Math.max(...history.map((h) => h[0])) / Math.min(...history.map((h) => h[0]));
+      nodes.summary.textContent =
+        `Press Next reading to start. Every sensor begins with trust 0 and the same step size, ${start}. ` +
+        `Per unit of reading, that is already ${ratio.toFixed(0)} times faster on the sensors whose readings swing most.`;
       rows.forEach((row, s) => {
         row.reading.textContent = "-";
         row.trust.textContent = fmt(0);
@@ -140,10 +148,11 @@ export function createSlowMotion(wasm, house, nodes) {
         ? "No speed moved: a speed changes only when a correction can be compared with earlier ones, and this is the first."
         : `${up} speeds went up and ${down} went down. A speed goes up when that sensor's correction points ` +
           "the same way as its recent ones.";
+    const end = over ? " The three days are over. Restart to watch again." : "";
     nodes.summary.textContent =
-      `IDBD guessed the room would get ${inWords(last.guess)}. It got ${inWords(last.target)}, so the guess was ` +
-      `${missInWords(last.target, last.guess)}. It moved its trust in the ${house.sensors[biggest]} the most, ` +
-      `by ${fmt(change, 3)}. ${speeds}`;
+      `IDBD guessed the meter would read ${inWords(last.guess)}. It read ${inWords(last.target)}, so the guess was ` +
+      `${missInWords(last.target, last.guess)}. It moved its trust in the ${home.sensors[biggest].name} the most, ` +
+      `by ${fmt(change, 3)}. ${speeds}${end}`;
   }
 
   nodes.next.addEventListener("click", () => advance(1));
@@ -155,7 +164,7 @@ export function createSlowMotion(wasm, house, nodes) {
     state() {
       return {
         completed: race.completed(),
-        stepSizes: Array.from(race.idbdStepSizes()),
+        stepSizes: Array.from(race.idbdSpeeds()),
         last: last && { guess: last.guess, target: last.target, before: last.before.alphas, after: last.alphas },
       };
     },

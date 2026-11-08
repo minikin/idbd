@@ -1,37 +1,62 @@
-// Where each sensor sits in the house, and the 2D drawing that shows the learned speeds.
+// Where each sensor sits in the home, and the 2D drawing that shows the learned speeds.
 // House coordinates: x runs along the right-hand back wall (0 to 8), y along the
 // left-hand back wall (0 to 6), z is height (0 to 3.5). Sensor order matches the crate's
-// idbd_lab::house::SENSORS.
+// idbd_lab::family::SENSORS.
 
 import { svg } from "../src/dom.js";
 
 export const SENSOR_POSITIONS = [
-  [3, 0, 1.95], // sun on window
-  [7.1, 0.8, 1.1], // oven
-  [0, 3.8, 1.25], // front door
-  [5.2, 0, 2.9], // wi-fi signal
-  [0, 4.9, 1.9], // doorbell battery
-  [0.7, 0.7, 1.75], // water heater, in the boiler room in the back corner
+  [5.2, 0, 2.9], // Wi-Fi signal: the router high on the back wall
+  [0.7, 0.7, 1.75], // water heater temperature, in the boiler room in the back corner
+  [0, 4.9, 1.9], // doorbell battery, beside the front door
+  [0, 1.9, 1.15], // wall temperature, on the hall wall
+  [0, 2.65, 2.55], // barometer, hall wall
+  [7.1, 0.8, 1.1], // oven temperature, in the kitchen corner
+  [0, 2.65, 1.15], // humidity, hall wall
+  [0, 1.9, 2.55], // CO2, hall wall
+  [4.9, 3.0, 1.25], // Wi-Fi data use, on the TV on the middle block
+  [2.1, 0, 2.6], // air quality, back wall by the window
+  [0, 3.8, 1.25], // front door contact
+  [3.9, 5.5, 0.55], // plant soil moisture, in the pot by the sofa
 ];
 
 /** Sensors labelled in the 2D drawing, with label anchor offsets. */
 const LABELS = new Map([
-  [0, { dx: 44, dy: -80 }],
-  [1, { dx: 82, dy: -22 }],
-  [2, { dx: 80, dy: 40 }],
-  [3, { dx: 30, dy: -40 }],
-  [4, { dx: 10, dy: 100 }],
-  [5, { dx: -50, dy: -30, end: true }],
+  [0, { dx: 40, dy: -34 }],
+  [1, { dx: -30, dy: -72, end: true }],
+  [2, { dx: -23, dy: 62, end: true }],
+  [3, { dx: -119, dy: -8, end: true }],
+  [4, { dx: -95, dy: -13, end: true }],
+  [5, { dx: -10, dy: 60, end: true }],
+  [6, { dx: -95, dy: 9, end: true }],
+  [7, { dx: -109, dy: -31, end: true }],
+  [8, { dx: 70, dy: 18 }],
+  [9, { dx: 22, dy: -58 }],
+  [10, { dx: -58, dy: 26, end: true }],
+  [11, { dx: 50, dy: 30 }],
 ]);
 
 /**
- * Each sensor's own color, used for its device in the house, its slider and its card.
- * None of them is IDBD's amber, the fixed learner's blue or the visitor's violet.
+ * Each sensor's own color, used for its device in the house and its card. None of them is
+ * IDBD's amber, the fixed learner's blue or the visitor's violet.
  */
-export const SENSOR_COLORS = ["#fde68a", "#f87171", "#34d399", "#22d3ee", "#f472b6", "#cbd5e1"];
+export const SENSOR_COLORS = [
+  "#22d3ee",
+  "#cbd5e1",
+  "#f472b6",
+  "#fca5a5",
+  "#a3e635",
+  "#f87171",
+  "#5eead4",
+  "#86efac",
+  "#fde68a",
+  "#d6d3d1",
+  "#34d399",
+  "#bef264",
+];
 
 /** Each sensor's own blink period in seconds, so they never pulse in step. */
-export const PERIODS = [3.1, 1.7, 2.3, 0.9, 2.9, 2.6];
+export const PERIODS = [0.9, 2.6, 2.9, 3.1, 3.7, 1.7, 2.3, 2.7, 1.3, 3.3, 2.1, 4.1];
 
 /** The breakpoint below which the 2D drawing hides its labels, matching story.css. */
 export const PHONE = "(max-width: 640px)";
@@ -42,15 +67,15 @@ export function project([x, y, z]) {
 }
 
 /**
- * Glow radius in drawing units for a learned step size. The radius grows with the square
- * root, so a sensor with four times the speed glows twice as wide.
+ * Glow radius in drawing units for a learning speed per unit of reading. The radius grows
+ * with the square root, so a sensor with four times the speed glows twice as wide.
  */
-export function glowRadius(alpha) {
-  return Math.max(6, Math.min(40, 95 * Math.sqrt(Math.max(alpha, 0))));
+export function glowRadius(speed) {
+  return Math.max(5, Math.min(40, 120 * Math.sqrt(Math.max(speed, 0))));
 }
 
 /**
- * Ring opacity for each learned step size, relative to the fastest. The floor of 0.5 keeps
+ * Ring opacity for each learning speed, relative to the fastest. The floor of 0.5 keeps
  * the faintest amber ring at 3:1 against the house's lightest surface (WCAG 1.4.11), so
  * every ring stays visible and its size carries the speed.
  */
@@ -118,10 +143,10 @@ export function createHouse2d(group, names) {
   // WebKit fires the change before it restyles, so measure on the next frame.
   window.matchMedia(PHONE).addEventListener("change", () => requestAnimationFrame(sizeChips));
 
-  return function update({ alphas }) {
-    const opacity = ringOpacity(alphas);
+  return function update({ speeds }) {
+    const opacity = ringOpacity(speeds);
     sensors.forEach(({ ring }, i) => {
-      ring.setAttribute("r", glowRadius(alphas[i]).toFixed(1));
+      ring.setAttribute("r", glowRadius(speeds[i]).toFixed(1));
       ring.setAttribute("stroke-opacity", opacity[i].toFixed(2));
     });
   };
