@@ -299,15 +299,16 @@ impl Bars {
         }
     }
 
-    /// Adds the weights held after a reading in `hour`.
+    /// Adds the weights held after a reading in `hour`, already in kW per standard
+    /// deviation of each reading.
     ///
     /// # Panics
     ///
     /// Panics unless `hour` is below 24 and `weights` holds one value per sensor.
     pub fn add(&mut self, hour: usize, weights: &[f64]) {
         assert_eq!(weights.len(), NUM_SENSORS, "one weight per sensor");
-        for ((sums, w), sensor) in self.sums.iter_mut().zip(weights).zip(&SENSORS) {
-            sums[hour] += w * sensor.scale;
+        for (sums, w) in self.sums.iter_mut().zip(weights) {
+            sums[hour] += w;
         }
         self.counts[hour] += 1;
     }
@@ -365,11 +366,23 @@ pub enum Learner {
         /// The step size.
         step_size: f64,
     },
+    /// LMS with this fixed step size on readings divided by each sensor's scale, so
+    /// every reading has a standard deviation of 1. A control for the scale difference.
+    RescaledLms {
+        /// The step size.
+        step_size: f64,
+    },
+}
+
+/// Whether a learner sees the raw readings or readings rescaled to unit spread.
+enum Readings {
+    Raw,
+    Rescaled,
 }
 
 enum Model {
     Idbd(Idbd),
-    Lms(Lms),
+    Lms(Lms, Readings),
 }
 
 impl Model {
@@ -384,6 +397,11 @@ impl Model {
             }
             Learner::Lms { step_size } => Ok(Self::Lms(
                 Lms::new(NUM_SENSORS, step_size).map_err(|e| e.to_string())?,
+                Readings::Raw,
+            )),
+            Learner::RescaledLms { step_size } => Ok(Self::Lms(
+                Lms::new(NUM_SENSORS, step_size).map_err(|e| e.to_string())?,
+                Readings::Rescaled,
             )),
         }
     }
@@ -394,28 +412,44 @@ impl Model {
                 .update(features, target)
                 .map(|u| u.error)
                 .map_err(|e| e.to_string()),
-            Self::Lms(lms) => lms
+            Self::Lms(lms, Readings::Raw) => lms
                 .update(features, target)
                 .map(|o| o.error)
                 .map_err(|e| e.to_string()),
+            Self::Lms(lms, Readings::Rescaled) => {
+                let rescaled: [f64; NUM_SENSORS] =
+                    std::array::from_fn(|i| features[i] / SENSORS[i].scale);
+                lms.update(&rescaled, target)
+                    .map(|o| o.error)
+                    .map_err(|e| e.to_string())
+            }
         }
     }
 
-    fn weights(&self) -> &[f64] {
+    /// The weights in kW per standard deviation of each reading.
+    fn weights_per_sd(&self) -> [f64; NUM_SENSORS] {
         match self {
-            Self::Idbd(idbd) => idbd.weights(),
-            Self::Lms(lms) => lms.weights(),
+            Self::Idbd(idbd) => std::array::from_fn(|i| idbd.weights()[i] * SENSORS[i].scale),
+            Self::Lms(lms, Readings::Raw) => {
+                std::array::from_fn(|i| lms.weights()[i] * SENSORS[i].scale)
+            }
+            Self::Lms(lms, Readings::Rescaled) => std::array::from_fn(|i| lms.weights()[i]),
         }
     }
 
+    /// The step sizes in units of a reading with unit spread.
     fn speeds(&self) -> [f64; NUM_SENSORS] {
         let mut speeds = [0.0; NUM_SENSORS];
         for (i, (speed, sensor)) in speeds.iter_mut().zip(&SENSORS).enumerate() {
-            let alpha = match self {
-                Self::Idbd(idbd) => idbd.step_sizes().nth(i).expect("one step size per sensor"),
-                Self::Lms(lms) => lms.step_size(),
+            *speed = match self {
+                Self::Idbd(idbd) => {
+                    idbd.step_sizes().nth(i).expect("one step size per sensor")
+                        * sensor.scale
+                        * sensor.scale
+                }
+                Self::Lms(lms, Readings::Raw) => lms.step_size() * sensor.scale * sensor.scale,
+                Self::Lms(lms, Readings::Rescaled) => lms.step_size(),
             };
-            *speed = alpha * sensor.scale * sensor.scale;
         }
         speeds
     }
@@ -452,7 +486,7 @@ pub fn run(seed: u64, learner: Learner) -> Result<Run, String> {
         if index >= WARMUP_READINGS {
             squared_error += error * error;
         }
-        bars.add(hour_of(index), model.weights());
+        bars.add(hour_of(index), &model.weights_per_sd());
     }
     let measured = f64::from(u32::try_from(READINGS - WARMUP_READINGS).expect("small"));
     Ok(Run {
@@ -596,8 +630,8 @@ impl Day {
             self.lms_squared_error += outcome.error * outcome.error;
         }
         let hour = hour_of(index);
-        self.idbd_bars.add(hour, self.idbd.weights());
-        self.lms_bars.add(hour, self.lms.weights());
+        self.idbd_bars.add(hour, &self.idbd_weights());
+        self.lms_bars.add(hour, &self.lms_weights());
         Ok(())
     }
 
@@ -707,6 +741,13 @@ mod tests {
         assert_eq!(HourSet::range(24, 2), None);
         assert_eq!(HourSet::range(2, 24), None);
         assert!(!evening.contains(24));
+    }
+
+    #[test]
+    fn sensor_hours_build_a_range_and_reject_an_empty_one() {
+        assert_eq!(hours(6, 8), HourSet::range(6, 8).expect("valid"));
+        let empty = std::panic::catch_unwind(|| hours(5, 5));
+        assert!(empty.is_err(), "an empty range is a programming error");
     }
 
     #[test]
@@ -860,6 +901,25 @@ mod tests {
     }
 
     #[test]
+    fn rescaled_lms_sees_unit_readings_and_reports_per_sd_values() {
+        let raw = run(4, Learner::Lms { step_size: 0.02 }).expect("completes");
+        let rescaled = run(4, Learner::RescaledLms { step_size: 0.02 }).expect("completes");
+        assert_eq!(rescaled.speeds, [0.02; NUM_SENSORS]);
+        assert_eq!(raw.speeds[2], 0.02 * 4.0);
+        assert_ne!(
+            raw.mean_squared_error.to_bits(),
+            rescaled.mean_squared_error.to_bits()
+        );
+        assert!(
+            rescaled.bars.score() > raw.bars.score(),
+            "{} vs {}",
+            rescaled.bars.score(),
+            raw.bars.score()
+        );
+        assert!(run(4, Learner::RescaledLms { step_size: 0.0 }).is_err());
+    }
+
+    #[test]
     fn select_skips_failing_values_and_picks_the_lowest_error() {
         let lms = |step_size| Learner::Lms { step_size };
         let (points, best) = select(&[0.001, 0.02, 5.0], &[1, 2], lms).expect("one completes");
@@ -881,6 +941,6 @@ mod tests {
         weights[5] = 0.5;
         bars.add(18, &weights);
         bars.add(18, &[0.0; NUM_SENSORS]);
-        assert_eq!(bars.bar(5)[18], 0.5 * SENSORS[5].scale / 2.0);
+        assert_eq!(bars.bar(5)[18], 0.25);
     }
 }

@@ -33,18 +33,21 @@ LMS alpha: selected 0.01. Mean squared error per grid value: 0.001 0.6302, 0.002
 
 IDBD theta: selected 0.07. Mean squared error per grid value: 0 0.9301, 0.001 0.7421, 0.002 0.6647, 0.005 0.5646, 0.01 0.499, 0.015 0.4659, 0.02 0.4451, 0.03 0.4202, 0.05 0.3965, 0.07 0.3841, 0.1 0.3743, 1 failed.
 
+LMS, rescaled readings alpha: selected 0.03. Mean squared error per grid value: 0.001 0.6406, 0.002 0.626, 0.005 0.564, 0.01 0.4908, 0.02 0.4295, 0.03 0.4164, 0.04 0.4247, 0.05 0.4468, 0.06 0.4812, 0.08 0.596, 0.1 0.8323.
+
 ## Results on the evaluation seeds
 
 | Learner | Parameter | Mean squared error | Bar score | Overlap on the 4 sensors that matter | Highest bar on a sensor that never matters, kW | Speed, sensors that matter | Speed, sensors that never matter |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | LMS | alpha 0.01 | 0.5144 +/- 0.004187 | 0.3848 +/- 0.002729 | 0.4348 +/- 5.952e-4 | 0.1243 +/- 0.006365 | 0.01375 +/- 0.000 | 0.01937 +/- 0.000 |
 | IDBD | theta 0.07 | 0.3841 +/- 0.002942 | 0.8462 +/- 3.701e-17 | 0.875 +/- 0.000 | 0.1184 +/- 0.003151 | 0.04956 +/- 9.435e-4 | 0.01811 +/- 1.804e-4 |
+| LMS, rescaled readings | alpha 0.03 | 0.4114 +/- 0.003428 | 0.8908 +/- 0.02265 | 0.8917 +/- 0.02381 | 0.1142 +/- 0.003894 | 0.030 +/- 2.313e-18 | 0.030 +/- 2.313e-18 |
 
 Every value is a mean over the evaluation seeds with one standard error. `bars.csv` holds every bar.
 
 ## What these numbers do and do not say
 
-The sensors read on different scales, and one fixed step size cannot suit all of them: it is slow on the sensors with small readings and noisy on those with large ones. IDBD gives every sensor its own step size. Rescaling every reading to a standard deviation of 1 before learning, which the `idbd` README recommends, removes most of that difference, and a tuned fixed step size then draws bars close to IDBD's.
+The sensors read on different scales, and one fixed step size cannot suit all of them: it is slow on the sensors with small readings and noisy on those with large ones. IDBD gives every sensor its own step size. The third row is a control: LMS on readings divided by each sensor's scale, so every reading has a standard deviation of 1, as the `idbd` README recommends. With the scales evened out, a tuned fixed step size draws bars as good as IDBD's and its error comes close. On this home IDBD's edge comes from the different reading scales.
 
 Bars trail the true hours. A weight needs time to grow after its sensor starts to matter and to fade after it stops, so a found range can start or end an hour late, most often on sensors with small readings.
 

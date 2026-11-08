@@ -54,7 +54,11 @@ fn main_result() -> Result<(), String> {
         theta,
     })?;
     check_page_constants(idbd.selected, lms.selected)?;
-    let learners = [lms, idbd];
+    eprintln!("selecting and evaluating LMS on rescaled readings");
+    let rescaled = evaluate("LMS, rescaled readings", "alpha", &LMS_GRID, |step_size| {
+        Learner::RescaledLms { step_size }
+    })?;
+    let learners = [lms, idbd, rescaled];
     write_all(
         options.out(),
         &[
@@ -356,9 +360,11 @@ fn reading_section() -> String {
     "## What these numbers do and do not say\n\n\
      The sensors read on different scales, and one fixed step size cannot suit all of them: \
      it is slow on the sensors with small readings and noisy on those with large ones. IDBD \
-     gives every sensor its own step size. Rescaling every reading to a standard deviation \
-     of 1 before learning, which the `idbd` README recommends, removes most of that \
-     difference, and a tuned fixed step size then draws bars close to IDBD's.\n\n\
+     gives every sensor its own step size. The third row is a control: LMS on readings \
+     divided by each sensor's scale, so every reading has a standard deviation of 1, as the \
+     `idbd` README recommends. With the scales evened out, a tuned fixed step size draws bars \
+     as good as IDBD's and its error comes close. On this home IDBD's edge comes from the \
+     different reading scales.\n\n\
      Bars trail the true hours. A weight needs time to grow after its sensor starts to \
      matter and to fade after it stops, so a found range can start or end an hour late, most \
      often on sensors with small readings.\n\n\

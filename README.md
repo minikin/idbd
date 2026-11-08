@@ -72,8 +72,8 @@ plots a fixed learning speed that is late or nervous when the oven switches on, 
 Family Assistant, a game in a home with twelve sensors and a power meter. You mark the hours in
 which you think each sensor adds to the meter, then IDBD and a tuned fixed-speed learner watch
 three simulated days and draw their own answer. Every learning value on the page comes from the
-crate. The game's sensors read on different scales, which is where IDBD's edge comes from, and
-the page says that rescaling the readings would let a fixed speed come close.
+crate. The game's sensors read on different scales, which is where IDBD's edge comes from. The
+page says so, and that a fixed speed on rescaled readings does as well.
 
 The Explorer runs IDBD, LMS and untuned Autostep side by side on Sutton's 20-input task, with
 replay, export and a guided single update.
@@ -157,9 +157,12 @@ learner's weights mark with the true hours, pooled over all sensors.
 | --- | --- | --- | --- |
 | LMS, alpha 0.01 (tuned) | 0.514 +/- 0.004 | 0.38 | 0.43 |
 | IDBD, theta 0.07 (tuned) | 0.384 +/- 0.003 | 0.85 | 0.88 |
+| LMS on rescaled readings, alpha 0.03 (tuned) | 0.411 +/- 0.003 | 0.89 | 0.89 |
 
 IDBD found all four sensors on every evaluation seed and marked Wi-Fi data use an hour late.
-With every reading rescaled to the same spread, a tuned fixed step draws bars close to IDBD's.
+The last row divides every reading by its sensor's scale first, as this README recommends. With
+the scales evened out, the tuned fixed step draws bars as good as IDBD's, so on this home IDBD's
+edge comes from the different reading scales.
 [Method, sensors and every bar](docs/results/family/README.md).
 
 **Performance.** On an Apple M4 Max, one IDBD update with 20 features takes about 95 ns and costs
