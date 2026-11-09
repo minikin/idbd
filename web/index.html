@@ -8,6 +8,84 @@
       name="description"
       content="A home with twelve sensors and a power meter explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser."
     />
+    <link rel="canonical" href="https://idbd.minikin.me/" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/social/apple-touch-icon.png" />
+    <meta name="theme-color" content="#08090a" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="author" content="Oleksandr Prokhorenko" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="idbd" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://idbd.minikin.me/" />
+    <meta property="og:title" content="IDBD: a learner that works out what to listen to" />
+    <meta property="og:description" content="A home with twelve sensors and a power meter explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser." />
+    <meta property="og:image" content="https://idbd.minikin.me/social/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The idbd share card: twelve faders at the step sizes IDBD learned for each sensor, next to the title A Learning Rate for Every Input." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="IDBD: a learner that works out what to listen to" />
+    <meta name="twitter:description" content="A home with twelve sensors and a power meter explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser." />
+    <meta name="twitter:image" content="https://idbd.minikin.me/social/og.jpg" />
+    <meta name="twitter:image:alt" content="The idbd share card: twelve faders at the step sizes IDBD learned for each sensor, next to the title A Learning Rate for Every Input." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "@id": "https://idbd.minikin.me/#app",
+        "name": "idbd demo",
+        "headline": "IDBD: a learner that works out what to listen to",
+        "url": "https://idbd.minikin.me/",
+        "description": "A home with twelve sensors and a power meter explains the IDBD learning rule. Every learning value comes from the Rust idbd crate running in your browser.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any web browser",
+        "browserRequirements": "Requires JavaScript and WebAssembly",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "image": "https://idbd.minikin.me/social/og.jpg",
+        "author": {
+          "@type": "Person",
+          "name": "Oleksandr Prokhorenko",
+          "url": "https://minikin.me"
+        },
+        "isBasedOn": {
+          "@type": "SoftwareSourceCode",
+          "name": "idbd",
+          "codeRepository": "https://github.com/minikin/idbd",
+          "programmingLanguage": "Rust",
+          "url": "https://crates.io/crates/idbd"
+        },
+        "citation": {
+          "@type": "ScholarlyArticle",
+          "name": "Adapting Bias by Gradient Descent: An Incremental Version of Delta-Bar-Delta",
+          "author": {
+            "@type": "Person",
+            "name": "Richard S. Sutton"
+          },
+          "datePublished": "1992",
+          "url": "https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf"
+        },
+        "subjectOf": {
+          "@type": "BlogPosting",
+          "headline": "IDBD in Rust: A Learning Rate for Every Input",
+          "url": "https://minikin.me/blog/idbd-in-rust/",
+          "author": {
+            "@type": "Person",
+            "name": "Oleksandr Prokhorenko",
+            "url": "https://minikin.me"
+          }
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -36,7 +114,7 @@
           <a class="wide-only" href="#what">What it does</a>
           <a class="wide-only" href="#slow">Slow motion</a>
           <a href="#play">Play</a>
-          <a href="./explorer.html">Advanced</a>
+          <a href="/explorer">Advanced</a>
           <a class="wide-only" href="https://github.com/minikin/idbd">GitHub</a>
         </nav>
       </div>
@@ -62,7 +140,7 @@
             <a class="button" href="#play">Play against it</a>
           </div>
           <div class="hero-links">
-            <a class="quiet-link" href="./explorer.html">Advanced mode: the full&nbsp;Explorer&nbsp;&rarr;</a>
+            <a class="quiet-link" href="/explorer">Advanced mode: the full&nbsp;Explorer&nbsp;&rarr;</a>
             <a class="quiet-link" href="https://cdn.aaai.org/AAAI/1992/AAAI92-027.pdf">The original paper: Sutton, 1992, AAAI-92 (PDF)&nbsp;&nearr;</a>
           </div>
           <div class="project-badges">
@@ -415,7 +493,7 @@
               Sutton's tasks, change the world, replay and export runs.
             </p>
           </div>
-          <a class="button primary" href="./explorer.html">Open the Explorer</a>
+          <a class="button primary" href="/explorer">Open the Explorer</a>
         </div>
       </section>
     </main>

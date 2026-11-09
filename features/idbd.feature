@@ -613,6 +613,15 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And it counts sensors without naming them
       And with reduced motion it holds still on the step that is IDBD
 
+    Scenario: S11 Share the demo and let search engines index it
+      Given the story page and the Explorer
+      When a search engine or a link preview reads them
+      Then each page names its canonical address, a title, a description and a 1200 by 630 share image
+      And the favicon, the share image and the touch icon are served
+      And structured data names the app, the idbd crate, its author, the paper and the blog post
+      And a sitemap lists both pages and robots.txt points to it
+      And links between the pages use the canonical addresses, so a crawler never follows a redirect
+
     Scenario: S06 Keep the story page usable without WebGL or motion
       Given a browser without WebGL, or a visitor who prefers reduced motion
       When the story page loads
