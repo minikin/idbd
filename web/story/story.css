@@ -1362,6 +1362,18 @@ h3 {
   border-top: 0;
 }
 
+.footer-credit {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hairline);
+  text-underline-offset: 3px;
+}
+
+.footer-credit:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
 .site-footer::before {
   content: "";
   position: absolute;
