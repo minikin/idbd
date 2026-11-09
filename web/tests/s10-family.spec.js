@@ -291,3 +291,41 @@ test("S10 tally counts sensors found, right hours and wrong hours", () => {
   expect(tally([0b0110, 0b0100], truth)).toEqual({ sensorsFound: 1, right: 1, wrong: 2, missed: 1 });
   expect(tally([0, 0], truth)).toEqual({ sensorsFound: 0, right: 0, wrong: 0, missed: 2 });
 });
+
+test("S03 chapter 5 names no sensor until the first run ends, then stays open", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.clock.install();
+  await openStory(page);
+  const { home } = await page.evaluate(() => ({ home: window.idbdStory.home }));
+  const chapter = page.locator("#learned");
+  expect(await page.evaluate(() => window.idbdStory.learnedLocked())).toBe(true);
+  await expect(page.locator("#learned-label")).toBeVisible();
+  await expect(page.locator("#learned-locked")).toBeVisible();
+  await expect(page.locator("#learned-title")).toBeHidden();
+  await expect(page.locator("#desk")).toBeHidden();
+  const lockedText = await chapter.innerText();
+  for (const sensor of home.sensors) expect(lockedText).not.toContain(sensor.name);
+
+  await page.click("#family-run");
+  await page.clock.runFor(2_000);
+  await expect(page.locator("#learned-title")).toBeHidden();
+  await finishRun(page);
+  expect((await game(page)).phase).toBe("done");
+  await expect(page.locator("#learned-locked")).toBeHidden();
+  await expect(page.locator("#learned-title")).toBeVisible();
+  await expect(page.locator("#desk li")).toHaveCount(12);
+  await expect(page.locator("#desk")).toBeVisible();
+
+  await page.click("#family-again");
+  await expect(page.locator("#learned-title")).toBeVisible();
+});
+
+test.describe("without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("S03 chapter 5 shows its answer, since the game cannot run", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#learned-title")).toBeVisible();
+    await expect(page.locator("#learned-locked")).toBeHidden();
+  });
+});
