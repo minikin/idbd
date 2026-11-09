@@ -21,14 +21,15 @@ web-build:
     cp web/node_modules/three/build/three.module.min.js web/vendor/
     cp web/node_modules/three/LICENSE web/vendor/three.LICENSE
 
-# Copy only the files the pages load into _site. Tests, tooling and anything outside web/
-# stay out, and the recipe fails if a path names internal.
+# Copy only the files the pages, crawlers and link previews load into _site. Tests, tooling
+# and anything outside web/ stay out, and the recipe fails if a path names internal.
 web-site: web-build
     #!/usr/bin/env bash
     set -euo pipefail
     rm -rf _site
     mkdir -p _site/pkg _site/vendor
-    cp web/index.html web/explorer.html web/styles.css _site/
+    cp web/index.html web/explorer.html web/styles.css web/favicon.ico web/favicon.svg web/robots.txt web/sitemap.xml web/site.webmanifest _site/
+    cp -R web/social _site/social
     cp -R web/src _site/src
     cp -R web/story _site/story
     cp web/vendor/three.module.min.js web/vendor/three.LICENSE _site/vendor/

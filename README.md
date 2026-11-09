@@ -39,7 +39,7 @@ This repository has three parts:
 | [`crates/idbd-wasm`](crates/idbd-wasm) | Unpublished. The `wasm-bindgen` adapter used by the demo. |
 | [`web`](web) | The story page and the Explorer, static, with Playwright tests. |
 | [`docs`](docs) | Reproduction instructions, generated results and benchmarks. |
-| [`features/idbd.feature`](features/idbd.feature) | The behavior specification: 62 scenarios in 13 rules. |
+| [`features/idbd.feature`](features/idbd.feature) | The behavior specification: 63 scenarios in 13 rules. |
 
 ## Using the crate
 

@@ -22,6 +22,10 @@ const TYPES = new Map([
   [".svg", "image/svg+xml"],
   [".ico", "image/x-icon"],
   [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".xml", "application/xml; charset=utf-8"],
+  [".webmanifest", "application/manifest+json"],
   [".woff2", "font/woff2"],
 ]);
 
@@ -48,7 +52,9 @@ const server = createServer(async (request, response) => {
     return;
   }
   try {
-    const info = await stat(target);
+    // Cloudflare serves /explorer from explorer.html, and the pages link to the clean address
+    const info = await stat(target).catch(() => (extname(target) ? null : stat((target += ".html"))));
+    if (!info) throw new Error("not found");
     const file = info.isDirectory() ? join(target, "index.html") : target;
     const size = info.isDirectory() ? (await stat(file)).size : info.size;
     response.writeHead(200, {
