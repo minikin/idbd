@@ -18,6 +18,11 @@ corrections cancel out gets a smaller one. No input is marked as relevant in adv
 </p>
 <p align="center"><sub>One run of the story page's guessing game. A tuned fixed step on rescaled readings scores 89% to IDBD's 85% over ten runs, see <a href="#results">Results</a>.</sub></p>
 
+<p>
+  <a href="https://minikin.me/blog/idbd-in-rust/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://github.com/minikin/idbd/raw/HEAD/docs/assets/link-blog-idbd-in-rust-dark.svg?sanitize=true"><img alt="Blog post: IDBD in Rust: A Learning Rate for Every Input" src="docs/assets/link-blog-idbd-in-rust.svg"></picture></a>
+  <a href="https://idbd.minikin.me"><picture><source media="(prefers-color-scheme: dark)" srcset="https://github.com/minikin/idbd/raw/HEAD/docs/assets/link-demo-dark.svg?sanitize=true"><img alt="Live demo: idbd.minikin.me" src="docs/assets/link-demo.svg"></picture></a>
+</p>
+
 This repository has three parts:
 
 - `idbd`, the crate: IDBD and Autostep (Mahmood et al., 2012) as checked, atomic,
