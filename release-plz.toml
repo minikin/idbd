@@ -10,7 +10,7 @@ pr_labels = ["release"]
 
 [[package]]
 name = "idbd"
-changelog_path = "crates/idbd/CHANGELOG.md"
+changelog_path = "CHANGELOG.md"
 changelog_update = false
 git_tag_name = "v{{ version }}"
 
