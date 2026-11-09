@@ -621,6 +621,7 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       And structured data names the app, the idbd crate, its author, the paper and the blog post
       And a sitemap lists both pages and robots.txt points to it
       And links between the pages use the canonical addresses, so a crawler never follows a redirect
+      And links to other sites open in a new tab, and the project chips link the blog post next to GitHub and crates.io
 
     Scenario: S06 Keep the story page usable without WebGL or motion
       Given a browser without WebGL, or a visitor who prefers reduced motion

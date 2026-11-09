@@ -71,3 +71,19 @@ test("S11 the sitemap lists every canonical page and robots.txt points to it", a
   const robots = await (await request.get("/robots.txt")).text();
   expect(robots).toContain(`Sitemap: ${SITE}/sitemap.xml`);
 });
+
+for (const { path } of PAGES) {
+  test(`S11 ${path} opens other sites in a new tab and links the blog post from its chips`, async ({ page }) => {
+    await page.goto(path);
+    const external = await page.locator('a[href^="http"]').evaluateAll((links) =>
+      links.map((a) => ({ href: a.getAttribute("href"), target: a.target, rel: a.rel })),
+    );
+    expect(external.length).toBeGreaterThan(0);
+    for (const link of external) {
+      expect(link.target, link.href).toBe("_blank");
+      expect(link.rel, link.href).toContain("noopener");
+    }
+    // The chips in the hero or header and in the footer
+    await expect(page.locator('.project-badge[href="https://minikin.me/blog/idbd-in-rust/"]')).toHaveCount(2);
+  });
+}
