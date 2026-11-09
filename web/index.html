@@ -374,13 +374,17 @@
         <p class="failure" id="family-failure" role="alert" hidden></p>
       </section>
 
-      <section class="chapter wrap" aria-labelledby="learned-title">
+      <section id="learned" class="chapter wrap learned locked" aria-labelledby="learned-label">
         <div class="split">
           <div class="chapter-copy">
-            <p class="eyebrow">05 &middot; What IDBD learned</p>
-            <h2 id="learned-title">After three days, IDBD listens closely to four sensors and lets eight go quiet.</h2>
+            <p class="eyebrow" id="learned-label">05 &middot; What IDBD learned</p>
+            <h2 id="learned-title" class="learned-answer">After three days, IDBD listens closely to four sensors and lets eight go quiet.</h2>
+            <p class="learned-locked" id="learned-locked">
+              This part names the sensors the game asks you to find. Mark your hours and
+              <a href="#play">run three days</a>, and it opens when the run ends.
+            </p>
           </div>
-          <div class="chapter-copy">
+          <div class="chapter-copy learned-answer">
             <p id="learned-why">
               Nobody told it which sensors matter. The corrections for the water heater, the wall, the
               oven and the Wi-Fi data use kept agreeing, and the others kept cancelling out.
@@ -392,7 +396,7 @@
             <p class="faint small">Richard Sutton called the rule Incremental Delta-Bar-Delta in 1992.</p>
           </div>
         </div>
-        <figure class="card instrument">
+        <figure class="card instrument learned-answer">
           <div class="card-head">
             <span>Speed per typical swing IDBD learned for each sensor after <span id="desk-readings">4,320</span> readings, the game's first run</span>
             <span class="mono faint">simulated home, computed by the idbd crate</span>

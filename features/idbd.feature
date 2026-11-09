@@ -603,6 +603,7 @@ Feature: Dependable online learning with IDBD and an interactive Rust demo
       Then IDBD and the fixed-step learner use the parameters E07 selected
       And the visitor, IDBD and the fixed speed are scored by one rule against the true hours
       And the reveal shows the true hours, the visitor's hours and each learner's hour bars as text as well as drawn
+      And the chapter after the game, what IDBD learned, stays locked and names no sensor until the first run ends
 
     Scenario: S08 Walk the four steps of an update through live readings
       Given the "What IDBD does" chapter of the story page

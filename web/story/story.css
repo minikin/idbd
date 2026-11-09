@@ -722,6 +722,31 @@ svg path {
   max-width: 30em;
 }
 
+/* Chapter 5 names the sensors the game asks for, so it stays locked until the first run
+   ends. Without scripting the game cannot run, so the answer shows from the start. */
+@media (scripting: enabled) {
+  .learned.locked .learned-answer {
+    display: none;
+  }
+}
+
+.learned-locked a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2.5px;
+  text-decoration-thickness: 1px;
+}
+
+.learned:not(.locked) .learned-locked {
+  display: none;
+}
+
+@media (scripting: none) {
+  .learned-locked {
+    display: none;
+  }
+}
+
 .instrument {
   margin: 0;
   padding: 32px 24px 24px;

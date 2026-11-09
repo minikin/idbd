@@ -430,7 +430,10 @@ async function main() {
     mechanism: $("family-mechanism"),
     again: $("family-again"),
     failure: $("family-failure"),
-    onReveal: () => slow.revealNames(),
+    onReveal: () => {
+      slow.revealNames();
+      $("learned").classList.remove("locked");
+    },
   });
 
   window.idbdStory = {
@@ -445,12 +448,15 @@ async function main() {
     game: () => family.state(),
     slow: () => slow.state(),
     loop: () => loop.state(),
+    learnedLocked: () => $("learned").classList.contains("locked"),
   };
   document.body.dataset.appReady = "true";
 }
 
 main().catch((error) => {
   document.body.dataset.appReady = "error";
+  // The game cannot run, so nothing would ever unlock chapter 5.
+  document.getElementById("learned").classList.remove("locked");
   const note = document.createElement("p");
   note.className = "failure wrap";
   note.setAttribute("role", "alert");
