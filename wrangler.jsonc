@@ -1,8 +1,12 @@
 // The demo is a static site: a Worker with assets only, no script. `just web-site` builds
-// the directory and the Demo workflow deploys it.
+// the directory and the Demo workflow deploys it. The custom domain needs the minikin.me
+// zone in the same Cloudflare account. The workers.dev address is off so the demo has one URL.
 {
   "name": "idbd-demo",
   "compatibility_date": "2026-10-22",
   "send_metrics": false,
-  "assets": { "directory": "./_site" }
+  "assets": { "directory": "./_site" },
+  "routes": [{ "pattern": "idbd.minikin.me", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false
 }
